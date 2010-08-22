@@ -1,6 +1,6 @@
 /**
- * You received this file as part of FinGUI - a universal
- * (Web-)GUI editor for Robotic Systems.
+ * You received this file as part of Finstruct - a tool for
+ * the Finroc Framework.
  *
  * Copyright (C) 2010 Robotics Research Lab, University of Kaiserslautern
  *
@@ -54,6 +54,7 @@ import org.finroc.core.plugin.ExternalConnection;
 import org.finroc.core.plugin.Plugins;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.finstruct.views.StandardView;
+import org.finroc.finstruct.views.StandardViewGraphViz;
 import org.finroc.gui.ConnectionPanel;
 import org.finroc.gui.StatusBar;
 import org.finroc.gui.commons.EventRouter;
@@ -145,6 +146,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         // find views
         ButtonGroup viewSelectGroup = new ButtonGroup();
         views.add(new ViewSelector(StandardView.class, viewSelectGroup));
+        views.add(new ViewSelector(StandardViewGraphViz.class, viewSelectGroup));
 
         // view menu
         JMenu menuView = new JMenu("View");

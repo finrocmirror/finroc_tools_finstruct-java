@@ -1,6 +1,6 @@
 /**
- * You received this file as part of FinGUI - a universal
- * (Web-)GUI editor for Robotic Systems.
+ * You received this file as part of Finstruct - a tool for
+ * the Finroc Framework.
  *
  * Copyright (C) 2010 Robotics Research Lab, University of Kaiserslautern
  *
@@ -18,6 +18,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+
 package org.finroc.finstruct;
 
 import javax.swing.JComponent;
@@ -26,6 +27,7 @@ import javax.swing.JPanel;
 
 import org.finroc.core.FrameworkElement;
 import org.finroc.gui.ConnectionPanel;
+import org.finroc.log.LogDomain;
 
 /**
  * @author max
@@ -41,6 +43,8 @@ public abstract class FinstructView extends JPanel {
 
     /** Root element of view */
     private FrameworkElement rootElement;
+
+    public static final LogDomain logDomain = Finstruct.logDomain;
 
     public String toString() {
         return getClass().getSimpleName();
@@ -85,5 +89,9 @@ public abstract class FinstructView extends JPanel {
      */
     public FrameworkElement getRootElement() {
         return rootElement;
+    }
+
+    public String getLogDescription() {
+        return getClass().getSimpleName();
     }
 }
