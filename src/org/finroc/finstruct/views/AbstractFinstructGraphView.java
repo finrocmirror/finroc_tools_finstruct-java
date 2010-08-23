@@ -194,6 +194,10 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
                 if (foundCount == 1) {
                     VertexAnnotation ann = getOrCreateAnnotation(found);
                     ann.specialNode = controller == 1 ? (output == 1 ? SpecialNode.ControllerOutput : SpecialNode.ControllerInput) : (output == 1 ? SpecialNode.SensorOutput : SpecialNode.SensorInput);
+                    if (controller == 0) {
+                        result.remove(ann.frameworkElement);
+                        result.add(0, ann.frameworkElement);
+                    }
                 }
             }
         }
@@ -296,15 +300,27 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         }
 
         /**
+         * @return Does edge transport controller data (only)?
+         */
+        public boolean isControllerData() {
+            return (dataTypeFlags & (EdgeAggregator.SENSOR_DATA | EdgeAggregator.CONTROLLER_DATA)) == EdgeAggregator.CONTROLLER_DATA;
+        }
+
+        /**
+         * @return Does edge transport sensor data (only)?
+         */
+        public boolean isSensorData() {
+            return (dataTypeFlags & (EdgeAggregator.SENSOR_DATA | EdgeAggregator.CONTROLLER_DATA)) == EdgeAggregator.SENSOR_DATA;
+        }
+
+        /**
          * @return Edge color
          */
         public Color getColor() {
-            boolean sensorData = (dataTypeFlags & EdgeAggregator.SENSOR_DATA) != 0;
-            boolean controllerData = (dataTypeFlags & EdgeAggregator.CONTROLLER_DATA) != 0;
-            if (sensorData && (!controllerData)) {
+            if (isSensorData()) {
                 return Color.YELLOW;
             }
-            if (controllerData && (!sensorData)) {
+            if (isControllerData()) {
                 return Color.RED;
             }
             return Color.BLACK;

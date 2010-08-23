@@ -42,6 +42,9 @@ public class Edge extends GraphVizElement {
     private Path2D.Double path;
     //private Point2D.Double[] splinePoints;
 
+    /** Reverse edge while layouting with dot? */
+    private boolean reversedInDotLayout;
+
     public Edge(Vertex source, Vertex destination) {
         this.source = source;
         this.destination = destination;
@@ -70,7 +73,9 @@ public class Edge extends GraphVizElement {
 
     @Override
     public void writeToDot(StringBuffer sb, Layout layout, boolean keepPositions) {
-        sb.append("v").append(source.getHandle()).append(" -> v").append(destination.getHandle()).append(" [");
+        int srcHandle = reversedInDotLayout ? destination.getHandle() : source.getHandle();
+        int destHandle = reversedInDotLayout ? source.getHandle() : destination.getHandle();
+        sb.append("v").append(srcHandle).append(" -> v").append(destHandle).append(" [");
         printAttributesForDotFile(sb);
         sb.append("];\n");
     }
@@ -90,5 +95,19 @@ public class Edge extends GraphVizElement {
             p = toPoint(points[i], nullVector);
             path.lineTo(p.x, p.y);
         }
+    }
+
+    /**
+     * @return Reverse edge while layouting with dot?
+     */
+    public boolean isReversedInDotLayout() {
+        return reversedInDotLayout;
+    }
+
+    /**
+     * @param reversedInDotLayout Reverse edge while layouting with dot?
+     */
+    public void setReversedInDotLayout(boolean reversedInDotLayout) {
+        this.reversedInDotLayout = reversedInDotLayout;
     }
 }

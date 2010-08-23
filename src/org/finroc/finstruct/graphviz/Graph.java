@@ -156,7 +156,9 @@ public class Graph extends GraphVizElement {
 
         if (isRoot) {
             sb.append("digraph \"finstruct\" {\n");
-            sb.append("null [shape=box, width=\"0.0001\", height=\"0.0001\", fixedsize=true, pos=\"0,0!\"];\n"); // in order to obtain null vector
+            if (layout != Layout.dot) {
+                sb.append("null [shape=box, width=\"0.0001\", height=\"0.0001\", fixedsize=true, pos=\"0,0!\"];\n"); // in order to obtain null vector
+            }
         } else {
             sb.append("subgraph cluster" + getHandle() + " {\n");
         }
@@ -194,7 +196,7 @@ public class Graph extends GraphVizElement {
         ps.println(graph);
         ps.close();
         List<String> outputLines = Files.readLines(p.getInputStream());
-        Point2D.Double nullVector = null;
+        Point2D.Double nullVector = new Point2D.Double(0, 0);
         for (String s : outputLines) {
             logDomain.log(LogLevel.LL_DEBUG, "GraphViz graph after layout", s);
             if (s.trim().startsWith("null [")) {

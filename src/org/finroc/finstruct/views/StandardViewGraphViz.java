@@ -24,6 +24,9 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.geom.Path2D;
+import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
 import java.util.Collection;
 
@@ -63,7 +66,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     public StandardViewGraphViz() {
         super(Vertex.class);
         testLabel.setFont(FONT);
-        this.setBackground(Color.GRAY);
+        this.setBackground(Color.LIGHT_GRAY);
         setLayout(null);
     }
 
@@ -108,6 +111,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                     int hh = (int)((v.gvVertex.getHeight() + 1) / 2) + 3;
                     if (v.hasFixedPos()) {
                         v.gvVertex.setFixedPosition(v.onRight() ? (width - wh) : wh, v.atBottom() ? (height - hh) : hh);
+                        v.gvVertex.setRank(v.atBottom() ? "source" : "sink");
                         //ps.print(", pos=\"" + toInch(v.onRight() ? (width - wh) : wh) + "," + toInch(v.atBottom() ? (height - hh) : hh) + "!\"");
                     }
                 }
@@ -137,6 +141,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 edges = getEdges(root);
                 for (Edge e : edges) {
                     graph.add(e.gvEdge);
+                    if (e.isControllerData()) {
+                        e.gvEdge.setReversedInDotLayout(true);
+                    }
                 }
             }
 
@@ -182,6 +189,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     public synchronized void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D)g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         if (edges == null || vertices == null) {
             return;
@@ -260,7 +268,60 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             Color old = g2d.getColor();
             g2d.setColor(getColor());
             g2d.draw(gvEdge.getPath());
+            drawArrow(g2d, !gvEdge.isReversedInDotLayout());
             g2d.setColor(old);
+        }
+
+        /**
+         * @param g2d Graphics object
+         * @param atSource Draw arrow at source (reverse direction)
+         */
+        private void drawArrow(Graphics2D g2d, boolean atSource) {
+            PathIterator pi = gvEdge.getPath().getPathIterator(null, 2);
+            double[] coords = new double[6];
+            double x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+            while (!pi.isDone()) {
+                int type = pi.currentSegment(coords);
+                if (type == PathIterator.SEG_MOVETO) {
+                    x2 = coords[0];
+                    y2 = coords[1];
+                } else if (type == PathIterator.SEG_LINETO) {
+                    x1 = x2;
+                    y1 = y2;
+                    x2 = coords[0];
+                    y2 = coords[1];
+                    if (atSource) {
+                        drawArrow(g2d, x2, y2, x1, y1);
+                        return;
+                    }
+                }
+                pi.next();
+            }
+            drawArrow(g2d, x1, y1, x2, y2);
+        }
+
+        private final int ARROW_LEN = 10;
+        private final double ARROW_ANGLE = 2.7;
+
+
+        /**
+         * Draw arrow at the end of provided line segment
+         *
+         * @param g2d Graphics object
+         * @param x1 line start x
+         * @param y1 line start y
+         * @param x2 line end x
+         * @param y2 line end y
+         */
+        private void drawArrow(Graphics2D g2d, double x1, double y1, double x2, double y2) {
+            double dx = x2 - x1;
+            double dy = y2 - y1;
+            double angle = Math.atan2(dy, dx);
+            Path2D.Double path = new Path2D.Double();
+            path.moveTo(x2 + Math.cos(angle + ARROW_ANGLE) * ARROW_LEN, y2 + Math.sin(angle + ARROW_ANGLE) * ARROW_LEN);
+            path.lineTo(x2, y2);
+            path.lineTo(x2 + Math.cos(angle - ARROW_ANGLE) * ARROW_LEN, y2 + Math.sin(angle - ARROW_ANGLE) * ARROW_LEN);
+            g2d.draw(path);
         }
     }
 

@@ -141,4 +141,11 @@ public class Vertex extends GraphVizElement {
     public Point2D.Double getLayoutPosition() {
         return layoutPosition;
     }
+
+    /**
+     * @param rank Rank of vertex (relevant for dot layout only)
+     */
+    public void setRank(String rank) {
+        this.rank = rank;
+    }
 }
