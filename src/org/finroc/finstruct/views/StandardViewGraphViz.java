@@ -141,7 +141,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             }
 
             // Layout
-            graph.applyLayout(Layout.neato, false);
+            graph.applyLayout(Layout.dot, false);
 
 //          boolean started = false;
 //          for (String s : outputLines) {
@@ -206,7 +206,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     /**
      * Combined (Finstruct/GraphViz vertex)
      */
-    class Vertex extends VertexAnnotation {
+    class Vertex extends AbstractFinstructGraphView.VertexAnnotation {
 
         /** graphviz vertex */
         private org.finroc.finstruct.graphviz.Vertex gvVertex;
