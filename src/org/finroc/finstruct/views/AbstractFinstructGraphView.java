@@ -179,14 +179,12 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         // mark special vertices
         for (int controller = 0; controller <= 1; controller++) {
             for (int output = 0; output <= 1; output++) {
-                ci.reset();
-                next = null;
                 FrameworkElement found = null;
                 int foundCount = 0;
 
-                while ((next = ci.next()) != null) {
-                    if ((controller == 1 ? isControllerInterface(next) : isSensorInterface(next)) && (output == 1 ? isOutputOnlyInterface(next) : isInputOnlyInterface(next))) {
-                        found = next;
+                for (FrameworkElement next2 : result) {
+                    if ((controller == 1 ? isControllerInterface(next2) : isSensorInterface(next2)) && (output == 1 ? isOutputOnlyInterface(next2) : isInputOnlyInterface(next2))) {
+                        found = next2;
                         foundCount++;
                     }
                 }
@@ -201,6 +199,20 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
                 }
             }
         }
+
+        // mark groups
+        for (FrameworkElement fe : result) {
+            if ((!fe.isPort()) && (!isInterface(fe))) {
+                // we have a group, if there's an non-port, non-interface, non-empty sub-node
+                ci.reset(fe);
+                while ((next = ci.next()) != null) {
+                    if ((!next.isPort()) && (!isInterface(next))) {
+                        getOrCreateAnnotation(fe).setGroup(true);
+                    }
+                }
+            }
+        }
+
 
         return result;
     }
@@ -332,6 +344,9 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
      */
     public enum SpecialNode { SensorInput, SensorOutput, ControllerInput, ControllerOutput }
 
+    /** Dark blue color */
+    public final static Color DARK_BLUE = Color.BLUE.darker().darker();
+
     /**
      * Annotation for every Finroc FrameworkElement that is currently displayed in graph
      */
@@ -342,6 +357,9 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
 
         /** Finroc element that this vertex represents */
         protected final FrameworkElement frameworkElement;
+
+        /** Is this vertex a (expandable) group? */
+        private boolean isGroup;
 
         /**
          * @param fe Finroc element that this vertex represents
@@ -362,6 +380,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
          */
         public void reset() {
             specialNode = null;
+            isGroup = false;
         }
 
         @Override
@@ -408,14 +427,28 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
             } else if (specialNode == SpecialNode.ControllerInput || specialNode == SpecialNode.ControllerOutput) {
                 return Color.red;
             }
-            return Color.blue;
+            return isGroup ? DARK_BLUE : Color.blue;
         }
 
         /**
          * @return Color for text
          */
         public Color getTextColor() {
-            return getColor() == Color.blue ? Color.white : Color.black;
+            return getColor() == Color.yellow || getColor() == Color.red ? Color.black : Color.white;
+        }
+
+        /**
+         * @return Is this vertex a (expandable) group?
+         */
+        public boolean isGroup() {
+            return isGroup;
+        }
+
+        /**
+         * @param b Is this vertex a (expandable) group?
+         */
+        public void setGroup(boolean b) {
+            isGroup = b;
         }
     }
 
