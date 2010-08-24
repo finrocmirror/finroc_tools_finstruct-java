@@ -30,11 +30,8 @@ import java.util.List;
 import org.finroc.core.Annotatable;
 import org.finroc.core.ChildIterator;
 import org.finroc.core.CoreFlags;
-import org.finroc.core.FinrocAnnotation;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.FrameworkElementTreeFilter;
-import org.finroc.core.buffer.CoreInput;
-import org.finroc.core.buffer.CoreOutput;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.EdgeAggregator;
 import org.finroc.core.port.PortFlags;
@@ -52,13 +49,6 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
 
     /** UID */
     private static final long serialVersionUID = 1516347489852848159L;
-
-    /** Type V */
-    private final Class<V> vertexClass;
-
-    public AbstractFinstructGraphView(Class<V> vertexClass) {
-        this.vertexClass = vertexClass;
-    }
 
     /**
      * @param fe Framework Element
@@ -130,10 +120,11 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
     /**
      * Returns parent of framework element that is displayed in graph
      *
+     * @param lookup Lookup table for out vertices
      * @param fe Framework element whose parent to search for
      * @return Parent
      */
-    public GetParentResult getParentInGraph(FrameworkElement fe) {
+    public GetParentResult getParentInGraph(HashMap<FrameworkElement, V> lookup, FrameworkElement fe) {
         GetParentResult result = new GetParentResult();
         for (int i = 0; i < fe.getLinkCount(); i++) {
             FrameworkElement current = fe;
@@ -142,8 +133,9 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
                 if (current.getFlag(CoreFlags.EDGE_AGGREGATOR)) {
                     result.dataTypeFlags |= current.getAllFlags();
                 }
-                if (parent == getRootElement()) {
-                    result.parent = current;
+                V v = lookup.get(current);
+                if (v != null) {
+                    result.parent = v;
                     return result;
                 }
                 current = parent;
@@ -159,9 +151,9 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
      * @param root Root
      * @return List
      */
-    public List<FrameworkElement> getVertices(FrameworkElement root) {
+    public List<V> getVertices(FrameworkElement root) {
         ChildIterator ci = new ChildIterator(root);
-        ArrayList<FrameworkElement> result = new ArrayList<FrameworkElement>();
+        ArrayList<V> result = new ArrayList<V>();
         if (!root.isReady()) {
             return result;
         }
@@ -169,45 +161,42 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         // add vertices
         FrameworkElement next = null;
         while ((next = ci.next()) != null) {
-            VertexAnnotation ann = getAnnotation(next);
-            if (ann != null) {
-                ann.reset();
-            }
-            result.add(next);
+            result.add(createVertexInstance(next));
         }
 
         // mark special vertices
         for (int controller = 0; controller <= 1; controller++) {
             for (int output = 0; output <= 1; output++) {
-                FrameworkElement found = null;
+                V found = null;
                 int foundCount = 0;
 
-                for (FrameworkElement next2 : result) {
+                for (V v : result) {
+                    FrameworkElement next2 = v.frameworkElement;
                     if ((controller == 1 ? isControllerInterface(next2) : isSensorInterface(next2)) && (output == 1 ? isOutputOnlyInterface(next2) : isInputOnlyInterface(next2))) {
-                        found = next2;
+                        found = v;
                         foundCount++;
                     }
                 }
 
                 if (foundCount == 1) {
-                    VertexAnnotation ann = getOrCreateAnnotation(found);
-                    ann.specialNode = controller == 1 ? (output == 1 ? SpecialNode.ControllerOutput : SpecialNode.ControllerInput) : (output == 1 ? SpecialNode.SensorOutput : SpecialNode.SensorInput);
+                    found.specialNode = controller == 1 ? (output == 1 ? SpecialNode.ControllerOutput : SpecialNode.ControllerInput) : (output == 1 ? SpecialNode.SensorOutput : SpecialNode.SensorInput);
                     if (controller == 0) {
-                        result.remove(ann.frameworkElement);
-                        result.add(0, ann.frameworkElement);
+                        result.remove(found);
+                        result.add(0, found);
                     }
                 }
             }
         }
 
         // mark groups
-        for (FrameworkElement fe : result) {
+        for (V v : result) {
+            FrameworkElement fe = v.frameworkElement;
             if ((!fe.isPort()) && (!isInterface(fe))) {
                 // we have a group, if there's an non-port, non-interface, non-empty sub-node
                 ci.reset(fe);
                 while ((next = ci.next()) != null) {
                     if ((!next.isPort()) && (!isInterface(next))) {
-                        getOrCreateAnnotation(fe).setGroup(true);
+                        v.setGroup(true);
                     }
                 }
             }
@@ -221,26 +210,30 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
      * Returns all framework element below root that should be displayed
      *
      * @param root Root
+     * @param allVertices All Vertices that could be connected in graph
      * @return List with edges (start and endpoints) are set to vertices returned by method above
      */
-    public Collection<E> getEdges(final FrameworkElement root) {
+    public Collection<E> getEdges(final FrameworkElement root, Collection<V> allVertices) {
         final HashMap<E, E> result = new HashMap<E, E>();
         if (!root.isReady()) {
             return new ArrayList<E>();
         }
+        final HashMap<FrameworkElement, V> lookup = new HashMap<FrameworkElement, V>();
+        for (V v : allVertices) {
+            lookup.put(v.frameworkElement, v);
+        }
         FrameworkElementTreeFilter.Callback cb = new FrameworkElementTreeFilter.Callback() {
-            @SuppressWarnings("unchecked")
             @Override
             public void treeFilterCallback(FrameworkElement fe) {
                 if (fe.isChildOf(root)) {
                     NetPort np = ((AbstractPort)fe).asNetPort();
                     for (FrameworkElement feDest : np.getRemoteEdgeDestinations()) {
-                        GetParentResult src = getParentInGraph(fe);
-                        GetParentResult dest = getParentInGraph(feDest);
+                        GetParentResult src = getParentInGraph(lookup, fe);
+                        GetParentResult dest = getParentInGraph(lookup, feDest);
                         if (src.parent != null && dest.parent != null && src.parent != dest.parent) {
-                            E eNew = (E)createEdgeInstance(src.parent, dest.parent);
-                            eNew.source = getOrCreateAnnotation(src.parent);
-                            eNew.destination = getOrCreateAnnotation(dest.parent);
+                            E eNew = createEdgeInstance(src.parent, dest.parent);
+                            eNew.source = src.parent;
+                            eNew.destination = dest.parent;
                             E e = result.get(eNew);
                             if (e == null) {
                                 e = eNew;
@@ -263,7 +256,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
      * Holds result for method above
      */
     public class GetParentResult {
-        FrameworkElement parent;
+        V parent;
         int dataTypeFlags;
     }
 
@@ -350,7 +343,10 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
     /**
      * Annotation for every Finroc FrameworkElement that is currently displayed in graph
      */
-    public static class VertexAnnotation extends FinrocAnnotation {
+    public static class VertexAnnotation { /*extends FinrocAnnotation*/
+
+        /** UID */
+        private static final long serialVersionUID = 2426163929118989165L;
 
         /** Marks special interfaces */
         private SpecialNode specialNode;
@@ -383,19 +379,19 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
             isGroup = false;
         }
 
-        @Override
-        public void initDataType() {
-        }
-
-        @Override
-        public void deserialize(CoreInput is) {
-            throw new RuntimeException("Unsupported");
-        }
-
-        @Override
-        public void serialize(CoreOutput os) {
-            throw new RuntimeException("Unsupported");
-        }
+//        @Override
+//        public void initDataType() {
+//        }
+//
+//        @Override
+//        public void deserialize(CoreInput is) {
+//            throw new RuntimeException("Unsupported");
+//        }
+//
+//        @Override
+//        public void serialize(CoreOutput os) {
+//            throw new RuntimeException("Unsupported");
+//        }
 
         /**
          * @return Should node have fixed position in graph?
@@ -452,27 +448,27 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         }
     }
 
-    /**
-     * @param fe Framework Element
-     * @return VertexAnnotation associated with framework element (null if none exists)
-     */
-    public V getAnnotation(FrameworkElement fe) {
-        return fe.getAnnotation(vertexClass);
-    }
-
-    /**
-     * @param fe Framework Element
-     * @return VertexAnnotation associated with framework element (creates one if none exists)
-     */
-    @SuppressWarnings("unchecked")
-    public V getOrCreateAnnotation(FrameworkElement fe) {
-        V ann = getAnnotation(fe);
-        if (ann == null) {
-            ann = (V)createVertexInstance(fe);
-            fe.addAnnotation(ann);
-        }
-        return ann;
-    }
+//    /**
+//     * @param fe Framework Element
+//     * @return VertexAnnotation associated with framework element (null if none exists)
+//     */
+//    public V getAnnotation(FrameworkElement fe) {
+//        return fe.getAnnotation(vertexClass);
+//    }
+//
+//    /**
+//     * @param fe Framework Element
+//     * @return VertexAnnotation associated with framework element (creates one if none exists)
+//     */
+//    @SuppressWarnings("unchecked")
+//    public V getOrCreateAnnotation(FrameworkElement fe) {
+//        V ann = getAnnotation(fe);
+//        if (ann == null) {
+//            ann = (V)createVertexInstance(fe);
+//            fe.addAnnotation(ann);
+//        }
+//        return ann;
+//    }
 
     /**
      * Create framework element annotation instance for provided framework element
@@ -481,8 +477,9 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
      * @param fe framework element
      * @return Instance - needs to be a subclass of VertexAnnotation
      */
-    protected VertexAnnotation createVertexInstance(FrameworkElement fe) {
-        return new VertexAnnotation(fe);
+    @SuppressWarnings("unchecked")
+    protected V createVertexInstance(FrameworkElement fe) {
+        return (V)new VertexAnnotation(fe);
     }
 
     /**
@@ -493,7 +490,8 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
      * @param dest Edge destination
      * @return Instance - needs to be a subclass of VertexAnnotation
      */
-    protected Edge createEdgeInstance(FrameworkElement source, FrameworkElement dest) {
-        return new Edge();
+    @SuppressWarnings("unchecked")
+    protected E createEdgeInstance(V source, V dest) {
+        return (E)new Edge();
     }
 }

@@ -88,6 +88,7 @@ public class MouseHandlerManager implements MouseListener, MouseMotionListener {
             MouseHandler tmp = activeHandler;
             activeHandler = null;
             statusChange(mouseOver, tmp);
+            tmp.mouseReleased(e, mouseOver);
         }
         mouseMoved(e);
     }

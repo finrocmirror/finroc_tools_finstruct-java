@@ -41,31 +41,29 @@ import edu.uci.ics.jung.visualization.BasicVisualizationServer;
  *
  * Standard View - similar to standard view in MCABrowser
  */
-public class StandardView extends AbstractFinstructGraphView<AbstractFinstructGraphView.VertexAnnotation, AbstractFinstructGraphView.Edge> implements Transformer<FrameworkElement, String> {
+public class StandardView extends AbstractFinstructGraphView<AbstractFinstructGraphView.VertexAnnotation, AbstractFinstructGraphView.Edge> implements Transformer<AbstractFinstructGraphView.VertexAnnotation, String> {
 
     /** UID */
     private static final long serialVersionUID = 5168689573715463737L;
 
     /** Graph object */
-    private DirectedSparseGraph<FrameworkElement, Edge> graph = new DirectedSparseGraph<FrameworkElement, Edge>();
+    private DirectedSparseGraph<VertexAnnotation, Edge> graph = new DirectedSparseGraph<VertexAnnotation, Edge>();
 
     /** Layout object */
-    private AbstractLayout<FrameworkElement, Edge> layout = new FRLayout<FrameworkElement, Edge>(graph);
+    private AbstractLayout<VertexAnnotation, Edge> layout = new FRLayout<VertexAnnotation, Edge>(graph);
 
     /** Visualization server */
-    private BasicVisualizationServer<FrameworkElement, Edge> vv = new BasicVisualizationServer<FrameworkElement, Edge>(layout);
+    private BasicVisualizationServer<VertexAnnotation, Edge> vv = new BasicVisualizationServer<VertexAnnotation, Edge>(layout);
 
     public StandardView() {
-        super(VertexAnnotation.class);
         this.setBackground(Color.DARK_GRAY);
         //vv.setPreferredSize(new Dimension(350,350)); //Sets the viewing area size
         setLayout(new BorderLayout());
         add(vv, BorderLayout.CENTER);
         //vv.setBackground(Color.DARK_GRAY);
 
-        Transformer<FrameworkElement, Paint> vertexPaint = new Transformer<FrameworkElement, Paint>() {
-            public Paint transform(FrameworkElement fe) {
-                VertexAnnotation g = getAnnotation(fe);
+        Transformer<VertexAnnotation, Paint> vertexPaint = new Transformer<VertexAnnotation, Paint>() {
+            public Paint transform(VertexAnnotation g) {
                 if (g != null) {
                     return g.getColor();
                 }
@@ -90,9 +88,9 @@ public class StandardView extends AbstractFinstructGraphView<AbstractFinstructGr
     protected void rootElementChanged() {
 
         // create new graph
-        graph = new DirectedSparseGraph<FrameworkElement, Edge>();
+        graph = new DirectedSparseGraph<VertexAnnotation, Edge>();
         final FrameworkElement root = getRootElement();
-        Collection<FrameworkElement> vertices;
+        Collection<VertexAnnotation> vertices;
         synchronized (RuntimeEnvironment.getInstance().getRegistryLock()) {
             if (!root.isReady()) {
                 return;
@@ -101,28 +99,27 @@ public class StandardView extends AbstractFinstructGraphView<AbstractFinstructGr
             vertices = getVertices(root);
 
             // add vertices
-            for (FrameworkElement fe : vertices) {
+            for (VertexAnnotation fe : vertices) {
                 graph.addVertex(fe);
             }
 
             // add edges
-            for (Edge e : getEdges(root)) {
-                graph.addEdge(e, e.getSource().frameworkElement, e.getDestination().frameworkElement, EdgeType.DIRECTED);
+            for (Edge e : getEdges(root, vertices)) {
+                graph.addEdge(e, e.getSource(), e.getDestination(), EdgeType.DIRECTED);
             }
         }
 
         //layout.initialize();
-        layout = new FRLayout<FrameworkElement, Edge>(graph);
+        layout = new FRLayout<VertexAnnotation, Edge>(graph);
         layout.initialize();
         layout.setSize(new Dimension(vv.getWidth() - 115, vv.getHeight() - 25)); // sets the initial size of the space
         layout.setGraph(graph);
 
         // move special interfaces to fixed position
-        for (FrameworkElement fe : vertices) {
-            VertexAnnotation ann = getAnnotation(fe);
+        for (VertexAnnotation ann : vertices) {
             if (ann != null && ann.hasFixedPos()) {
-                layout.lock(fe, true);
-                layout.setLocation(fe, ann.onRight() ? (layout.getSize().getWidth() - 25) : 25, ann.atBottom() ? (layout.getSize().getHeight() - 25) : 25);
+                layout.lock(ann, true);
+                layout.setLocation(ann, ann.onRight() ? (layout.getSize().getWidth() - 25) : 25, ann.atBottom() ? (layout.getSize().getHeight() - 25) : 25);
             }
         }
 
@@ -132,8 +129,8 @@ public class StandardView extends AbstractFinstructGraphView<AbstractFinstructGr
 
 
     @Override
-    public String transform(FrameworkElement fe) {
-        return fe.getDescription();
+    public String transform(VertexAnnotation fe) {
+        return fe.frameworkElement.getDescription();
     }
 
 

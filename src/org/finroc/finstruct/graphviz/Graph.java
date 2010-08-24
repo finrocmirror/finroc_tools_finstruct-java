@@ -21,6 +21,7 @@
 
 package org.finroc.finstruct.graphviz;
 
+import java.awt.Rectangle;
 import java.awt.geom.Point2D;
 import java.awt.geom.Point2D.Double;
 import java.io.BufferedOutputStream;
@@ -55,6 +56,9 @@ public class Graph extends GraphVizElement {
 
     /** Parent graph - null if none */
     private final Graph parent;
+
+    /** Bounds assigned by layout tool */
+    private final Rectangle layoutBounds = new Rectangle();
 
     public enum Layout { dot, neato, fdp }
 
@@ -161,6 +165,9 @@ public class Graph extends GraphVizElement {
             }
         } else {
             sb.append("subgraph cluster" + getHandle() + " {\n");
+            sb.append("graph [");
+            this.printAttributesForDotFile(sb);
+            sb.append("];");
         }
 
         // add vertices
@@ -197,10 +204,17 @@ public class Graph extends GraphVizElement {
         ps.close();
         List<String> outputLines = Files.readLines(p.getInputStream());
         Point2D.Double nullVector = new Point2D.Double(0, 0);
+        boolean globalBounds = false;
+        String graphLine = null;
         for (String s : outputLines) {
             logDomain.log(LogLevel.LL_DEBUG, "GraphViz graph after layout", s);
             if (s.trim().startsWith("null [")) {
                 nullVector = toPoint(extractAttributeValue(s, "pos"));
+            }
+            if (!globalBounds && s.trim().startsWith("graph [bb=")) {
+                readBounds(extractAttributeValue(s, "bb"));
+                globalBounds = true;
+                continue;
             }
 
             if (s.contains("pos=\"") && s.contains(HANDLE_KEY + "=")) { // sign for edge or vertex
@@ -208,7 +222,33 @@ public class Graph extends GraphVizElement {
                 //int handle = Integer.parseInt(tmp.substring(0, Math.min(tmp.indexOf(']'), tmp.indexOf(','))));
                 getElement(Integer.parseInt(extractAttributeValue(s, HANDLE_KEY))).processLineFromLayouter(s, nullVector);
             }
+
+            if (s.trim().startsWith("graph [")) {
+                graphLine = "";
+            }
+            if (graphLine != null) {
+                graphLine += s.trim();
+                if (graphLine.endsWith(";")) {
+                    if ((!graphLine.contains("bb=\"\"")) && graphLine.contains("bb=\"") && graphLine.contains(HANDLE_KEY + "=")) {
+                        ((Graph)getElement(Integer.parseInt(extractAttributeValue(graphLine, HANDLE_KEY)))).readBounds(extractAttributeValue(graphLine, "bb"));
+                    }
+                    graphLine = null;
+                }
+            }
         }
+    }
+
+    /**
+     * Parse bounds form string and assign them to "layoutBounds"
+     *
+     * @param boundsString String to extract bounds from
+     */
+    private void readBounds(String boundsString) {
+        String[] s = boundsString.split(",");
+        layoutBounds.x = Integer.parseInt(s[0]);
+        layoutBounds.y = Integer.parseInt(s[1]);
+        layoutBounds.width = Integer.parseInt(s[2]) - layoutBounds.x;
+        layoutBounds.height = Integer.parseInt(s[3]) - layoutBounds.y;
     }
 
     @Override
@@ -227,5 +267,23 @@ public class Graph extends GraphVizElement {
         vertices.clear();
         edges.clear();
         subgraphs.clear();
+    }
+
+    /**
+     * @return Number of parent graphs
+     */
+    public int getParentCount() {
+        int result = 0;
+        for (Graph g = parent; g != null; g = g.parent) {
+            result++;
+        }
+        return result;
+    }
+
+    /**
+     * @return Bounds assigned by layout tool
+     */
+    public Rectangle getBounds() {
+        return layoutBounds;
     }
 }

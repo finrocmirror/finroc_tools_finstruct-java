@@ -146,8 +146,8 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
         // find views
         ButtonGroup viewSelectGroup = new ButtonGroup();
-        views.add(new ViewSelector(StandardView.class, viewSelectGroup));
         views.add(new ViewSelector(StandardViewGraphViz.class, viewSelectGroup));
+        views.add(new ViewSelector(StandardView.class, viewSelectGroup));
 
         // view menu
         JMenu menuView = new JMenu("View");

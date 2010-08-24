@@ -31,12 +31,9 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -71,7 +68,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     private Graph graph = new Graph();
 
     /** List of vertices */
-    private Collection<FrameworkElement> vertices;
+    private Collection<Vertex> vertices = new ArrayList<Vertex>();
 
     /** List of edges */
     private Collection<Edge> edges;
@@ -79,8 +76,13 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     /** MouseHandler manager */
     private MouseHandlerManager mouseHandlers;
 
+    /** Expanded groups */
+    private ArrayList<FrameworkElement> expandedGroups = new ArrayList<FrameworkElement>();
+
+    /** Expanded groups */
+    private ArrayList<Subgraph> subgraphs = new ArrayList<Subgraph>();
+
     public StandardViewGraphViz() {
-        super(Vertex.class);
         testLabel.setFont(FONT);
         this.setBackground(Color.LIGHT_GRAY);
         setLayout(null);
@@ -88,8 +90,8 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     }
 
     @Override
-    protected Edge createEdgeInstance(FrameworkElement source, FrameworkElement dest) {
-        return new Edge(getOrCreateAnnotation(source), getOrCreateAnnotation(dest));
+    protected Edge createEdgeInstance(Vertex source, Vertex dest) {
+        return new Edge(source, dest);
     }
 
     @Override
@@ -99,7 +101,16 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
     @Override
     protected synchronized void rootElementChanged() {
+        expandedGroups.clear();
+        relayout();
+    }
 
+    /**
+     * relayout vertices etc.
+     *
+     * (SubGraphs are created for entries in expandedGroups)
+     */
+    private void relayout() {
         try {
             final FrameworkElement root = getRootElement();
 
@@ -108,6 +119,8 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             //List<String> outputLines;
             graph.clear();
             mouseHandlers.clear();
+            vertices.clear();
+            subgraphs.clear();
             synchronized (RuntimeEnvironment.getInstance().getRegistryLock()) {
                 if (!root.isReady()) {
                     repaint();
@@ -115,16 +128,24 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 }
 
                 // create new graph
-                vertices = getVertices(root);
-                if (vertices.size() == 0) {
+                List<Vertex> rootVertices = getVertices(root);
+                if (rootVertices.size() == 0) {
                     repaint();
                     return;
                 }
 
-                // add vertices
-                for (FrameworkElement fe : vertices) {
-                    Vertex v = getOrCreateAnnotation(fe);
-                    graph.add(v.gvVertex);
+                // add vertices and create subgraphs
+                for (Vertex v : rootVertices) {
+                    if (expandedGroups.contains(v.frameworkElement)) {
+                        createSubGraph(graph, v.frameworkElement);
+                    } else {
+                        graph.add(v.gvVertex);
+                        vertices.add(v);
+                    }
+                }
+
+                // process vertices
+                for (Vertex v : vertices) {
                     mouseHandlers.add(v, false);
                     int wh = (int)((v.gvVertex.getWidth() + 1) / 2) + 3;
                     int hh = (int)((v.gvVertex.getHeight() + 1) / 2) + 3;
@@ -136,7 +157,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 }
 
                 // add edges
-                edges = getEdges(root);
+                edges = getEdges(root, vertices);
                 for (Edge e : edges) {
                     graph.add(e.gvEdge);
                     mouseHandlers.add(e, false);
@@ -144,6 +165,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                         e.gvEdge.setReversedInDotLayout(true);
                     }
                 }
+
             }
 
             // Layout
@@ -155,24 +177,49 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         }
     }
 
+    /**
+     * Generate subgraphs for all expanded groups (recursively)
+     *
+     * @param parent Parent Graph
+     * @param group Groupto create subgraph for
+     */
+    private void createSubGraph(Graph parent, FrameworkElement group) {
+        Subgraph graph = new Subgraph(parent, group);
+        subgraphs.add(graph);
+        List<Vertex> subVertices = getVertices(group);
+        for (Vertex v : subVertices) {
+            if (expandedGroups.contains(v.frameworkElement)) {
+                createSubGraph(graph, v.frameworkElement);
+            } else {
+                graph.add(v.gvVertex);
+                vertices.add(v);
+            }
+        }
+    }
+
     @Override
     public synchronized void paintComponent(Graphics g) {
         super.paintComponent(g);
-        Graphics2D g2d = (Graphics2D)g;
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        Graphics2D g2d = (Graphics2D)g.create();
 
         if (edges == null || vertices == null) {
             return;
         }
 
+        // draw subgraph bounds
+        for (Subgraph gr : subgraphs) {
+            gr.paint(g2d);
+        }
+
         // draw edges
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         for (Edge e : edges) {
             e.paint(g2d);
         }
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
 
         // draw vertices
-        for (FrameworkElement fe : vertices) {
-            Vertex v = getAnnotation(fe);
+        for (Vertex v : vertices) {
             v.paint(g2d);
         }
 
@@ -208,6 +255,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         public Vertex(FrameworkElement fe) {
             super(fe);
             reset();
+            gvVertex.setAttributeQuoted("description", fe.getDescription());
         }
 
         public void reset() {
@@ -227,7 +275,6 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             int h = getHighlightLevel();
 
             updateRectangle();
-            Color old = g2d.getColor();
             g2d.setColor(getColor());
             if (h >= 2) {
                 g2d.setColor(brighten(g2d.getColor(), 128));
@@ -237,18 +284,17 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 drawRectangleGlow(g2d, rect.x, rect.y, rect.width, rect.height, 0.7f, 0.075f);
             }
             g2d.setColor(getTextColor());
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2d.drawString(frameworkElement.getDescription(), rect.x + 3, rect.y + rect.height - 5);
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
             g2d.setColor(Color.BLACK);
             g2d.drawRect(rect.x, rect.y, rect.width, rect.height);
             if (isGroup()) { // draw + for group
                 if (expandIcon == null) {
-                    expandIcon = new ExpandIcon(6, 6);
+                    expandIcon = new ExpandIcon(6, 6, frameworkElement);
                 }
-                expandIcon.paint(g2d, rect.x + rect.width - 5, rect.y - 1);
+                expandIcon.paint(g2d, rect.x + rect.width - 5, rect.y - 1, true);
             }
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2d.setColor(old);
         }
 
         /**
@@ -310,8 +356,11 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
         public void triggerRepaint() {
             updateRectangle();
-            StandardViewGraphViz.this.repaint(rect.x - 5, rect.y - 5, rect.width + 10, rect.height + 10);
+            StandardViewGraphViz.this.repaint(rect.x - 5, rect.y - 5, rect.width + 11, rect.height + 11);
         }
+
+        @Override
+        public void mouseReleased(MouseEvent event, MouseHandler over) {}
     }
 
     /**
@@ -346,13 +395,11 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
          * @param g2d Graphics object
          */
         public void paint(Graphics2D g2d) {
-            Color old = g2d.getColor();
             g2d.setColor(getColor());
             //g2d.set
             processHighlighting(g2d);
             g2d.draw(gvEdge.getPath());
             drawArrow(g2d, !gvEdge.isReversedInDotLayout());
-            g2d.setColor(old);
         }
 
         /**
@@ -443,6 +490,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         public void triggerRepaint() {
             StandardViewGraphViz.this.repaint(gvEdge.getPath().getBounds());
         }
+
+        @Override
+        public void mouseReleased(MouseEvent event, MouseHandler over) {}
     }
 
     /**
@@ -465,9 +515,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             y--;
             width += 2;
             height += 2;
-            g2d.drawLine(x + 1, y, x + width, y); // top
+            g2d.drawLine(x + 1, y + 1, x + width, y + 1); // top
             g2d.drawLine(x + 1, y + height + 1, x + width, y + height + 1); // bottom
-            g2d.drawLine(x, y, x, y + height + 1); // left
+            g2d.drawLine(x + 1, y, x + 1, y + height + 1); // left
             g2d.drawLine(x + width + 1, y, x + width + 1, y + height + 1); // right
             if (al != startAlpha) {
                 //g2d.drawLine(x + 1, y, x, y + 1);
@@ -486,9 +536,13 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         /** Icon area */
         private Rectangle bounds = new Rectangle();
 
-        public ExpandIcon(int width, int height) {
+        /** Group that can be expanded/collapsed pressing this icon */
+        private FrameworkElement group;
+
+        public ExpandIcon(int width, int height, FrameworkElement group) {
             bounds.width = width;
             bounds.height = height;
+            this.group = group;
             mouseHandlers.add(this, true);
         }
 
@@ -498,8 +552,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
          * @param g2d Graphics object to draw to
          * @param x X-Position of icon
          * @param y Y-Position of icon
+         * @param expand Draw Expand icon? ('+' rather than '-')
          */
-        private void paint(Graphics2D g2d, int x, int y) {
+        private void paint(Graphics2D g2d, int x, int y, boolean expand) {
             Rectangle a = bounds;
             a.x = x;
             a.y = y;
@@ -507,7 +562,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             g2d.fillRect(a.x, a.y, a.width, a.height);
             g2d.setColor(Color.BLACK);
             g2d.drawRect(a.x, a.y, a.width, a.height);
-            g2d.drawLine(a.x + 3, a.y + 2, a.x + 3, a.y + 4);
+            if (expand) {
+                g2d.drawLine(a.x + 3, a.y + 2, a.x + 3, a.y + 4);
+            }
             g2d.drawLine(a.x + 2, a.y + 3, a.x + 4, a.y + 3);
 
             if (mouseHandlers.getMouseOver() != this) {
@@ -516,7 +573,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
             float startAlpha = mouseHandlers.getActiveHandler() == this ? 0.3f : 0.5f;
             g2d.setColor(Color.WHITE);
-            drawRectangleGlow(g2d, a.x + 1, a.y, a.width, a.height, startAlpha, 0.2f);
+            drawRectangleGlow(g2d, a.x, a.y, a.width, a.height, startAlpha, 0.2f);
         }
 
         @Override
@@ -533,6 +590,51 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         public void statusChanged() {
             StandardViewGraphViz.this.repaint(bounds.x - 4, bounds.y - 4, bounds.width + 9, bounds.height + 9);
         }
+
+        @Override
+        public void mouseReleased(MouseEvent event, MouseHandler over) {
+            if (over == this) {
+                if (expandedGroups.contains(group)) {
+                    expandedGroups.remove(group);
+                } else {
+                    expandedGroups.add(group);
+                }
+                relayout();
+            }
+        }
     }
 
+    /**
+     * Subgraph in GraphViz view
+     */
+    private class Subgraph extends Graph {
+
+        /** Wrapped framework element */
+        private final FrameworkElement frameworkElement;
+
+        /** Collapse icon */
+        private ExpandIcon expandIcon;
+
+        private Subgraph(Graph parent, FrameworkElement fe) {
+            super(parent);
+            frameworkElement = fe;
+            expandIcon = new ExpandIcon(6, 6, frameworkElement);
+        }
+
+        /**
+         * Paint SubGraph boundary and icon
+         *
+         * @param g2d Graphics object
+         */
+        public void paint(Graphics2D g2d) {
+            Color c = brighten(getBackground(), getParentCount() * 30);
+            g2d.setColor(c);
+            Rectangle r = getBounds();
+            g2d.fillRect(r.x, r.y, r.width, r.height);
+            g2d.setColor(Color.GRAY);
+            g2d.drawRect(r.x, r.y, r.width, r.height);
+
+            expandIcon.paint(g2d, r.x + r.width - 6, r.y, false);
+        }
+    }
 }
