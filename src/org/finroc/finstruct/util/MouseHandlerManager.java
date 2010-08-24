@@ -144,9 +144,14 @@ public class MouseHandlerManager implements MouseListener, MouseMotionListener {
 
     /**
      * @param mh Mouse Handler to add
+     * @param first Insert at front of list?
      */
-    public void add(MouseHandler mh) {
-        mouseHandlers.add(mh);
+    public void add(MouseHandler mh, boolean first) {
+        if (first) {
+            mouseHandlers.add(0, mh);
+        } else {
+            mouseHandlers.add(mh);
+        }
     }
 
     /**

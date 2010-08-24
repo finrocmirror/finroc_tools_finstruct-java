@@ -36,6 +36,7 @@ import java.awt.event.MouseMotionListener;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -124,6 +125,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 for (FrameworkElement fe : vertices) {
                     Vertex v = getOrCreateAnnotation(fe);
                     graph.add(v.gvVertex);
+                    mouseHandlers.add(v, false);
                     int wh = (int)((v.gvVertex.getWidth() + 1) / 2) + 3;
                     int hh = (int)((v.gvVertex.getHeight() + 1) / 2) + 3;
                     if (v.hasFixedPos()) {
@@ -133,31 +135,11 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                     }
                 }
 
-//              Process p = Runtime.getRuntime().exec("neato");
-//              PrintStream ps = new PrintStream(new BufferedOutputStream(p.getOutputStream()));
-//              //PrintStream ps = System.out;
-//              ps.println("digraph \"finstruct\" {");
-//              //ps.println("graph [bb= \"0,0," + width + "," + height + "\"];"); // graph bounding box
-//              ps.println("null [shape=box, width=\"0.0001\", height=\"0.0001\", fixedsize=true, pos=\"0,0!\"];");
-//
-//              // add vertices
-//              for (FrameworkElement fe : vertices) {
-//                  FinstructVertex ann = getOrCreateAnnotation(fe);
-//                  Vertex v = new Vertex(fe, ann);
-//                  ann.graphObject = v;
-//                  ps.print("" + fe.getHandle() + " [shape=box, width=\"" + v.getInchWidth() + "\", height=\"" + v.getInchHeight() + "\"");
-//                  int wh = (int)((v.getPreferredSize().getWidth() + 1) / 2) + 3;
-//                  int hh = (int)((v.getPreferredSize().getHeight() + 1) / 2) + 3;
-//                  if (ann.hasFixedPos()) {
-//                      ps.print(", pos=\"" + toInch(ann.onRight() ? (width - wh) : wh) + "," + toInch(ann.atBottom() ? (height - hh) : hh) + "!\"");
-//                  }
-//                  ps.println("];");
-//              }
-
                 // add edges
                 edges = getEdges(root);
                 for (Edge e : edges) {
                     graph.add(e.gvEdge);
+                    mouseHandlers.add(e, false);
                     if (e.isControllerData()) {
                         e.gvEdge.setReversedInDotLayout(true);
                     }
@@ -166,35 +148,6 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
             // Layout
             graph.applyLayout(Layout.dot, false);
-
-//          boolean started = false;
-//          for (String s : outputLines) {
-//              System.out.println(s);
-//              s = s.trim();
-//              if (s.startsWith("null ")) {
-//                  started = true;
-//                  continue;
-//              }
-//              if (s.startsWith("}")) {
-//                  break;
-//              }
-//              if (!started) {
-//                  continue;
-//              }
-//              boolean edge = s.contains(" -> ");
-//              if (!edge) {
-//                  FrameworkElement fe = RuntimeEnvironment.getInstance().getElement(Integer.parseInt(s.split("\\[")[0].replace('"', ' ').trim()));
-//                  FinstructVertex ann = getAnnotation(fe);
-//                  Vertex v = (Vertex)ann.graphObject;
-//                  int wh = (int)((v.getPreferredSize().getWidth() + 1) / 2);
-//                  int hh = (int)((v.getPreferredSize().getHeight() + 1) / 2);
-//                  add(v);
-//                  String posString = s.split("pos=\"")[1].split("\"")[0];
-//                  int x = Integer.parseInt(posString.split(",")[0]);
-//                  int y = Integer.parseInt(posString.split(",")[1]);
-//                  v.setBounds(x - wh, y - hh, (int)v.getPreferredSize().getWidth(), (int)v.getPreferredSize().getHeight());
-//              }
-//          }
 
             repaint();
         } catch (Exception e) {
@@ -223,8 +176,6 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             v.paint(g2d);
         }
 
-        //g.drawString("This is my custom Panel!",10,20);
-        //redSquare.paintSquare(g);
     }
 
     /** Different levels of highlighting enums */
@@ -243,13 +194,16 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     /**
      * Combined (Finstruct/GraphViz vertex)
      */
-    class Vertex extends AbstractFinstructGraphView.VertexAnnotation {
+    class Vertex extends AbstractFinstructGraphView.VertexAnnotation implements MouseHandler {
 
         /** graphviz vertex */
         private org.finroc.finstruct.graphviz.Vertex gvVertex;
 
         /** Expand icon - if group */
         private ExpandIcon expandIcon;
+
+        /** Temporary Rectangle variable */
+        private final Rectangle rect = new Rectangle();
 
         public Vertex(FrameworkElement fe) {
             super(fe);
@@ -270,32 +224,111 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
          * @param g2d Graphics object
          */
         public void paint(Graphics2D g2d) {
+            int h = getHighlightLevel();
+
+            updateRectangle();
             Color old = g2d.getColor();
             g2d.setColor(getColor());
-            Point2D.Double pos = gvVertex.getLayoutPosition();
-            double x2 = pos.x - (gvVertex.getWidth() / 2);
-            double y2 = pos.y - (gvVertex.getHeight() / 2);
-            g2d.fillRect((int)x2, (int)y2, (int)gvVertex.getWidth(), (int)gvVertex.getHeight());
+            if (h >= 2) {
+                g2d.setColor(brighten(g2d.getColor(), 128));
+            }
+            g2d.fillRect(rect.x, rect.y, rect.width, rect.height);
+            if (h >= 1) {
+                drawRectangleGlow(g2d, rect.x, rect.y, rect.width, rect.height, 0.7f, 0.075f);
+            }
             g2d.setColor(getTextColor());
-            g2d.drawString(frameworkElement.getDescription(), (int)x2 + 3, (int)(y2 + gvVertex.getHeight() - 5));
+            g2d.drawString(frameworkElement.getDescription(), rect.x + 3, rect.y + rect.height - 5);
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
             g2d.setColor(Color.BLACK);
-            g2d.drawRect((int)x2, (int)y2, (int)gvVertex.getWidth(), (int)gvVertex.getHeight());
+            g2d.drawRect(rect.x, rect.y, rect.width, rect.height);
             if (isGroup()) { // draw + for group
                 if (expandIcon == null) {
                     expandIcon = new ExpandIcon(6, 6);
                 }
-                expandIcon.paint(g2d, (int)(x2 + gvVertex.getWidth() - 5), (int)(y2 - 1));
+                expandIcon.paint(g2d, rect.x + rect.width - 5, rect.y - 1);
             }
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2d.setColor(old);
         }
+
+        /**
+         * @return 0 = no highlighting, 1 = minor highlighting, 2 = major highlighting
+         */
+        private int getHighlightLevel() {
+            MouseHandler mo = mouseHandlers.getMouseOver();
+            MouseHandler ma = mouseHandlers.getActiveHandler();
+
+            MouseHandler active = ma == null ? mo : ma;
+            if (active == null) {
+                return 0;
+            }
+            if (active == this) {
+                return 2;
+            }
+            for (Edge e : edges) {
+                if (e.getSource() == this || e.getDestination() == this) {
+                    if (active == e || active == e.getSource() || active == e.getDestination()) {
+                        return 1;
+                    }
+                }
+            }
+            return 0;
+        }
+
+        /**
+         * Places current coordinates in rect variable
+         */
+        public void updateRectangle() {
+            Point2D.Double pos = gvVertex.getLayoutPosition();
+            rect.x = (int)(pos.x - (gvVertex.getWidth() / 2));
+            rect.y = (int)(pos.y - (gvVertex.getHeight() / 2));
+            rect.width = (int)gvVertex.getWidth();
+            rect.height = (int)gvVertex.getHeight();
+        }
+
+        @Override
+        public Cursor getCursor() {
+            return null;
+        }
+
+        @Override
+        public boolean handlesPoint(Point p) {
+            updateRectangle();
+            return rect.contains(p);
+        }
+
+        @Override
+        public void statusChanged() {
+            triggerRepaint();
+            for (Edge e : edges) {
+                if (e.getSource() == this || e.getDestination() == this) {
+                    e.triggerRepaint();
+                    ((Vertex)(e.getSource() != this ? e.getSource() : e.getDestination())).triggerRepaint();
+                }
+            }
+        }
+
+        public void triggerRepaint() {
+            updateRectangle();
+            StandardViewGraphViz.this.repaint(rect.x - 5, rect.y - 5, rect.width + 10, rect.height + 10);
+        }
+    }
+
+    /**
+     * Makes color a little lighter/whiter
+     *
+     * @param color color
+     * @param amount Amount to brighten each color
+     * @return Brighter color
+     */
+    private Color brighten(Color color, int amount) {
+        return new Color(Math.min(255, color.getRed() + amount), Math.min(255, color.getGreen() + amount), Math.min(255, color.getBlue() + amount));
     }
 
     /**
      * Combined (Finstruct/GraphViz edge)
      */
-    class Edge extends AbstractFinstructGraphView.Edge {
+    class Edge extends AbstractFinstructGraphView.Edge implements MouseHandler {
 
         /** UID */
         private static final long serialVersionUID = -1804606674849562189L;
@@ -315,9 +348,27 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         public void paint(Graphics2D g2d) {
             Color old = g2d.getColor();
             g2d.setColor(getColor());
+            //g2d.set
+            processHighlighting(g2d);
             g2d.draw(gvEdge.getPath());
             drawArrow(g2d, !gvEdge.isReversedInDotLayout());
             g2d.setColor(old);
+        }
+
+        /**
+         * Process Graphics2D object with respect to highligting of this edge
+         *
+         * @param g2d Graphics2D
+         */
+        private void processHighlighting(Graphics2D g2d) {
+            MouseHandler mo = mouseHandlers.getMouseOver();
+            MouseHandler ma = mouseHandlers.getActiveHandler();
+
+            if ((ma == null && mo == this) || ma == this) {
+                g2d.setColor(brighten(g2d.getColor(), 170));
+            } else if ((ma == null && (mo == getSource() || mo == getDestination())) || ma == getSource() || ma == getDestination()) {
+                g2d.setColor(brighten(g2d.getColor(), 128));
+            }
         }
 
         /**
@@ -371,6 +422,60 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             path.lineTo(x2 + Math.cos(angle - ARROW_ANGLE) * ARROW_LEN, y2 + Math.sin(angle - ARROW_ANGLE) * ARROW_LEN);
             g2d.draw(path);
         }
+
+        @Override
+        public Cursor getCursor() {
+            return null;
+        }
+
+        @Override
+        public boolean handlesPoint(Point p) {
+            return gvEdge.getPath().intersects(new Rectangle(p.x - 2, p.y - 2, 5, 5));
+        }
+
+        @Override
+        public void statusChanged() {
+            triggerRepaint();
+            ((Vertex)getSource()).triggerRepaint();
+            ((Vertex)getDestination()).triggerRepaint();
+        }
+
+        public void triggerRepaint() {
+            StandardViewGraphViz.this.repaint(gvEdge.getPath().getBounds());
+        }
+    }
+
+    /**
+     * Draw "glow" in rectangular form
+     *
+     * @param g2d Graphics2D object
+     * @param x x coordinate of rectangle to make "glow"
+     * @param y y coordinate of rectangle to make "glow"
+     * @param width width of rectangle to make "glow"
+     * @param height height of rectangle to make "glow"
+     * @param startAlpha Alpha-Blending value of first "glow" rectangle (1 is minimal)
+     * @param alphaDelta Rate to modify alpha per pixel
+     */
+    public void drawRectangleGlow(Graphics2D g2d, int x, int y, int width, int height, float startAlpha, float alphaDelta) {
+        Composite oldComp = g2d.getComposite();
+        //g2d.setColor(Color.WHITE);
+        for (float al = startAlpha; al < 1.0f; al += alphaDelta) {
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_ATOP, 1.0f - al));
+            x--;
+            y--;
+            width += 2;
+            height += 2;
+            g2d.drawLine(x + 1, y, x + width, y); // top
+            g2d.drawLine(x + 1, y + height + 1, x + width, y + height + 1); // bottom
+            g2d.drawLine(x, y, x, y + height + 1); // left
+            g2d.drawLine(x + width + 1, y, x + width + 1, y + height + 1); // right
+            if (al != startAlpha) {
+                //g2d.drawLine(x + 1, y, x, y + 1);
+            }
+            //g2d.drawRect(x - i + 1, y - i + 1, a.width + 2 * i, a.height + 2 * i);
+        }
+        g2d.setComposite(oldComp);
+
     }
 
     /**
@@ -384,7 +489,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         public ExpandIcon(int width, int height) {
             bounds.width = width;
             bounds.height = height;
-            mouseHandlers.add(this);
+            mouseHandlers.add(this, true);
         }
 
         /**
@@ -410,15 +515,8 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             }
 
             float startAlpha = mouseHandlers.getActiveHandler() == this ? 0.3f : 0.5f;
-            int i = 1;
-            Composite oldComp = g2d.getComposite();
             g2d.setColor(Color.WHITE);
-            for (float al = startAlpha; al < 1.0f; al += 0.2f) {
-                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_ATOP, 1.0f - al));
-                g2d.drawRect(x - i + 1, y - i + 1, a.width + 2 * i, a.height + 2 * i);
-                i++;
-            }
-            g2d.setComposite(oldComp);
+            drawRectangleGlow(g2d, a.x + 1, a.y, a.width, a.height, startAlpha, 0.2f);
         }
 
         @Override
@@ -437,28 +535,4 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         }
     }
 
-//  public class Vertex extends JLabel {
-//
-//      /** UID */
-//      private static final long serialVersionUID = -3674733880560752988L;
-//
-//      public final FrameworkElement fe;
-//      public final FinstructVertex ann;
-//      public Vertex(FrameworkElement fe, FinstructVertex ann) {
-//          this.fe = fe;
-//          this.ann = ann;
-//          this.setText(fe.getDescription());
-//          this.setBackground(ann.getColor());
-//          this.setOpaque(true);
-//          this.setBorder(new EmptyBorder(4, 4, 4, 4));
-//          //this.setBorder(new EtchedBorder(EtchedBorder.RAISED));
-//          //this.setFont(FONT);
-//      }
-//      public String getInchHeight() {
-//          return toInch((double)getPreferredSize().getHeight());
-//      }
-//      public String getInchWidth() {
-//          return toInch((double)getPreferredSize().getWidth());
-//      }
-//  }
 }

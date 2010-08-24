@@ -239,8 +239,8 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
                         GetParentResult dest = getParentInGraph(feDest);
                         if (src.parent != null && dest.parent != null && src.parent != dest.parent) {
                             E eNew = (E)createEdgeInstance(src.parent, dest.parent);
-                            eNew.source = src.parent;
-                            eNew.destination = dest.parent;
+                            eNew.source = getOrCreateAnnotation(src.parent);
+                            eNew.destination = getOrCreateAnnotation(dest.parent);
                             E e = result.get(eNew);
                             if (e == null) {
                                 e = eNew;
@@ -279,7 +279,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         public int dataTypeFlags;
 
         /** Source and destination vertex of edge */
-        private FrameworkElement source, destination;
+        private VertexAnnotation source, destination;
 
         public Edge() {}
 
@@ -300,14 +300,14 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         /**
          * @return Source vertex of edge
          */
-        public FrameworkElement getSource() {
+        public VertexAnnotation getSource() {
             return source;
         }
 
         /**
          * @return Destination vertex of edge
          */
-        public FrameworkElement getDestination() {
+        public VertexAnnotation getDestination() {
             return destination;
         }
 

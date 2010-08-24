@@ -48,6 +48,7 @@ import javax.swing.Timer;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 
+import org.finroc.core.FrameworkElement;
 import org.finroc.core.plugin.ConnectionListener;
 import org.finroc.core.plugin.CreateExternalConnectionAction;
 import org.finroc.core.plugin.ExternalConnection;
@@ -227,6 +228,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             menuBar.remove(i);
         }
 
+        FrameworkElement lastRoot = currentView == null ? null : currentView.getRootElement();
         currentView = view;
 
         // reinit bar with view's entries
@@ -244,6 +246,11 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                 v.setSelected(true);
                 break;
             }
+        }
+
+        // restore root element
+        if (lastRoot != null) {
+            currentView.setRootElement(lastRoot);
         }
     }
 

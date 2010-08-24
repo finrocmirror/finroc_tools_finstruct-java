@@ -107,7 +107,7 @@ public class StandardView extends AbstractFinstructGraphView<AbstractFinstructGr
 
             // add edges
             for (Edge e : getEdges(root)) {
-                graph.addEdge(e, e.getSource(), e.getDestination(), EdgeType.DIRECTED);
+                graph.addEdge(e, e.getSource().frameworkElement, e.getDestination().frameworkElement, EdgeType.DIRECTED);
             }
         }
 
