@@ -27,6 +27,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
+import javax.swing.JComponent;
+
 import org.finroc.core.Annotatable;
 import org.finroc.core.ChildIterator;
 import org.finroc.core.CoreFlags;
@@ -36,6 +38,7 @@ import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.EdgeAggregator;
 import org.finroc.core.port.PortFlags;
 import org.finroc.core.port.net.NetPort;
+import org.finroc.finstruct.FinstructConnectionPanel;
 import org.finroc.finstruct.FinstructView;
 
 /**
@@ -49,6 +52,9 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
 
     /** UID */
     private static final long serialVersionUID = 1516347489852848159L;
+
+    /** Reference to connectionPanel */
+    protected FinstructConnectionPanel connectionPanel;
 
     /**
      * @param fe Framework Element
@@ -493,5 +499,11 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
     @SuppressWarnings("unchecked")
     protected E createEdgeInstance(V source, V dest) {
         return (E)new Edge();
+    }
+
+    @Override
+    public JComponent initLeftPanel(FinstructConnectionPanel connectionPanel) {
+        this.connectionPanel = connectionPanel;
+        return super.initLeftPanel(connectionPanel);
     }
 }

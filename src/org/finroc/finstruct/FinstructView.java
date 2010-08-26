@@ -26,7 +26,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JPanel;
 
 import org.finroc.core.FrameworkElement;
-import org.finroc.gui.ConnectionPanel;
+import org.finroc.gui.util.gui.MToolBar;
 import org.finroc.log.LogDomain;
 
 /**
@@ -51,11 +51,12 @@ public abstract class FinstructView extends JPanel {
     }
 
     /**
-     * Add entries to menu bar (optional)
+     * Add entries to menu bar and tool bar (optional)
      *
-     * @param menuBar Menu bar containing Finstruct's menu entries
+     * @param menuBar Menu bar (already) containing Finstruct's menu entries
+     * @param toolBar Tool bar (already) containing Finstruct's standard entries
      */
-    public void initMenuBar(JMenuBar menuBar) {}
+    public void initMenuAndToolBar(JMenuBar menuBar, MToolBar toolBar) {}
 
     /**
      * Initialize contents of left side of window vertical divider
@@ -64,7 +65,7 @@ public abstract class FinstructView extends JPanel {
      * @param connectionPanel Connection Panel
      * @return Content to put on left side of window vertical divider
      */
-    public JComponent initLeftPanel(ConnectionPanel connectionPanel) {
+    public JComponent initLeftPanel(FinstructConnectionPanel connectionPanel) {
         return connectionPanel;
     }
 

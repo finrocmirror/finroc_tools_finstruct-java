@@ -59,6 +59,7 @@ import org.finroc.finstruct.views.StandardViewGraphViz;
 import org.finroc.gui.ConnectionPanel;
 import org.finroc.gui.StatusBar;
 import org.finroc.gui.commons.EventRouter;
+import org.finroc.gui.util.gui.MToolBar;
 import org.finroc.gui.util.treemodel.InterfaceNode;
 import org.finroc.gui.util.treemodel.InterfaceTreeModel;
 import org.finroc.gui.util.treemodel.TreePortWrapper;
@@ -90,7 +91,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
     private Timer statusBarTimer;
 
     /** Reference to ConnectionPanel */
-    private ConnectionPanel connectionPanel;
+    private FinstructConnectionPanel connectionPanel;
 
     /** Available finstruct views */
     private ArrayList<ViewSelector> views = new ArrayList<ViewSelector>();
@@ -103,6 +104,9 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
     /** Vertical Split pane */
     private JSplitPane splitPane;
+
+    /** Toolbar */
+    private transient MToolBar toolBar;
 
     /** Log domain for this class */
     public static final LogDomain logDomain = LogDefinitions.finroc.getSubDomain("finstruct");
@@ -161,13 +165,18 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         statusBar = new StatusBar();
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(statusBar, BorderLayout.SOUTH);
-        connectionPanel = new ConnectionPanel(this, getTreeFont());
+        connectionPanel = new FinstructConnectionPanel(this, getTreeFont());
         connectionPanel.setLeftTree(ioInterface);
         connectionPanel.setRightTree(null);
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, connectionPanel, new JPanel());
         getContentPane().add(splitPane, BorderLayout.CENTER);
         splitPane.setDividerSize(3);
         setJMenuBar(menuBar);
+
+        // Toolbar
+        toolBar = new MToolBar("Standard");
+        toolBar.setFloatable(false);
+        getContentPane().add(toolBar, BorderLayout.PAGE_START);
 
         // Change to standard view
         try {
@@ -228,11 +237,14 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             menuBar.remove(i);
         }
 
+        // Clear toolbar
+        toolBar.removeAll();
+
         FrameworkElement lastRoot = currentView == null ? null : currentView.getRootElement();
         currentView = view;
 
-        // reinit bar with view's entries
-        view.initMenuBar(menuBar);
+        // reinit tool and menu bar with view's entries
+        view.initMenuAndToolBar(menuBar, toolBar);
 
         // fill left part of split pane
         splitPane.setLeftComponent(view.initLeftPanel(connectionPanel));

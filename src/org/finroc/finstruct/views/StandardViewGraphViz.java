@@ -30,6 +30,8 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
@@ -39,13 +41,16 @@ import java.util.Collection;
 import java.util.List;
 
 import javax.swing.JLabel;
+import javax.swing.JMenuBar;
 
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.RuntimeEnvironment;
 import org.finroc.finstruct.graphviz.Graph;
-import org.finroc.finstruct.graphviz.Graph.Layout;
 import org.finroc.finstruct.util.MouseHandler;
 import org.finroc.finstruct.util.MouseHandlerManager;
+import org.finroc.gui.util.gui.MActionEvent;
+import org.finroc.gui.util.gui.MToolBar;
+import org.finroc.gui.util.gui.MAction;
 import org.finroc.log.LogLevel;
 
 /**
@@ -53,7 +58,7 @@ import org.finroc.log.LogLevel;
  *
  * Standard View - similar to standard view in MCABrowser
  */
-public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> {
+public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener {
 
     /** UID */
     private static final long serialVersionUID = 5168689573715463737L;
@@ -81,6 +86,15 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
     /** Expanded groups */
     private ArrayList<Subgraph> subgraphs = new ArrayList<Subgraph>();
+
+    /** Control modes */
+    private enum Mode { navigate, connect }
+
+    /** referenct to toolBar */
+    private MToolBar toolBar;
+
+    /** Layout modes */
+    //private enum Layout { dot, neato, fdp }
 
     public StandardViewGraphViz() {
         testLabel.setFont(FONT);
@@ -122,7 +136,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             vertices.clear();
             subgraphs.clear();
             synchronized (RuntimeEnvironment.getInstance().getRegistryLock()) {
-                if (!root.isReady()) {
+                if (root == null || (!root.isReady())) {
                     repaint();
                     return;
                 }
@@ -169,7 +183,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             }
 
             // Layout
-            graph.applyLayout(Layout.dot, false);
+            graph.applyLayout(toolBar.getSelection(Graph.Layout.values()), false);
 
             repaint();
         } catch (Exception e) {
@@ -635,6 +649,34 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             g2d.drawRect(r.x, r.y, r.width, r.height);
 
             expandIcon.paint(g2d, r.x + r.width - 6, r.y, false);
+        }
+    }
+
+    @Override
+    public void initMenuAndToolBar(JMenuBar menuBar, MToolBar toolBar) {
+        this.toolBar = toolBar;
+        //IconManager.getInstanc
+        toolBar.addToggleButton(new MAction(Mode.navigate, null, "Navigation Mode", this));
+        toolBar.addToggleButton(new MAction(Mode.connect, null, "Connect Mode", this));
+        toolBar.addSeparator();
+        toolBar.startNextButtonGroup();
+        toolBar.addToggleButton(new MAction(Graph.Layout.dot, null, "dot layout", this));
+        toolBar.addToggleButton(new MAction(Graph.Layout.neato, null, "neato layout", this));
+        toolBar.addToggleButton(new MAction(Graph.Layout.fdp, null, "fdp layout", this));
+        toolBar.setSelected(Mode.navigate);
+        toolBar.setSelected(Graph.Layout.dot);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent ae) {
+        if (ae instanceof MActionEvent) {
+            Enum<?> e = ((MActionEvent)ae).getEnumID();
+            if (e instanceof Graph.Layout) {
+                relayout();
+            }
+            if (e instanceof Mode) {
+                connectionPanel.setRightTree(e == Mode.connect ? connectionPanel.getLeftTree() : null);
+            }
         }
     }
 }
