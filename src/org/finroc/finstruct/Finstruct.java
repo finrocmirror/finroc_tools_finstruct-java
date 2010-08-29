@@ -170,7 +170,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         connectionPanel.setRightTree(null);
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, connectionPanel, new JPanel());
         getContentPane().add(splitPane, BorderLayout.CENTER);
-        splitPane.setDividerSize(3);
+        splitPane.setDividerSize(5);
         setJMenuBar(menuBar);
 
         // Toolbar

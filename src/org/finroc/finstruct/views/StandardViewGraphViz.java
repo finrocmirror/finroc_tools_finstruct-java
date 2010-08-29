@@ -45,6 +45,7 @@ import javax.swing.JMenuBar;
 
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.RuntimeEnvironment;
+import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.finstruct.graphviz.Graph;
 import org.finroc.finstruct.util.MouseHandler;
 import org.finroc.finstruct.util.MouseHandlerManager;
@@ -667,10 +668,12 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         toolBar.setSelected(Graph.Layout.dot);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void actionPerformed(ActionEvent ae) {
+        ThreadLocalCache.get();
         if (ae instanceof MActionEvent) {
-            Enum<?> e = ((MActionEvent)ae).getEnumID();
+            Enum e = ((MActionEvent)ae).getEnumID();
             if (e instanceof Graph.Layout) {
                 relayout();
             }

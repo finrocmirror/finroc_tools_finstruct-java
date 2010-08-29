@@ -25,12 +25,14 @@ import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.finroc.core.admin.AdminClient;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.net.NetPort;
 import org.finroc.gui.ConnectionPanel;
 import org.finroc.gui.util.gui.MJTree;
 import org.finroc.gui.util.treemodel.PortWrapper;
 import org.finroc.gui.util.treemodel.TreePortWrapper;
+import org.finroc.log.LogLevel;
 
 /**
  * @author max
@@ -64,9 +66,18 @@ public class FinstructConnectionPanel extends ConnectionPanel {
 
     @Override
     protected void connect(TreePortWrapper port, TreePortWrapper port2) {
-        if (port != null && port2 != null && port.getPort().mayConnectTo(port2.getPort())) {
-            // TODO RPC call
+        if (port != null && port2 != null) {
+            NetPort np1 = port.getPort().asNetPort();
+            NetPort np2 = port2.getPort().asNetPort();
+            AdminClient ac = np1.getAdminInterface();
+            if (ac != null) {
+                if (port.getPort().mayConnectTo(port2.getPort()) || port2.getPort().mayConnectTo(port.getPort())) {
+                    ac.connect(np1, np2);
+                    return;
+                }
+            }
         }
+        Finstruct.logDomain.log(LogLevel.LL_DEBUG_WARNING, getLogDescription(), "Cannot connect ports: " + port  + " " + port2);
     }
 
 
@@ -91,10 +102,16 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    protected void removeConnections(TreePortWrapper tnp) {
-        if (tnp != null) {
-            // TODO RPC call
+    protected void removeConnections(TreePortWrapper port) {
+        if (port != null) {
+            NetPort np1 = port.getPort().asNetPort();
+            AdminClient ac = np1.getAdminInterface();
+            if (ac != null) {
+                ac.disconnectAll(np1);
+                return;
+            }
         }
+        Finstruct.logDomain.log(LogLevel.LL_DEBUG_WARNING, getLogDescription(), "Cannot disconnect port: " + port);
     }
 
     @Override
