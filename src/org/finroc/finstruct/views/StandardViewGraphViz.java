@@ -33,19 +33,27 @@ import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
 
+import org.finroc.core.ChildIterator;
+import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
+import org.finroc.core.FrameworkElementTreeFilter;
 import org.finroc.core.RuntimeEnvironment;
+import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
+import org.finroc.core.port.net.NetPort;
 import org.finroc.finstruct.graphviz.Graph;
 import org.finroc.finstruct.util.MouseHandler;
 import org.finroc.finstruct.util.MouseHandlerManager;
@@ -59,7 +67,7 @@ import org.finroc.log.LogLevel;
  *
  * Standard View - similar to standard view in MCABrowser
  */
-public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener {
+public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener, MouseMotionListener {
 
     /** UID */
     private static final long serialVersionUID = 5168689573715463737L;
@@ -94,6 +102,12 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     /** referenct to toolBar */
     private MToolBar toolBar;
 
+    /** last mouse point during dragging operation */
+    private Point2D lastMouseDragPoint;
+
+    /** toolbar button */
+    private JButton refreshButton;
+
     /** Layout modes */
     //private enum Layout { dot, neato, fdp }
 
@@ -102,6 +116,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         this.setBackground(Color.LIGHT_GRAY);
         setLayout(null);
         mouseHandlers = new MouseHandlerManager(this);
+        addMouseMotionListener(this);
     }
 
     @Override
@@ -238,6 +253,15 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             v.paint(g2d);
         }
 
+        // draw connection line
+        MouseHandler mh = mouseHandlers.getActiveHandler();
+        if (mh != null && mh instanceof Vertex && inConnectionMode() && lastMouseDragPoint != null) {
+            Vertex v = (Vertex)mh;
+            g2d.setColor(Color.BLACK);
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.drawLine((int)v.rect.getCenterX(), (int)v.rect.getCenterY(), (int)lastMouseDragPoint.getX(), (int)lastMouseDragPoint.getY());
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        }
     }
 
     /** Different levels of highlighting enums */
@@ -375,7 +399,33 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         }
 
         @Override
-        public void mouseReleased(MouseEvent event, MouseHandler over) {}
+        public void mouseReleased(MouseEvent event, MouseHandler over) {
+            if (over != null && over != this && (over instanceof Vertex)) {
+                Vertex v = (Vertex)over;
+                expandInTree(true, frameworkElement);
+                expandInTree(false, v.frameworkElement);
+            }
+            StandardViewGraphViz.this.repaint();
+        }
+
+        /**
+         * Expand specified framework element and all of its interfaces
+         *
+         * @param leftTree in Left tree?
+         * @param frameworkElement Framework element
+         */
+        private void expandInTree(boolean leftTree, FrameworkElement frameworkElement) {
+            ArrayList<FrameworkElement> expand = new ArrayList<FrameworkElement>();
+            expand.add(frameworkElement);
+            ChildIterator ci = new ChildIterator(frameworkElement);
+            FrameworkElement next = null;
+            while ((next = ci.next()) != null) {
+                if (isInterface(next)) {
+                    expand.add(next);
+                }
+            }
+            connectionPanel.expandOnly(leftTree, expand);
+        }
     }
 
     /**
@@ -418,7 +468,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         }
 
         /**
-         * Process Graphics2D object with respect to highligting of this edge
+         * Process Graphics2D object with respect to highlighting of this edge
          *
          * @param g2d Graphics2D
          */
@@ -507,7 +557,36 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         }
 
         @Override
-        public void mouseReleased(MouseEvent event, MouseHandler over) {}
+        public void mouseReleased(MouseEvent event, MouseHandler over) {
+            if (inConnectionMode()) {
+
+                final ArrayList<FrameworkElement> srcPorts = new ArrayList<FrameworkElement>();
+                final HashSet<FrameworkElement> destPorts = new HashSet<FrameworkElement>();
+
+                FrameworkElementTreeFilter.Callback cb = new FrameworkElementTreeFilter.Callback() {
+                    @Override
+                    public void treeFilterCallback(FrameworkElement fe) {
+                        NetPort np = ((AbstractPort)fe).asNetPort();
+                        if (np != null) {
+                            boolean added = false;
+                            List<AbstractPort> dests = np.getRemoteEdgeDestinations();
+                            for (AbstractPort port : dests) {
+                                if (port.isChildOf(getDestination().getFinrocElement())) {
+                                    destPorts.add(port);
+                                    if (!added) {
+                                        srcPorts.add(fe);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+                FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
+                filter.traverseElementTree(getSource().getFinrocElement(), cb, new StringBuilder());
+                connectionPanel.expandOnly(true, srcPorts);
+                connectionPanel.expandOnly(false, destPorts);
+            }
+        }
     }
 
     /**
@@ -664,6 +743,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         toolBar.addToggleButton(new MAction(Graph.Layout.dot, null, "dot layout", this));
         toolBar.addToggleButton(new MAction(Graph.Layout.neato, null, "neato layout", this));
         toolBar.addToggleButton(new MAction(Graph.Layout.fdp, null, "fdp layout", this));
+        toolBar.addSeparator();
+        refreshButton = toolBar.createButton(null, "Refresh graph", this);
+        refreshButton.setText("Refresh");
         toolBar.setSelected(Mode.navigate);
         toolBar.setSelected(Graph.Layout.dot);
     }
@@ -680,6 +762,40 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             if (e instanceof Mode) {
                 connectionPanel.setRightTree(e == Mode.connect ? connectionPanel.getLeftTree() : null);
             }
+        } else if (ae.getSource() == refreshButton) {
+            refresh();
         }
+    }
+
+    @Override
+    public void mouseDragged(MouseEvent e) {
+        MouseHandler mh = mouseHandlers.getActiveHandler();
+        if (inConnectionMode() && mh != null && mh instanceof Vertex) {
+            Vertex v = (Vertex)mh;
+            if (lastMouseDragPoint == null) {
+                lastMouseDragPoint = e.getPoint();
+            }
+            int left = Math.min(Math.min(v.rect.x, e.getX()), (int)lastMouseDragPoint.getX());
+            int top = Math.min(Math.min(v.rect.y, e.getY()), (int)lastMouseDragPoint.getY());
+            int right = Math.max(Math.max((int)v.rect.getMaxX(), e.getX()), (int)lastMouseDragPoint.getX());
+            int bottom = Math.max(Math.max((int)v.rect.getMaxY(), e.getY()), (int)lastMouseDragPoint.getY());
+            repaint(left - 1, top - 1, right + 2 - left, bottom + 2 - top);
+            lastMouseDragPoint = e.getPoint();
+        }
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {}
+
+    /**
+     * @return Is View in connection mode?
+     */
+    private boolean inConnectionMode() {
+        return toolBar.getSelection(Mode.values()) == Mode.connect;
+    }
+
+    @Override
+    public void refresh() {
+        relayout();
     }
 }

@@ -22,11 +22,17 @@ package org.finroc.finstruct;
 
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.event.ActionEvent;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
+import javax.swing.Timer;
+
+import org.finroc.core.FrameworkElement;
 import org.finroc.core.admin.AdminClient;
 import org.finroc.core.port.AbstractPort;
+import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
 import org.finroc.gui.ConnectionPanel;
 import org.finroc.gui.util.gui.MJTree;
@@ -47,6 +53,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     /** Finstruct reference */
     private final Finstruct finstruct;
 
+    /** Swing timer for repaint */
+    private final Timer timer = new Timer(500, this);
+
     /**
      * @param owner Parent of connection panel
      * @param treeFont Font to use for tree
@@ -54,6 +63,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     public FinstructConnectionPanel(Finstruct owner, Font treeFont) {
         super(owner, treeFont);
         finstruct = owner;
+        timer.setRepeats(false);
     }
 
     @Override
@@ -66,6 +76,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
 
     @Override
     protected void connect(TreePortWrapper port, TreePortWrapper port2) {
+        ThreadLocalCache.get();
         if (port != null && port2 != null) {
             NetPort np1 = port.getPort().asNetPort();
             NetPort np2 = port2.getPort().asNetPort();
@@ -73,6 +84,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             if (ac != null) {
                 if (port.getPort().mayConnectTo(port2.getPort()) || port2.getPort().mayConnectTo(port.getPort())) {
                     ac.connect(np1, np2);
+                    timer.restart();
                     return;
                 }
             }
@@ -103,11 +115,13 @@ public class FinstructConnectionPanel extends ConnectionPanel {
 
     @Override
     protected void removeConnections(TreePortWrapper port) {
+        ThreadLocalCache.get();
         if (port != null) {
             NetPort np1 = port.getPort().asNetPort();
             AdminClient ac = np1.getAdminInterface();
             if (ac != null) {
                 ac.disconnectAll(np1);
+                timer.restart();
                 return;
             }
         }
@@ -125,4 +139,30 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         drawConnectionsHelper(g, leftTree, rightTree);
     }
 
+    /**
+     * Expand provided nodes and collapse all others
+     *
+     * @param leftTree Left tree (or rather right one?)
+     * @param nodes Nodes to expand
+     */
+    public void expandOnly(boolean leftTree, Collection<FrameworkElement> nodes) {
+        if (nodes.size() == 0) {
+            return;
+        }
+        MJTree<TreePortWrapper> tree = leftTree ? super.leftTree : rightTree;
+        tree.collapseAll();
+        for (FrameworkElement node : nodes) {
+            tree.expandToElement(finstruct.ioInterface.getInterfaceNode(node));
+        }
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == timer) {
+            repaint();
+            finstruct.refreshView();
+            return;
+        }
+        super.actionPerformed(e);
+    }
 }

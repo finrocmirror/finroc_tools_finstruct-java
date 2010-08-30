@@ -95,4 +95,9 @@ public abstract class FinstructView extends JPanel {
     public String getLogDescription() {
         return getClass().getSimpleName();
     }
+
+    /**
+     * Refresh view
+     */
+    public void refresh() {}
 }

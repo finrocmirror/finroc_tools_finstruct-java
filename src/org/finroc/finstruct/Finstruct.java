@@ -430,4 +430,14 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
     private String getLogDescription() {
         return "Finroc Main Window";
     }
+
+    /**
+     * Called by connection panel when view should be repainted
+     */
+    public void refreshView() {
+        FinstructView view = currentView;
+        if (view != null) {
+            view.refresh();
+        }
+    }
 }
