@@ -105,11 +105,11 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     /** last mouse point during dragging operation */
     private Point2D lastMouseDragPoint;
 
-    /** toolbar button */
+    /** toolbar buttons */
     private JButton refreshButton;
 
-    /** Layout modes */
-    //private enum Layout { dot, neato, fdp }
+    /** Diverse toolbar switches */
+    private enum DiverseSwitches { antialiasing }
 
     public StandardViewGraphViz() {
         testLabel.setFont(FONT);
@@ -231,6 +231,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     public synchronized void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D)g.create();
+        boolean antialiasing = toolBar.isSelected(DiverseSwitches.antialiasing);
 
         if (edges == null || vertices == null) {
             return;
@@ -242,11 +243,15 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         }
 
         // draw edges
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        if (antialiasing) {
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        }
         for (Edge e : edges) {
             e.paint(g2d);
         }
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        if (antialiasing) {
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        }
 
         // draw vertices
         for (Vertex v : vertices) {
@@ -258,9 +263,13 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         if (mh != null && mh instanceof Vertex && inConnectionMode() && lastMouseDragPoint != null) {
             Vertex v = (Vertex)mh;
             g2d.setColor(Color.BLACK);
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            if (antialiasing) {
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            }
             g2d.drawLine((int)v.rect.getCenterX(), (int)v.rect.getCenterY(), (int)lastMouseDragPoint.getX(), (int)lastMouseDragPoint.getY());
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+            if (antialiasing) {
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+            }
         }
     }
 
@@ -746,6 +755,8 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         toolBar.addSeparator();
         refreshButton = toolBar.createButton(null, "Refresh graph", this);
         refreshButton.setText("Refresh");
+        toolBar.addToggleButton(new MAction(DiverseSwitches.antialiasing, null, "Antialiasing", this), true);
+        toolBar.setSelected(DiverseSwitches.antialiasing, true);
         toolBar.setSelected(Mode.navigate);
         toolBar.setSelected(Graph.Layout.dot);
     }
@@ -758,9 +769,10 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             Enum e = ((MActionEvent)ae).getEnumID();
             if (e instanceof Graph.Layout) {
                 relayout();
-            }
-            if (e instanceof Mode) {
+            } else if (e instanceof Mode) {
                 connectionPanel.setRightTree(e == Mode.connect ? connectionPanel.getLeftTree() : null);
+            } else if (e == DiverseSwitches.antialiasing) {
+                repaint();
             }
         } else if (ae.getSource() == refreshButton) {
             refresh();

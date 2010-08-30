@@ -206,7 +206,12 @@ public class Graph extends GraphVizElement {
         Point2D.Double nullVector = new Point2D.Double(0, 0);
         boolean globalBounds = false;
         String graphLine = null;
-        for (String s : outputLines) {
+        for (int i = 0; i < outputLines.size(); i++) {
+            String s = outputLines.get(i);
+            while (s.endsWith("\\")) {
+                i++;
+                s = s.substring(0, s.length() - 1) + outputLines.get(i);
+            }
             logDomain.log(LogLevel.LL_DEBUG, "GraphViz graph after layout", s);
             if (s.trim().startsWith("null [")) {
                 nullVector = toPoint(extractAttributeValue(s, "pos"));
