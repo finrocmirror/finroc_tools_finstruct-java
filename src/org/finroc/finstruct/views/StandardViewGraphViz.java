@@ -21,19 +21,23 @@
 package org.finroc.finstruct.views;
 
 import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
+import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
@@ -106,10 +110,13 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     private Point2D lastMouseDragPoint;
 
     /** toolbar buttons */
-    private JButton refreshButton;
+    private JButton refreshButton, zoomIn, zoomOut, zoom1;
 
     /** Diverse toolbar switches */
     private enum DiverseSwitches { antialiasing }
+
+    /** Zoom factor */
+    private float zoom = 1.0f;
 
     public StandardViewGraphViz() {
         testLabel.setFont(FONT);
@@ -201,6 +208,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             // Layout
             graph.applyLayout(toolBar.getSelection(Graph.Layout.values()), false);
 
+            revalidate();
             repaint();
         } catch (Exception e) {
             logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
@@ -231,6 +239,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     public synchronized void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D)g.create();
+        g2d.scale(zoom, zoom);
         boolean antialiasing = toolBar.isSelected(DiverseSwitches.antialiasing);
 
         if (edges == null || vertices == null) {
@@ -323,9 +332,12 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             int h = getHighlightLevel();
 
             updateRectangle();
-            g2d.setColor(getColor());
+            Color c = getColor();
+            g2d.setColor(c);
             if (h >= 2) {
-                g2d.setColor(brighten(g2d.getColor(), 128));
+                g2d.setColor(brighten(c, 128));
+            } else if (h == 1) {
+                g2d.setColor(brighten(c, 64));
             }
             g2d.fillRect(rect.x, rect.y, rect.width, rect.height);
             if (h >= 1) {
@@ -404,12 +416,16 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
         public void triggerRepaint() {
             updateRectangle();
-            StandardViewGraphViz.this.repaint(rect.x - 5, rect.y - 5, rect.width + 11, rect.height + 11);
+            if (zoom == 1.0) {
+                StandardViewGraphViz.this.repaint(rect.x - 5, rect.y - 5, rect.width + 11, rect.height + 11);
+            } else {
+                StandardViewGraphViz.this.repaint();
+            }
         }
 
         @Override
         public void mouseReleased(MouseEvent event, MouseHandler over) {
-            if (over != null && over != this && (over instanceof Vertex)) {
+            if (over != null && over != this && (over instanceof Vertex) && inConnectionMode()) {
                 Vertex v = (Vertex)over;
                 expandInTree(true, frameworkElement);
                 expandInTree(false, v.frameworkElement);
@@ -469,11 +485,15 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
          * @param g2d Graphics object
          */
         public void paint(Graphics2D g2d) {
+            Stroke oldStroke = g2d.getStroke();
             g2d.setColor(getColor());
             //g2d.set
             processHighlighting(g2d);
             g2d.draw(gvEdge.getPath());
             drawArrow(g2d, !gvEdge.isReversedInDotLayout());
+            if (g2d.getStroke() != oldStroke) {
+                g2d.setStroke(oldStroke);
+            }
         }
 
         /**
@@ -486,9 +506,11 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             MouseHandler ma = mouseHandlers.getActiveHandler();
 
             if ((ma == null && mo == this) || ma == this) {
-                g2d.setColor(brighten(g2d.getColor(), 170));
+                g2d.setStroke(new BasicStroke(3.0f));
+                g2d.setColor(brighten(g2d.getColor(), 120));
             } else if ((ma == null && (mo == getSource() || mo == getDestination())) || ma == getSource() || ma == getDestination()) {
-                g2d.setColor(brighten(g2d.getColor(), 128));
+                g2d.setStroke(new BasicStroke(3.0f));
+                g2d.setColor(brighten(g2d.getColor(), 70));
             }
         }
 
@@ -551,7 +573,24 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
         @Override
         public boolean handlesPoint(Point p) {
-            return gvEdge.getPath().intersects(new Rectangle(p.x - 2, p.y - 2, 5, 5));
+            // return gvEdge.getPath().intersects(new Rectangle(p.x - 2, p.y - 2, 5, 5)); not precise
+            Rectangle r = new Rectangle(p.x - 2, p.y - 2, 5, 5);
+            PathIterator pi = gvEdge.getPath().getPathIterator(null, 2);
+            double[] coords = new double[6];
+            Line2D line = new Line2D.Double();
+            while (!pi.isDone()) {
+                int type = pi.currentSegment(coords);
+                if (type == PathIterator.SEG_MOVETO) {
+                    line.setLine(0, 0, coords[0], coords[1]);
+                } else if (type == PathIterator.SEG_LINETO) {
+                    line.setLine(line.getX2(), line.getY2(), coords[0], coords[1]);
+                    if (line.intersects(r)) {
+                        return true;
+                    }
+                }
+                pi.next();
+            }
+            return false;
         }
 
         @Override
@@ -562,7 +601,11 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         }
 
         public void triggerRepaint() {
-            StandardViewGraphViz.this.repaint(gvEdge.getPath().getBounds());
+            if (zoom == 1) {
+                StandardViewGraphViz.this.repaint(gvEdge.getPath().getBounds());
+            } else {
+                StandardViewGraphViz.this.repaint();
+            }
         }
 
         @Override
@@ -691,7 +734,11 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
         @Override
         public void statusChanged() {
-            StandardViewGraphViz.this.repaint(bounds.x - 4, bounds.y - 4, bounds.width + 9, bounds.height + 9);
+            if (zoom == 1) {
+                StandardViewGraphViz.this.repaint(bounds.x - 4, bounds.y - 4, bounds.width + 9, bounds.height + 9);
+            } else {
+                StandardViewGraphViz.this.repaint();
+            }
         }
 
         @Override
@@ -730,7 +777,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
          * @param g2d Graphics object
          */
         public void paint(Graphics2D g2d) {
-            Color c = brighten(getBackground(), getParentCount() * 30);
+            Color c = brighten(getBackground(), (getParentCount() % 2) * 30);
             g2d.setColor(c);
             Rectangle r = getBounds();
             g2d.fillRect(r.x, r.y, r.width, r.height);
@@ -756,12 +803,18 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         refreshButton = toolBar.createButton(null, "Refresh graph", this);
         refreshButton.setText("Refresh");
         toolBar.addToggleButton(new MAction(DiverseSwitches.antialiasing, null, "Antialiasing", this), true);
+        zoomIn = toolBar.createButton(null, "Zoom in", this);
+        zoomIn.setText("Zoom In");
+        zoomOut = toolBar.createButton(null, "Zoom out", this);
+        zoomOut.setText("Zoom Out");
+        zoom1 = toolBar.createButton(null, "Zoom 100%", this);
+        zoom1.setText("Zoom 100%");
         toolBar.setSelected(DiverseSwitches.antialiasing, true);
         toolBar.setSelected(Mode.navigate);
         toolBar.setSelected(Graph.Layout.dot);
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
     @Override
     public void actionPerformed(ActionEvent ae) {
         ThreadLocalCache.get();
@@ -776,23 +829,50 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             }
         } else if (ae.getSource() == refreshButton) {
             refresh();
+        } else if (ae.getSource() == zoomIn) {
+            setZoom(zoom * 1.33);
+        } else if (ae.getSource() == zoomOut) {
+            setZoom(zoom * 0.75);
+        } else if (ae.getSource() == zoom1) {
+            setZoom(1);
         }
+    }
+
+    /**
+     * Set Zoom
+     *
+     * @param zoom Zoom (100% = 1.0f)
+     */
+    private void setZoom(double zoom) {
+        this.zoom = (float)zoom;
+        mouseHandlers.setZoom(zoom);
+        revalidate();
+        repaint();
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        Point p = e.getPoint();
+        if (zoom != 1.0) {
+            p = new Point((int)(e.getX() / zoom), (int)(e.getY() / zoom));
+        }
+
         MouseHandler mh = mouseHandlers.getActiveHandler();
         if (inConnectionMode() && mh != null && mh instanceof Vertex) {
             Vertex v = (Vertex)mh;
             if (lastMouseDragPoint == null) {
-                lastMouseDragPoint = e.getPoint();
+                lastMouseDragPoint = p;
             }
             int left = Math.min(Math.min(v.rect.x, e.getX()), (int)lastMouseDragPoint.getX());
             int top = Math.min(Math.min(v.rect.y, e.getY()), (int)lastMouseDragPoint.getY());
             int right = Math.max(Math.max((int)v.rect.getMaxX(), e.getX()), (int)lastMouseDragPoint.getX());
             int bottom = Math.max(Math.max((int)v.rect.getMaxY(), e.getY()), (int)lastMouseDragPoint.getY());
-            repaint(left - 1, top - 1, right + 2 - left, bottom + 2 - top);
-            lastMouseDragPoint = e.getPoint();
+            if (zoom == 1) {
+                repaint(left - 3, top - 3, right + 6 - left, bottom + 6 - top);
+            } else {
+                repaint();
+            }
+            lastMouseDragPoint = p;
         }
     }
 
@@ -809,5 +889,13 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     @Override
     public void refresh() {
         relayout();
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        if (graph != null) {
+            return new Dimension(((int)(graph.getBounds().width * zoom)) + 1, ((int)(graph.getBounds().height * zoom)) + 1);
+        }
+        return null;
     }
 }

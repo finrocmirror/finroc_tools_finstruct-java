@@ -21,6 +21,7 @@
 package org.finroc.finstruct.util;
 
 import java.awt.Cursor;
+import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -47,6 +48,9 @@ public class MouseHandlerManager implements MouseListener, MouseMotionListener {
 
     /** Component that owns this manager */
     private final JComponent owner;
+
+    /** Zoom */
+    private double zoom = 1;
 
     public MouseHandlerManager(JComponent owner) {
         this.owner = owner;
@@ -128,8 +132,12 @@ public class MouseHandlerManager implements MouseListener, MouseMotionListener {
      * @return Mouse Handler
      */
     private MouseHandler getMouseHandler(MouseEvent e) {
+        Point p = e.getPoint();
+        if (zoom != 1.0) {
+            p = new Point((int)(e.getX() / zoom), (int)(e.getY() / zoom));
+        }
         for (MouseHandler mh : mouseHandlers) {
-            if (mh.handlesPoint(e.getPoint())) {
+            if (mh.handlesPoint(p)) {
                 return mh;
             }
         }
@@ -167,5 +175,12 @@ public class MouseHandlerManager implements MouseListener, MouseMotionListener {
      */
     public MouseHandler getMouseOver() {
         return mouseOver;
+    }
+
+    /**
+     * @param zoom Zoom
+     */
+    public void setZoom(double zoom) {
+        this.zoom = zoom;
     }
 }

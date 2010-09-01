@@ -43,6 +43,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
+import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.Timer;
 import javax.swing.event.TreeSelectionEvent;
@@ -250,7 +251,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         splitPane.setLeftComponent(view.initLeftPanel(connectionPanel));
 
         // fill right part of split pane
-        splitPane.setRightComponent(view);
+        splitPane.setRightComponent(new JScrollPane(view));
 
         // update menu
         for (ViewSelector v : views) {

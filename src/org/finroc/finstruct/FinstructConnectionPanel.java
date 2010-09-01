@@ -36,6 +36,7 @@ import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
 import org.finroc.gui.ConnectionPanel;
 import org.finroc.gui.util.gui.MJTree;
+import org.finroc.gui.util.treemodel.InterfaceNode;
 import org.finroc.gui.util.treemodel.PortWrapper;
 import org.finroc.gui.util.treemodel.TreePortWrapper;
 import org.finroc.log.LogLevel;
@@ -152,7 +153,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         MJTree<TreePortWrapper> tree = leftTree ? super.leftTree : rightTree;
         tree.collapseAll();
         for (FrameworkElement node : nodes) {
-            tree.expandToElement(finstruct.ioInterface.getInterfaceNode(node));
+            InterfaceNode node2 = finstruct.ioInterface.getInterfaceNode(node);
+            tree.expandToElement(node2);
+            tree.scrollPathToVisible(tree.getTreePathFor(node2));
         }
     }
 
