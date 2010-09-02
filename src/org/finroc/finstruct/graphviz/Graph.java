@@ -160,6 +160,9 @@ public class Graph extends GraphVizElement {
 
         if (isRoot) {
             sb.append("digraph \"finstruct\" {\n");
+            sb.append("graph [");
+            this.printAttributesForDotFile(sb);
+            sb.append("];\n");
             if (layout != Layout.dot) {
                 sb.append("null [shape=box, width=\"0.0001\", height=\"0.0001\", fixedsize=true, pos=\"0,0!\"];\n"); // in order to obtain null vector
             }
@@ -167,7 +170,7 @@ public class Graph extends GraphVizElement {
             sb.append("subgraph cluster" + getHandle() + " {\n");
             sb.append("graph [");
             this.printAttributesForDotFile(sb);
-            sb.append("];");
+            sb.append("];\n");
         }
 
         // add vertices

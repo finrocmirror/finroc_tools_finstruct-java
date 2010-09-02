@@ -49,6 +49,10 @@ import java.util.List;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import org.finroc.core.ChildIterator;
 import org.finroc.core.CoreFlags;
@@ -71,7 +75,7 @@ import org.finroc.log.LogLevel;
  *
  * Standard View - similar to standard view in MCABrowser
  */
-public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener, MouseMotionListener {
+public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener, MouseMotionListener, ChangeListener {
 
     /** UID */
     private static final long serialVersionUID = 5168689573715463737L;
@@ -111,6 +115,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
     /** toolbar buttons */
     private JButton refreshButton, zoomIn, zoomOut, zoom1;
+
+    /** Spinners in toolbar */
+    private JSpinner nodeSep, rankSep;
 
     /** Diverse toolbar switches */
     private enum DiverseSwitches { antialiasing }
@@ -809,6 +816,20 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         zoomOut.setText("Zoom Out");
         zoom1 = toolBar.createButton(null, "Zoom 100%", this);
         zoom1.setText("Zoom 100%");
+        toolBar.addSeparator();
+        toolBar.add(new JLabel("nodesep"));
+        nodeSep = new JSpinner(new SpinnerNumberModel(0.25, 0.05, 2.0, 0.05));
+        toolBar.add(nodeSep);
+        nodeSep.addChangeListener(this);
+        nodeSep.setPreferredSize(new Dimension(50, nodeSep.getPreferredSize().height));
+        nodeSep.setMaximumSize(nodeSep.getPreferredSize());
+        toolBar.addSeparator();
+        toolBar.add(new JLabel("ranksep"));
+        rankSep = new JSpinner(new SpinnerNumberModel(0.5, 0.05, 2.0, 0.05));
+        toolBar.add(rankSep);
+        rankSep.addChangeListener(this);
+        rankSep.setPreferredSize(new Dimension(50, rankSep.getPreferredSize().height));
+        rankSep.setMaximumSize(rankSep.getPreferredSize());
         toolBar.setSelected(DiverseSwitches.antialiasing, true);
         toolBar.setSelected(Mode.navigate);
         toolBar.setSelected(Graph.Layout.dot);
@@ -897,5 +918,19 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             return new Dimension(((int)(graph.getBounds().width * zoom)) + 1, ((int)(graph.getBounds().height * zoom)) + 1);
         }
         return null;
+    }
+
+    @Override
+    public void stateChanged(ChangeEvent e) {
+        if (e.getSource() == rankSep || e.getSource() == nodeSep) {
+            double rs = ((Number)rankSep.getValue()).doubleValue();
+            double ns = ((Number)nodeSep.getValue()).doubleValue();
+            if (rs > 0 && ns > 0) {
+                graph.setAttribute("ranksep", ("" + rs).replace(',', '.'));
+                graph.setAttribute("nodesep", ("" + ns).replace(',', '.'));
+                relayout();
+            }
+        }
+
     }
 }
