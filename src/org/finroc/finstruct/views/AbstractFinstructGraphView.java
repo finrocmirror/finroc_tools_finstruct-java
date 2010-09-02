@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.TreeMap;
 
 import javax.swing.JComponent;
 
@@ -220,7 +221,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
      * @return List with edges (start and endpoints) are set to vertices returned by method above
      */
     public Collection<E> getEdges(final FrameworkElement root, Collection<V> allVertices) {
-        final HashMap<E, E> result = new HashMap<E, E>();
+        final TreeMap<E, E> result = new TreeMap<E, E>();
         if (!root.isReady()) {
             return new ArrayList<E>();
         }
@@ -269,7 +270,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
     /**
      * Edge in View
      */
-    public static class Edge extends Annotatable implements Serializable {
+    public static class Edge extends Annotatable implements Serializable, Comparable<Edge> {
 
         /** UID */
         private static final long serialVersionUID = 7311395657703973551L;
@@ -335,6 +336,25 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
                 return Color.RED;
             }
             return Color.BLACK;
+        }
+
+        @Override
+        public int compareTo(Edge o) {
+            int sh = source.frameworkElement.getHandle();
+            int dh = destination.frameworkElement.getHandle();
+            int osh = o.source.frameworkElement.getHandle();
+            int dsh = o.destination.frameworkElement.getHandle();
+            if (sh < osh) {
+                return -1;
+            } else if (sh > osh) {
+                return 1;
+            }
+            if (dh < dsh) {
+                return -1;
+            } else if (dh > dsh) {
+                return 1;
+            }
+            return 0;
         }
     }
 

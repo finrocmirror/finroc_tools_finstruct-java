@@ -84,7 +84,16 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     static Font FONT = new JLabel().getFont().deriveFont(Font.PLAIN);
 
     /** Label for getting node bounds - may only be used in synchronized context */
-    private final JLabel testLabel = new JLabel();
+    private final JLabel testLabel = new JLabel("Test");
+
+    /** Two-line test label */
+    private final JLabel twoLineTestLabel = new JLabel("<HTML>X<BR>Y</HTML>");
+
+    /** when drawing a string: y increment per text line */
+    private final int lineIncrementY;
+
+    /** Height of label with a single line */
+    private final int labelBaseHeight = testLabel.getPreferredSize().height;
 
     /** current GraphViz graph */
     private Graph graph = new Graph();
@@ -120,13 +129,15 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     private JSpinner nodeSep, rankSep;
 
     /** Diverse toolbar switches */
-    private enum DiverseSwitches { antialiasing }
+    private enum DiverseSwitches { antialiasing, lineBreaks }
 
     /** Zoom factor */
     private float zoom = 1.0f;
 
     public StandardViewGraphViz() {
         testLabel.setFont(FONT);
+        twoLineTestLabel.setFont(FONT);
+        lineIncrementY = twoLineTestLabel.getPreferredSize().height - testLabel.getPreferredSize().height;
         this.setBackground(Color.LIGHT_GRAY);
         setLayout(null);
         mouseHandlers = new MouseHandlerManager(this);
@@ -316,6 +327,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         /** Temporary Rectangle variable */
         private final Rectangle rect = new Rectangle();
 
+        /** Label lines to print (framework element description with line changes) */
+        private ArrayList<String> label = new ArrayList<String>();
+
         public Vertex(FrameworkElement fe) {
             super(fe);
             reset();
@@ -325,8 +339,65 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         public void reset() {
             super.reset();
             gvVertex = new org.finroc.finstruct.graphviz.Vertex();
-            testLabel.setText(frameworkElement.getDescription());
-            gvVertex.setSize(testLabel.getPreferredSize().getWidth() + 5, testLabel.getPreferredSize().getHeight() + 6);
+
+            // find optimal line breaks
+            boolean lineBreaks = toolBar.isSelected(DiverseSwitches.lineBreaks);
+            String[] words = frameworkElement.getDescription().split("\\s");
+            assert(words.length < 20);
+            double bestScore = Integer.MAX_VALUE;
+            ArrayList<String> bestText = new ArrayList<String>();
+            Dimension bestDim = new Dimension(1000, 1000);
+            StringBuilder sb = new StringBuilder();
+            ArrayList<String> lines = new ArrayList<String>(30);
+            for (int i = 0; i < Math.pow(2, words.length - 1); i++) { // use i as bitmask for line breaks
+
+                // reset temp vars
+                int i2 = i;
+                double width = 0;
+                double height = labelBaseHeight;
+                if (sb.length() > 0) {
+                    sb.delete(0, sb.length());
+                }
+                lines.clear();
+
+                // create string
+                for (int j = 0; j < (words.length - 1); j++) {
+                    boolean lineChange = ((i2 & 1) == 1);
+                    i2 >>>= 1;
+                    sb.append(words[j]);
+                    if (lineChange) {
+                        testLabel.setText(sb.toString());
+                        lines.add(sb.toString());
+                        width = Math.max(width, testLabel.getPreferredSize().getWidth());
+                        sb.delete(0, sb.length());
+                        height += lineIncrementY;
+                    } else {
+                        sb.append(" ");
+                    }
+                }
+                sb.append(words[words.length - 1]);
+                testLabel.setText(sb.toString());
+                lines.add(sb.toString());
+                width = Math.max(width, testLabel.getPreferredSize().getWidth());
+
+                // compare to best combination
+                //double score = Math.pow(w, 1.1) + (h * 1.7);
+                double score = width + (height * 1.7);
+                if (score < bestScore) {
+                    bestDim.width = (int)width + 5;
+                    bestDim.height = (int)height + 6;
+                    bestText.clear();
+                    bestText.addAll(lines);
+                    bestScore = score;
+                }
+
+                if (!lineBreaks) {
+                    break;
+                }
+            }
+
+            gvVertex.setSize(bestDim.width, bestDim.height);
+            label = bestText;
             expandIcon = null;
         }
 
@@ -352,7 +423,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             }
             g2d.setColor(getTextColor());
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2d.drawString(frameworkElement.getDescription(), rect.x + 3, rect.y + rect.height - 5);
+            for (int i = 0; i < label.size(); i++) {
+                g2d.drawString(label.get(i), rect.x + 3, (rect.y + rect.height - 5) + ((i + 1) - label.size()) * lineIncrementY);
+            }
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
             g2d.setColor(Color.BLACK);
             g2d.drawRect(rect.x, rect.y, rect.width, rect.height);
@@ -810,6 +883,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         refreshButton = toolBar.createButton(null, "Refresh graph", this);
         refreshButton.setText("Refresh");
         toolBar.addToggleButton(new MAction(DiverseSwitches.antialiasing, null, "Antialiasing", this), true);
+        toolBar.addToggleButton(new MAction(DiverseSwitches.lineBreaks, null, "Line Breaks", this), true);
         zoomIn = toolBar.createButton(null, "Zoom in", this);
         zoomIn.setText("Zoom In");
         zoomOut = toolBar.createButton(null, "Zoom out", this);
@@ -831,6 +905,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         rankSep.setPreferredSize(new Dimension(50, rankSep.getPreferredSize().height));
         rankSep.setMaximumSize(rankSep.getPreferredSize());
         toolBar.setSelected(DiverseSwitches.antialiasing, true);
+        toolBar.setSelected(DiverseSwitches.lineBreaks, true);
         toolBar.setSelected(Mode.navigate);
         toolBar.setSelected(Graph.Layout.dot);
     }
@@ -847,6 +922,8 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 connectionPanel.setRightTree(e == Mode.connect ? connectionPanel.getLeftTree() : null);
             } else if (e == DiverseSwitches.antialiasing) {
                 repaint();
+            } else if (e == DiverseSwitches.lineBreaks) {
+                relayout();
             }
         } else if (ae.getSource() == refreshButton) {
             refresh();
