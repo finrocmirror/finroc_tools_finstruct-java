@@ -20,6 +20,7 @@
  */
 package org.finroc.finstruct;
 
+import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
@@ -34,6 +35,7 @@ import org.finroc.core.admin.AdminClient;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
+import org.finroc.finstruct.views.AbstractFinstructGraphView;
 import org.finroc.gui.ConnectionPanel;
 import org.finroc.gui.util.gui.MJTree;
 import org.finroc.gui.util.treemodel.InterfaceNode;
@@ -167,5 +169,18 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             return;
         }
         super.actionPerformed(e);
+    }
+
+    @Override
+    protected Color getBranchBackgroundColor(Object value) {
+        if (value instanceof InterfaceNode) {
+            FrameworkElement fe = ((InterfaceNode)value).getFrameworkElement();
+            if (AbstractFinstructGraphView.isControllerInterface(fe)) {
+                return new Color(255, 190, 210);
+            } else if (AbstractFinstructGraphView.isSensorInterface(fe)) {
+                return new Color(255, 255, 165);
+            }
+        }
+        return null;
     }
 }
