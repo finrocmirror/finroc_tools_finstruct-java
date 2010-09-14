@@ -55,6 +55,7 @@ import org.finroc.core.plugin.CreateExternalConnectionAction;
 import org.finroc.core.plugin.ExternalConnection;
 import org.finroc.core.plugin.Plugins;
 import org.finroc.core.port.ThreadLocalCache;
+import org.finroc.finstruct.views.PortView;
 import org.finroc.finstruct.views.StandardView;
 import org.finroc.finstruct.views.StandardViewGraphViz;
 import org.finroc.gui.ConnectionPanel;
@@ -153,6 +154,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         ButtonGroup viewSelectGroup = new ButtonGroup();
         views.add(new ViewSelector(StandardViewGraphViz.class, viewSelectGroup));
         views.add(new ViewSelector(StandardView.class, viewSelectGroup));
+        views.add(new ViewSelector(PortView.class, viewSelectGroup));
 
         // view menu
         JMenu menuView = new JMenu("View");

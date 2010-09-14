@@ -116,7 +116,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     /** Control modes */
     private enum Mode { navigate, connect }
 
-    /** referenct to toolBar */
+    /** reference to toolBar */
     private MToolBar toolBar;
 
     /** last mouse point during dragging operation */
