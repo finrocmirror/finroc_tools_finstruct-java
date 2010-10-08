@@ -131,7 +131,7 @@ public class MouseHandlerManager implements MouseListener, MouseMotionListener {
      * @param e Event
      * @return Mouse Handler
      */
-    private MouseHandler getMouseHandler(MouseEvent e) {
+    public MouseHandler getMouseHandler(MouseEvent e) {
         Point p = e.getPoint();
         if (zoom != 1.0) {
             p = new Point((int)(e.getX() / zoom), (int)(e.getY() / zoom));

@@ -35,6 +35,7 @@ import org.finroc.core.admin.AdminClient;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
+import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.finstruct.views.AbstractFinstructGraphView;
 import org.finroc.gui.ConnectionPanel;
 import org.finroc.gui.util.gui.MJTree;
@@ -83,7 +84,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         if (port != null && port2 != null) {
             NetPort np1 = port.getPort().asNetPort();
             NetPort np2 = port2.getPort().asNetPort();
-            AdminClient ac = np1.getAdminInterface();
+            AdminClient ac = RemoteRuntime.find(np1).getAdminInterface();
             if (ac != null) {
                 if (port.getPort().mayConnectTo(port2.getPort()) || port2.getPort().mayConnectTo(port.getPort())) {
                     ac.connect(np1, np2);
@@ -121,7 +122,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         ThreadLocalCache.get();
         if (port != null) {
             NetPort np1 = port.getPort().asNetPort();
-            AdminClient ac = np1.getAdminInterface();
+            AdminClient ac = RemoteRuntime.find(np1).getAdminInterface();
             if (ac != null) {
                 ac.disconnectAll(np1);
                 timer.restart();

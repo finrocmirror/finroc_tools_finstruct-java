@@ -228,6 +228,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
      * @param view View to change to
      */
     private void changeView(FinstructView view) {
+        view.finstruct = this;
 
         // Clear menu bar
         for (int i = menuBar.getComponentCount() - 1; i >= 0; i--) {
@@ -284,7 +285,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             }
             //requestFocus();
         } catch (Exception e) {
-            showErrorMessage(e);
+            showErrorMessage(e, true);
         }
     }
 
@@ -307,15 +308,21 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         //}
     }
 
-    public void showErrorMessage(Exception e) {
-        logDomain.log(LogLevel.LL_ERROR, "Finstruct", e);
-        JOptionPane.showMessageDialog(null, e.getClass().getName() + "\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+    public static void showErrorMessage(Exception e, boolean printStackTrace) {
+        if (printStackTrace) {
+            logDomain.log(LogLevel.LL_ERROR, "Finstruct", e);
+        } else {
+            logDomain.log(LogLevel.LL_ERROR, "Finstruct", e.getMessage());
+        }
+        JOptionPane.showMessageDialog(null, (printStackTrace ? (e.getClass().getName() + "\n") : "") + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
     }
 
-    public void showErrorMessage(String string) {
+    public static void showErrorMessage(String string, boolean throwException, boolean printStackTrace) {
         RuntimeException re = new RuntimeException(string);
-        showErrorMessage(re);
-        throw re;
+        showErrorMessage(re, printStackTrace);
+        if (throwException) {
+            throw re;
+        }
     }
 
     @Override
@@ -335,7 +342,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             this.ioInterface = ioInterface;
             this.disconnect = disconnect;
             this.reconnect = reconnect;
-            putValue(Action.NAME, ioInterface.getClass().getSimpleName());
+            putValue(Action.NAME, ioInterface.getName());
         }
 
         public void actionPerformed(ActionEvent e) {
@@ -355,7 +362,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                 }
                 EventRouter.fireConnectionEvent(null, ConnectionListener.INTERFACE_UPDATED);
             } catch (Exception ex) {
-                showErrorMessage(ex);
+                showErrorMessage(ex, true);
             }
         }
     }

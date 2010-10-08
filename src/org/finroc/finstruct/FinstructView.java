@@ -46,6 +46,8 @@ public abstract class FinstructView extends JPanel {
 
     public static final LogDomain logDomain = Finstruct.logDomain;
 
+    Finstruct finstruct;
+
     public String toString() {
         return getClass().getSimpleName();
     }
@@ -100,4 +102,11 @@ public abstract class FinstructView extends JPanel {
      * Refresh view
      */
     public void refresh() {}
+
+    /**
+     * @return Reference to finstruct main window
+     */
+    public Finstruct getFinstruct() {
+        return finstruct;
+    }
 }

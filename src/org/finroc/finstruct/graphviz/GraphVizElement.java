@@ -195,11 +195,18 @@ public abstract class GraphVizElement {
                         }
                     }
                 } else { // advance to next "," or "]"
-                    while (c != ',') {
+                    boolean quoted = false;
+                    while (true) {
                         i++;
                         c = line.charAt(i);
-                        if (c == ']') {
+                        if (c == '"') {
+                            quoted = !quoted;
+                        }
+                        if ((!quoted) && c == ']') {
                             return null;
+                        }
+                        if ((!quoted) && c == ',') {
+                            break;
                         }
                     }
                 }

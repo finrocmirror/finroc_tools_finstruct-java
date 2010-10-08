@@ -36,6 +36,7 @@ import java.awt.Stroke;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
@@ -49,8 +50,11 @@ import java.util.List;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -59,9 +63,13 @@ import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.FrameworkElementTreeFilter;
 import org.finroc.core.RuntimeEnvironment;
+import org.finroc.core.RuntimeListener;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
+import org.finroc.core.port.net.RemoteRuntime;
+import org.finroc.finstruct.dialogs.CreateModuleDialog;
+import org.finroc.finstruct.dialogs.ParameterEditDialog;
 import org.finroc.finstruct.graphviz.Graph;
 import org.finroc.finstruct.util.MouseHandler;
 import org.finroc.finstruct.util.MouseHandlerManager;
@@ -75,7 +83,7 @@ import org.finroc.log.LogLevel;
  *
  * Standard View - similar to standard view in MCABrowser
  */
-public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener, MouseMotionListener, ChangeListener {
+public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener, MouseMotionListener, MouseListener, ChangeListener, RuntimeListener {
 
     /** UID */
     private static final long serialVersionUID = 5168689573715463737L;
@@ -134,6 +142,18 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     /** Zoom factor */
     private float zoom = 1.0f;
 
+    /** PopUp-Menu for Right-Click */
+    private JPopupMenu popupMenu;
+
+    /** PopUp-Menu Items */
+    private JMenuItem miCreateModule, miSaveChanges, miEditModule, miDeleteModule;
+
+    /** Framework element that right-click-menu was opened upon */
+    private FrameworkElement rightClickedOn;
+
+    /** Link of last module created */
+    private volatile CreateModuleDialog lastCreator = null;
+
     public StandardViewGraphViz() {
         testLabel.setFont(FONT);
         twoLineTestLabel.setFont(FONT);
@@ -142,6 +162,28 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         setLayout(null);
         mouseHandlers = new MouseHandlerManager(this);
         addMouseMotionListener(this);
+        addMouseListener(this);
+        RuntimeEnvironment.getInstance().addListener(this);
+
+        // Create PopupMenu
+        popupMenu = new JPopupMenu();
+        miCreateModule = createMenuEntry("Create Element...");
+        miSaveChanges = createMenuEntry("Save Changes");
+        miEditModule = createMenuEntry("Edit Parameters");
+        miDeleteModule = createMenuEntry("Delete Element");
+    }
+
+    /**
+     * Convenient method the create menu entries and add this Window as listener
+     *
+     * @param string Text of menu entry
+     * @return Created menu entry
+     */
+    private JMenuItem createMenuEntry(String string) {
+        JMenuItem item = new JMenuItem(string);
+        item.addActionListener(this);
+        popupMenu.add(item);
+        return item;
     }
 
     @Override
@@ -158,6 +200,24 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     protected synchronized void rootElementChanged() {
         expandedGroups.clear();
         relayout();
+
+        // get Admin interface
+        /*try {
+            AdminClient ac = RemoteRuntime.find(getRootElement()).getAdminInterface();
+            if (lastAdminInterface != ac) { // reinit createable modules?
+                lastAdminInterface = ac;
+                ArrayList<RemoteCreateModuleAction> moduleTypes = ac.getRemoteModuleTypes();
+                menuCreate.removeAll();
+
+                TreeMap<String, JMenu> groupMenus = new TreeMap<String, JMenu>();
+                for (RemoteCreateModuleAction moduleType : moduleTypes) {
+
+                }
+            }
+
+        } catch (Exception e) {
+            logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+        }*/
     }
 
     /**
@@ -870,6 +930,8 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
     @Override
     public void initMenuAndToolBar(JMenuBar menuBar, MToolBar toolBar) {
+
+        // tool bar
         this.toolBar = toolBar;
         //IconManager.getInstanc
         toolBar.addToggleButton(new MAction(Mode.navigate, null, "Navigation Mode", this));
@@ -933,6 +995,28 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             setZoom(zoom * 0.75);
         } else if (ae.getSource() == zoom1) {
             setZoom(1);
+        } else if (ae.getSource() == miCreateModule) {
+            CreateModuleDialog cmd = new CreateModuleDialog(getFinstruct());
+            lastCreator = cmd;
+            cmd.show(rightClickedOn);
+            if (cmd.getCreated() == null) {
+                relayout();
+            }
+        } else if (ae.getSource() == miSaveChanges) {
+            FrameworkElement fe = rightClickedOn.getFlag(CoreFlags.FINSTRUCTABLE_GROUP) ? rightClickedOn : rightClickedOn.getParentWithFlags(CoreFlags.FINSTRUCTABLE_GROUP);
+            if (fe != null) {
+                RemoteRuntime rr = RemoteRuntime.find(fe);
+                rr.getAdminInterface().saveFinstructableGroup(rr.getRemoteHandle(fe));
+            }
+        } else if (ae.getSource() == miDeleteModule) {
+            RemoteRuntime rr = RemoteRuntime.find(rightClickedOn);
+            rr.getAdminInterface().deleteElement(rr.getRemoteHandle(rightClickedOn));
+        } else if (ae.getSource() == miEditModule) {
+            new ParameterEditDialog(getFinstruct()).show(rightClickedOn);
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {}
+            relayout();
         }
     }
 
@@ -1010,4 +1094,99 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         }
 
     }
+
+    @Override public void mouseClicked(MouseEvent e) {}
+    @Override public void mousePressed(MouseEvent e) {}
+    @Override public void mouseEntered(MouseEvent e) {}
+    @Override public void mouseExited(MouseEvent e) {}
+    @Override public void mouseReleased(MouseEvent e) {
+        MouseHandler mh = mouseHandlers.getMouseHandler(e);
+        Point p = e.getPoint();
+        if (zoom != 1.0) {
+            p = new Point((int)(e.getX() / zoom), (int)(e.getY() / zoom));
+        }
+
+        if (e.getButton() == MouseEvent.BUTTON3 && getRootElement() != null) {
+            if (mh == null) {
+
+                // in which group are we?
+                rightClickedOn = getRootElement();
+                for (Subgraph sg : subgraphs) {
+                    if (sg.getBounds().contains(p)) {
+                        rightClickedOn = sg.frameworkElement;
+                    }
+                }
+            } else if (mh instanceof Vertex) {
+                rightClickedOn = ((Vertex)mh).frameworkElement;
+            } else {
+                rightClickedOn = null;
+            }
+            if (rightClickedOn != null) {
+                if (rightClickedOn.getFlag(CoreFlags.FINSTRUCTED) || rightClickedOn.getFlag(CoreFlags.FINSTRUCTABLE_GROUP)) {
+                    boolean expanded = expandedGroups.contains(rightClickedOn) || rightClickedOn == getRootElement();
+                    miCreateModule.setEnabled(expanded);
+                    miDeleteModule.setEnabled(!expanded);
+
+                    // show right-click-menu with create-action
+                    popupMenu.show(this, e.getX(), e.getY());
+                }
+            }
+        }
+    }
+
+    @Override
+    public void runtimeChange(byte changeType, final FrameworkElement element) {
+        CreateModuleDialog cmd = lastCreator;
+        if (cmd == null) {
+            return;
+        }
+
+        if (changeType == RuntimeListener.ADD && element.getParent() == rightClickedOn && element.getQualifiedLink().equals(cmd.getCreated())) {
+            if (System.currentTimeMillis() < (cmd.getModuleCreatedAt() + 1000)) {
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        new ParameterEditDialog(getFinstruct()).show(element);
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {}
+                        relayout();
+                    }
+                });
+            }
+        }
+    }
+
+//    /**
+//     * Action that create a remote module
+//     */
+//    private class CreateModuleAction extends AbstractAction {
+//
+//      /** UID */
+//      private static final long serialVersionUID = -8208754807823437000L;
+//
+//      /** wrapped RemoteCreateModuleAction */
+//      private final RemoteCreateModuleAction action;
+//
+//      private CreateModuleAction(RemoteCreateModuleAction action) {
+//          this.action = action;
+//          putValue(Action.NAME, action.name);
+//      }
+//
+//        public void actionPerformed(ActionEvent e) {
+//          try {
+//              // show dialog to specify structure parameters
+//
+//              // create module
+//              //action.adminInterface.createModule(action, name, parentHandle, params);
+//
+//              // repaint after timeout
+//              Thread.sleep(500);
+//              relayout();
+//            } catch (Exception ex) {
+//              logDomain.log(LogLevel.LL_ERROR, "RemoteCreateModuleAction " + action.name, ex);
+//                Finstruct.showErrorMessage(ex);
+//            }
+//        }
+//    }
 }
