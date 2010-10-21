@@ -1157,6 +1157,11 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         }
     }
 
+    @Override
+    public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {
+        // do nothing at the moment
+    }
+
 //    /**
 //     * Action that create a remote module
 //     */
