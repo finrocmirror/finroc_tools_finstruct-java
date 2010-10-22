@@ -51,7 +51,7 @@ import org.finroc.log.LogLevel;
  *
  * Displays port-values and lets user manipulate them
  */
-public class PortView extends FinstructView implements FrameworkElementTreeFilter.Callback, ActionListener {
+public class PortView extends FinstructView implements FrameworkElementTreeFilter.Callback<Boolean>, ActionListener {
 
     /** UID */
     private static final long serialVersionUID = 7231901570012922905L;
@@ -81,13 +81,13 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
     protected synchronized void rootElementChanged() {
         tmpResultList.clear();
         FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.STATUS_FLAGS | CoreFlags.IS_PORT, CoreFlags.READY | CoreFlags.PUBLISHED | CoreFlags.IS_PORT);
-        filter.traverseElementTree(getRootElement(), this, new StringBuilder());
+        filter.traverseElementTree(getRootElement(), this, null);
         setLayout(new BorderLayout());
         showPorts(tmpResultList);
     }
 
     @Override
-    public void treeFilterCallback(FrameworkElement fe) {
+    public void treeFilterCallback(FrameworkElement fe, Boolean unused) {
         assert(fe instanceof AbstractPort);
         tmpResultList.add((AbstractPort)fe);
     }

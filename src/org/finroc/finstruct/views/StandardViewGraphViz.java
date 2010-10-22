@@ -68,6 +68,7 @@ import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
 import org.finroc.core.port.net.RemoteRuntime;
+import org.finroc.finstruct.Finstruct;
 import org.finroc.finstruct.dialogs.CreateModuleDialog;
 import org.finroc.finstruct.dialogs.ParameterEditDialog;
 import org.finroc.finstruct.graphviz.Graph;
@@ -131,7 +132,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     private Point2D lastMouseDragPoint;
 
     /** toolbar buttons */
-    private JButton refreshButton, zoomIn, zoomOut, zoom1;
+    private JButton refreshButton, zoomIn, zoomOut, zoom1, start, pause;
 
     /** Spinners in toolbar */
     private JSpinner nodeSep, rankSep;
@@ -288,8 +289,32 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
             revalidate();
             repaint();
+
+            // set start/pause icon state
+            updateStartPauseEnabled();
+
         } catch (Exception e) {
             logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+        }
+    }
+
+    /**
+     * Update whether start and pause buttons are enabled
+     */
+    private void updateStartPauseEnabled() {
+        RemoteRuntime rr = RemoteRuntime.find(getRootElement());
+        if (rr == null) {
+            start.setEnabled(false);
+            pause.setEnabled(false);
+            return;
+        }
+        try {
+            boolean executing = rr.getAdminInterface().isExecuting(rr.getRemoteHandle(getRootElement()));
+            start.setEnabled(!executing);
+            pause.setEnabled(executing);
+        } catch (Exception e) {
+            start.setEnabled(false);
+            pause.setEnabled(false);
         }
     }
 
@@ -297,7 +322,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
      * Generate subgraphs for all expanded groups (recursively)
      *
      * @param parent Parent Graph
-     * @param group Groupto create subgraph for
+     * @param group Group to create subgraph for
      */
     private void createSubGraph(Graph parent, FrameworkElement group) {
         Subgraph graph = new Subgraph(parent, group);
@@ -755,9 +780,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 final ArrayList<FrameworkElement> srcPorts = new ArrayList<FrameworkElement>();
                 final HashSet<FrameworkElement> destPorts = new HashSet<FrameworkElement>();
 
-                FrameworkElementTreeFilter.Callback cb = new FrameworkElementTreeFilter.Callback() {
+                FrameworkElementTreeFilter.Callback<Boolean> cb = new FrameworkElementTreeFilter.Callback<Boolean>() {
                     @Override
-                    public void treeFilterCallback(FrameworkElement fe) {
+                    public void treeFilterCallback(FrameworkElement fe, Boolean unused) {
                         NetPort np = ((AbstractPort)fe).asNetPort();
                         if (np != null) {
                             boolean added = false;
@@ -774,7 +799,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                     }
                 };
                 FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
-                filter.traverseElementTree(getSource().getFinrocElement(), cb, new StringBuilder());
+                filter.traverseElementTree(getSource().getFinrocElement(), null, cb);
                 connectionPanel.expandOnly(true, srcPorts);
                 connectionPanel.expandOnly(false, destPorts);
             }
@@ -942,6 +967,11 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         toolBar.addToggleButton(new MAction(Graph.Layout.neato, null, "neato layout", this));
         toolBar.addToggleButton(new MAction(Graph.Layout.fdp, null, "fdp layout", this));
         toolBar.addSeparator();
+        start = toolBar.createButton("player_play-ubuntu.png", "Start/Resume exectution", this);
+        start.setEnabled(false);
+        pause = toolBar.createButton("player_pause-ubuntu.png", "Pause/Stop exectution", this);
+        pause.setEnabled(false);
+        toolBar.addSeparator();
         refreshButton = toolBar.createButton("reload-ubuntu.png", "Refresh graph", this);
         toolBar.addToggleButton(new MAction(DiverseSwitches.antialiasing, "antialias-wikimedia-public_domain.png", "Antialiasing", this), true);
         toolBar.addToggleButton(new MAction(DiverseSwitches.lineBreaks, "line-break-max.png", "Line Breaks", this), true);
@@ -1002,17 +1032,37 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             FrameworkElement fe = rightClickedOn.getFlag(CoreFlags.FINSTRUCTABLE_GROUP) ? rightClickedOn : rightClickedOn.getParentWithFlags(CoreFlags.FINSTRUCTABLE_GROUP);
             if (fe != null) {
                 RemoteRuntime rr = RemoteRuntime.find(fe);
-                rr.getAdminInterface().saveFinstructableGroup(rr.getRemoteHandle(fe));
+                if (rr == null) {
+                    Finstruct.showErrorMessage("Element is not a child of a remote runtime", false, false);
+                } else {
+                    rr.getAdminInterface().saveFinstructableGroup(rr.getRemoteHandle(fe));
+                }
             }
         } else if (ae.getSource() == miDeleteModule) {
             RemoteRuntime rr = RemoteRuntime.find(rightClickedOn);
-            rr.getAdminInterface().deleteElement(rr.getRemoteHandle(rightClickedOn));
+            if (rr == null) {
+                Finstruct.showErrorMessage("Element is not a child of a remote runtime", false, false);
+            } else {
+                rr.getAdminInterface().deleteElement(rr.getRemoteHandle(rightClickedOn));
+            }
         } else if (ae.getSource() == miEditModule) {
             new ParameterEditDialog(getFinstruct()).show(rightClickedOn);
             try {
                 Thread.sleep(500);
             } catch (InterruptedException e) {}
             relayout();
+        } else if (ae.getSource() == start || ae.getSource() == pause) {
+            RemoteRuntime rr = RemoteRuntime.find(getRootElement());
+            if (rr == null) {
+                Finstruct.showErrorMessage("Root Element is not a child of a remote runtime", false, false);
+            } else {
+                if (ae.getSource() == start) {
+                    rr.getAdminInterface().startExecution();
+                } else {
+                    rr.getAdminInterface().pauseExecution();
+                }
+                updateStartPauseEnabled();
+            }
         }
     }
 

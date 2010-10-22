@@ -229,9 +229,9 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         for (V v : allVertices) {
             lookup.put(v.frameworkElement, v);
         }
-        FrameworkElementTreeFilter.Callback cb = new FrameworkElementTreeFilter.Callback() {
+        FrameworkElementTreeFilter.Callback<Boolean> cb = new FrameworkElementTreeFilter.Callback<Boolean>() {
             @Override
-            public void treeFilterCallback(FrameworkElement fe) {
+            public void treeFilterCallback(FrameworkElement fe, Boolean unused) {
                 if (fe.isChildOf(root)) {
                     NetPort np = ((AbstractPort)fe).asNetPort();
                     for (FrameworkElement feDest : np.getRemoteEdgeDestinations()) {
@@ -253,7 +253,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
             }
         };
         FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
-        filter.traverseElementTree(root, cb, new StringBuilder());
+        filter.traverseElementTree(root, cb, null);
         return result.values();
     }
 
