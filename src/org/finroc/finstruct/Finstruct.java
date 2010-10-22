@@ -61,6 +61,7 @@ import org.finroc.finstruct.views.StandardViewGraphViz;
 import org.finroc.gui.ConnectionPanel;
 import org.finroc.gui.StatusBar;
 import org.finroc.gui.commons.EventRouter;
+import org.finroc.gui.util.gui.IconManager;
 import org.finroc.gui.util.gui.MToolBar;
 import org.finroc.gui.util.treemodel.InterfaceNode;
 import org.finroc.gui.util.treemodel.InterfaceTreeModel;
@@ -121,6 +122,8 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         ThreadLocalCache.get();
         this.setMinimumSize(new Dimension(640, 480));
         setTitle("finstruct");
+
+        IconManager.getInstance().setResourceFolder(Finstruct.class, "icon");
 
         // Create menu
         menuBar = new JMenuBar();
