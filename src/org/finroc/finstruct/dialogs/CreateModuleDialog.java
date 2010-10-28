@@ -258,7 +258,7 @@ public class CreateModuleDialog extends JDialog implements ActionListener, Caret
             RemoteCreateModuleAction rcma = (RemoteCreateModuleAction)jlist.getSelectedValue();
             StructureParameterList spl = null;
             if (e.getSource() == next) {
-                spl = rcma.parameters.cloneList();
+                spl = rcma.parameters.instantiate();
                 ParameterEditDialog ped = new ParameterEditDialog(this);
                 setVisible(false);
                 ped.show(spl, parent);
