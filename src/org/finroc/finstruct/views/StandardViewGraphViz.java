@@ -54,7 +54,6 @@ import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -63,12 +62,12 @@ import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.FrameworkElementTreeFilter;
 import org.finroc.core.RuntimeEnvironment;
-import org.finroc.core.RuntimeListener;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
 import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.finstruct.Finstruct;
+import org.finroc.finstruct.dialogs.CreateInterfacesDialog;
 import org.finroc.finstruct.dialogs.CreateModuleDialog;
 import org.finroc.finstruct.dialogs.ParameterEditDialog;
 import org.finroc.finstruct.graphviz.Graph;
@@ -84,7 +83,7 @@ import org.finroc.log.LogLevel;
  *
  * Standard View - similar to standard view in MCABrowser
  */
-public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener, MouseMotionListener, MouseListener, ChangeListener, RuntimeListener {
+public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener, MouseMotionListener, MouseListener, ChangeListener {
 
     /** UID */
     private static final long serialVersionUID = 5168689573715463737L;
@@ -147,13 +146,10 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     private JPopupMenu popupMenu;
 
     /** PopUp-Menu Items */
-    private JMenuItem miCreateModule, miSaveChanges, miEditModule, miDeleteModule;
+    private JMenuItem miCreateModule, miSaveChanges, miEditModule, miDeleteModule, miCreateInterfaces;
 
     /** Framework element that right-click-menu was opened upon */
     private FrameworkElement rightClickedOn;
-
-    /** Link of last module created */
-    private volatile CreateModuleDialog lastCreator = null;
 
     public StandardViewGraphViz() {
         testLabel.setFont(FONT);
@@ -164,14 +160,14 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         mouseHandlers = new MouseHandlerManager(this);
         addMouseMotionListener(this);
         addMouseListener(this);
-        RuntimeEnvironment.getInstance().addListener(this);
 
         // Create PopupMenu
         popupMenu = new JPopupMenu();
         miCreateModule = createMenuEntry("Create Element...");
-        miSaveChanges = createMenuEntry("Save Changes");
+        miCreateInterfaces = createMenuEntry("Create Interfaces...");
         miEditModule = createMenuEntry("Edit Parameters");
         miDeleteModule = createMenuEntry("Delete Element");
+        miSaveChanges = createMenuEntry("Save Changes");
     }
 
     /**
@@ -1023,11 +1019,8 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             setZoom(1);
         } else if (ae.getSource() == miCreateModule) {
             CreateModuleDialog cmd = new CreateModuleDialog(getFinstruct());
-            lastCreator = cmd;
             cmd.show(rightClickedOn);
-            if (cmd.getCreated() == null) {
-                relayout();
-            }
+            relayout();
         } else if (ae.getSource() == miSaveChanges) {
             FrameworkElement fe = rightClickedOn.getFlag(CoreFlags.FINSTRUCTABLE_GROUP) ? rightClickedOn : rightClickedOn.getParentWithFlags(CoreFlags.FINSTRUCTABLE_GROUP);
             if (fe != null) {
@@ -1046,7 +1039,13 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 rr.getAdminInterface().deleteElement(rr.getRemoteHandle(rightClickedOn));
             }
         } else if (ae.getSource() == miEditModule) {
-            new ParameterEditDialog(getFinstruct()).show(rightClickedOn);
+            new ParameterEditDialog(getFinstruct()).show(rightClickedOn, true);
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {}
+            relayout();
+        } else if (ae.getSource() == miCreateInterfaces) {
+            new CreateInterfacesDialog(getFinstruct()).show(rightClickedOn);
             try {
                 Thread.sleep(500);
             } catch (InterruptedException e) {}
@@ -1172,40 +1171,13 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                     boolean expanded = expandedGroups.contains(rightClickedOn) || rightClickedOn == getRootElement();
                     miCreateModule.setEnabled(expanded);
                     miDeleteModule.setEnabled(!expanded);
+                    miCreateInterfaces.setEnabled(!rightClickedOn.isPort());
 
                     // show right-click-menu with create-action
                     popupMenu.show(this, e.getX(), e.getY());
                 }
             }
         }
-    }
-
-    @Override
-    public void runtimeChange(byte changeType, final FrameworkElement element) {
-        CreateModuleDialog cmd = lastCreator;
-        if (cmd == null) {
-            return;
-        }
-
-        if (changeType == RuntimeListener.ADD && element.getParent() == rightClickedOn && element.getQualifiedLink().equals(cmd.getCreated())) {
-            if (System.currentTimeMillis() < (cmd.getModuleCreatedAt() + 1000)) {
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        new ParameterEditDialog(getFinstruct()).show(element);
-                        try {
-                            Thread.sleep(500);
-                        } catch (InterruptedException e) {}
-                        relayout();
-                    }
-                });
-            }
-        }
-    }
-
-    @Override
-    public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {
-        // do nothing at the moment
     }
 
 //    /**

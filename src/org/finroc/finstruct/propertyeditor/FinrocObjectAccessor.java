@@ -31,7 +31,11 @@ import org.finroc.gui.util.propertyeditor.ObjectAccessor;
 public class FinrocObjectAccessor extends ObjectAccessor<TypedObject> {
 
     public FinrocObjectAccessor(TypedObject wrapped) {
-        super(wrapped);
+        super(wrapped.getType().getName() + " object", wrapped);
+    }
+
+    public FinrocObjectAccessor(String name, TypedObject wrapped) {
+        super(name, wrapped);
     }
 
     @Override
@@ -40,7 +44,7 @@ public class FinrocObjectAccessor extends ObjectAccessor<TypedObject> {
     }
 
     @Override
-    public String getName() {
-        return wrapped.getType().getName() + " object";
+    public boolean isModifiable() {
+        return true;
     }
 }

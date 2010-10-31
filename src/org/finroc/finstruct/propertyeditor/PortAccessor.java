@@ -193,4 +193,9 @@ public class PortAccessor<T extends TypedObject> implements PropertyAccessor<T>,
             listener.portChanged();
         }
     }
+
+    @Override
+    public boolean isModifiable() {
+        return true;
+    }
 }

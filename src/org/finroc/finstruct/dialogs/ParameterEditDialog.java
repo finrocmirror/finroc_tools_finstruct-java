@@ -35,6 +35,7 @@ import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.finstruct.Finstruct;
 import org.finroc.finstruct.propertyeditor.FinrocComponentFactory;
 import org.finroc.finstruct.propertyeditor.StructureParameterAccessor;
+import org.finroc.gui.util.gui.MDialog;
 import org.finroc.gui.util.propertyeditor.PropertiesPanel;
 import org.finroc.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.gui.util.propertyeditor.StandardComponentFactory;
@@ -45,7 +46,7 @@ import org.finroc.log.LogLevel;
  *
  * Dialog to edit (structure) parameters of framework elements
  */
-public class ParameterEditDialog extends JDialog implements ActionListener {
+public class ParameterEditDialog extends MDialog implements ActionListener {
 
     /** UID */
     private static final long serialVersionUID = 1508066944645377137L;
@@ -75,14 +76,15 @@ public class ParameterEditDialog extends JDialog implements ActionListener {
 
     /**
      * @param element Remote Element to edit parameters of
+     * @param warnIfNoParameters Warn if no parameters could be retrieved?
      */
-    public void show(FrameworkElement element) {
+    public void show(FrameworkElement element, boolean warnIfNoParameters) {
         this.element = element;
         RemoteRuntime rr = RemoteRuntime.find(element);
         elementParamList = (StructureParameterList)rr.getAdminInterface().getAnnotation(rr.getRemoteHandle(element), StructureParameterList.TYPE);
         if (elementParamList != null) {
             show(elementParamList, element);
-        } else {
+        } else if (warnIfNoParameters) {
             Finstruct.showErrorMessage("Cannot get parameter list for " + element.getQualifiedLink(), false, false);
         }
     }
@@ -101,19 +103,11 @@ public class ParameterEditDialog extends JDialog implements ActionListener {
         // Create buttons
         JPanel buttons = new JPanel();
         getContentPane().add(buttons, BorderLayout.SOUTH);
-        cancelBack = new JButton("Back");
-        cancelBack.addActionListener(this);
-        buttons.add(cancelBack);
-        okCreate = new JButton("Create");
-        okCreate.addActionListener(this);
-        if (element != null) { // framework element property edit mode
-            cancelBack.setText("Cancel");
-            okCreate.setText("Apply & Close");
-            apply = new JButton("Apply");
-            apply.addActionListener(this);
-            buttons.add(apply);
+        cancelBack = createButton(element == null ? "Back" : "Cancel", buttons);
+        if (element != null) {
+            apply = createButton("Apply", buttons);
         }
-        buttons.add(okCreate);
+        okCreate = createButton(element == null ? "Create" : "Apply & Close", buttons);
 
         // show dialog
         pack();
@@ -151,14 +145,5 @@ public class ParameterEditDialog extends JDialog implements ActionListener {
                 close();
             }
         }
-    }
-
-    /**
-     * Close dialog
-     */
-    private void close() {
-        setVisible(false);
-        getRootPane().removeAll();
-        dispose();
     }
 }

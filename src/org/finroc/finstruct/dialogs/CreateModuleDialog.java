@@ -36,7 +36,6 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -50,16 +49,20 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import org.finroc.core.FrameworkElement;
+import org.finroc.core.RuntimeListener;
 import org.finroc.core.parameter.StructureParameterList;
 import org.finroc.core.plugin.RemoteCreateModuleAction;
+import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.net.RemoteRuntime;
+import org.finroc.finstruct.Finstruct;
+import org.finroc.gui.util.gui.MDialog;
 
 /**
  * @author max
  *
  * Create Module Dialog
  */
-public class CreateModuleDialog extends JDialog implements ActionListener, CaretListener, ListSelectionListener {
+public class CreateModuleDialog extends MDialog implements ActionListener, CaretListener, ListSelectionListener, RuntimeListener {
 
     /** UID */
     private static final long serialVersionUID = -349194234472122705L;
@@ -82,11 +85,11 @@ public class CreateModuleDialog extends JDialog implements ActionListener, Caret
     /** Data model listeners */
     private final ArrayList<ListDataListener> listener = new ArrayList<ListDataListener>();
 
-    /** Contains created module name - after dialog closed */
-    private volatile String created = null;
+    /** Name of Created module */
+    private String created;
 
-    /** Timestamp when module was created */
-    private volatile long moduleCreatedAt = 0;
+    /** Created Module - set when changed event is received via runtime listener */
+    private FrameworkElement createdModule;
 
     /** Gridbag constraints for layout */
     private final GridBagConstraints gbc = new GridBagConstraints();
@@ -127,15 +130,9 @@ public class CreateModuleDialog extends JDialog implements ActionListener, Caret
         addComponent(main, "", jlist, 3, true);
 
         // create buttons
-        cancel = new JButton("Cancel");
-        cancel.addActionListener(this);
-        buttons.add(cancel);
-        next = new JButton("Next");
-        next.addActionListener(this);
-        buttons.add(next);
-        create = new JButton("Create & Edit");
-        create.addActionListener(this);
-        buttons.add(create);
+        cancel = createButton("Cancel", buttons);
+        next = createButton("Next", buttons);
+        create = createButton("Create & Edit", buttons);
         addComponent(main, "", buttons, 4, false);
 
         // get create module actions
@@ -278,21 +275,38 @@ public class CreateModuleDialog extends JDialog implements ActionListener, Caret
             }
 
             RemoteRuntime rr = RemoteRuntime.find(parent);
-            created = parent.getQualifiedLink() + "/" + name.getText();
-            moduleCreatedAt = System.currentTimeMillis();
-            rr.getAdminInterface().createModule(rcma, name.getText(), rr.getRemoteHandle(parent), sa);
+
+            // wait for creation and possibly open dialog for editing parameters
+            synchronized (this) {
+
+                try {
+                    parent.getRuntime().addListener(this);
+                    created = name.getText();
+                    long moduleCreatedAt = System.currentTimeMillis();
+                    if (rr.getAdminInterface().createModule(rcma, name.getText(), rr.getRemoteHandle(parent), sa)) {
+                        while (createdModule == null && System.currentTimeMillis() < moduleCreatedAt + 2000) {
+                            try {
+                                wait(500);
+                            } catch (InterruptedException e1) {
+                            }
+                        }
+
+                        if (createdModule == null) {
+                            Finstruct.showErrorMessage("Couldn't find & edit created element", false, false);
+                        } else {
+
+                            // possibly show edit dialog
+                            new ParameterEditDialog(this).show(createdModule, false);
+                        }
+                    }
+
+                } finally {
+                    parent.getRuntime().removeListener(this);
+                }
+            }
 
             close();
         }
-    }
-
-    /**
-     * Close dialog
-     */
-    private void close() {
-        setVisible(false);
-        getRootPane().removeAll();
-        dispose();
     }
 
     @Override
@@ -310,19 +324,18 @@ public class CreateModuleDialog extends JDialog implements ActionListener, Caret
         next.setEnabled(b && rcma.parameters.size() > 0);
     }
 
-    /**
-     * @return created module name - after dialog closed (null if creation was cancelled)
-     */
-    public String getCreated() {
-        return created;
+    @Override
+    public synchronized void runtimeChange(byte changeType, FrameworkElement element) {
+        if (changeType == RuntimeListener.ADD && element.getParent() == parent) {
+            if (element.getDescription().equals(created)) {
+                createdModule = element;
+                notifyAll();
+            }
+        }
     }
 
-    /**
-     * @return Timestamp when module was created
-     */
-    public long getModuleCreatedAt() {
-        return moduleCreatedAt;
-    }
+    @Override
+    public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {}
 
     /**
      * List model for JList

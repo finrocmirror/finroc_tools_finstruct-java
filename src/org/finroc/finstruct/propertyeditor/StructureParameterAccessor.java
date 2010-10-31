@@ -95,4 +95,8 @@ public class StructureParameterAccessor implements PropertyAccessor {
         return result;
     }
 
+    @Override
+    public boolean isModifiable() {
+        return true;
+    }
 }
