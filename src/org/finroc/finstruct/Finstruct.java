@@ -114,7 +114,21 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
     /** Log domain for this class */
     public static final LogDomain logDomain = LogDefinitions.finroc.getSubDomain("finstruct");
 
+    /** Enable beta features? */
+    public static boolean BETA_FEATURES;
+
+    /** Enable experimental features? */
+    public static boolean EXPERIMENTAL_FEATURES;
+
     public static void main(String[] args) {
+        for (String arg : args) {
+            if (arg.equalsIgnoreCase("--beta")) {
+                BETA_FEATURES = true;
+            } else if (arg.equalsIgnoreCase("--experimental")) {
+                EXPERIMENTAL_FEATURES = true;
+            }
+        }
+
         new Finstruct();
     }
 
@@ -159,12 +173,15 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         views.add(new ViewSelector(StandardView.class, viewSelectGroup));
         views.add(new ViewSelector(PortView.class, viewSelectGroup));
 
-        // view menu
-        JMenu menuView = new JMenu("View");
-        menuFile.setMnemonic(KeyEvent.VK_V);
-        menuBar.add(menuView);
-        for (ViewSelector view : views) {
-            menuView.add(view);
+        if (BETA_FEATURES) {
+
+            // view menu
+            JMenu menuView = new JMenu("View");
+            menuFile.setMnemonic(KeyEvent.VK_V);
+            menuBar.add(menuView);
+            for (ViewSelector view : views) {
+                menuView.add(view);
+            }
         }
 
         // Status bar

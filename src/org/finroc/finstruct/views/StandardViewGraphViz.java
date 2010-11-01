@@ -281,7 +281,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             }
 
             // Layout
-            graph.applyLayout(toolBar.getSelection(Graph.Layout.values()), false);
+            graph.applyLayout(Finstruct.EXPERIMENTAL_FEATURES ? toolBar.getSelection(Graph.Layout.values()) : Graph.Layout.dot, false);
 
             revalidate();
             repaint();
@@ -298,19 +298,21 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
      * Update whether start and pause buttons are enabled
      */
     private void updateStartPauseEnabled() {
-        RemoteRuntime rr = RemoteRuntime.find(getRootElement());
-        if (rr == null) {
-            start.setEnabled(false);
-            pause.setEnabled(false);
-            return;
-        }
-        try {
-            boolean executing = rr.getAdminInterface().isExecuting(rr.getRemoteHandle(getRootElement()));
-            start.setEnabled(!executing);
-            pause.setEnabled(executing);
-        } catch (Exception e) {
-            start.setEnabled(false);
-            pause.setEnabled(false);
+        if (Finstruct.BETA_FEATURES) {
+            RemoteRuntime rr = RemoteRuntime.find(getRootElement());
+            if (rr == null) {
+                start.setEnabled(false);
+                pause.setEnabled(false);
+                return;
+            }
+            try {
+                boolean executing = rr.getAdminInterface().isExecuting(rr.getRemoteHandle(getRootElement()));
+                start.setEnabled(!executing);
+                pause.setEnabled(executing);
+            } catch (Exception e) {
+                start.setEnabled(false);
+                pause.setEnabled(false);
+            }
         }
     }
 
@@ -954,20 +956,31 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
         // tool bar
         this.toolBar = toolBar;
-        //IconManager.getInstanc
-        toolBar.addToggleButton(new MAction(Mode.navigate, null, "Navigation Mode", this));
-        toolBar.addToggleButton(new MAction(Mode.connect, null, "Connect Mode", this));
-        toolBar.addSeparator();
-        toolBar.startNextButtonGroup();
-        toolBar.addToggleButton(new MAction(Graph.Layout.dot, null, "dot layout", this));
-        toolBar.addToggleButton(new MAction(Graph.Layout.neato, null, "neato layout", this));
-        toolBar.addToggleButton(new MAction(Graph.Layout.fdp, null, "fdp layout", this));
-        toolBar.addSeparator();
-        start = toolBar.createButton("player_play-ubuntu.png", "Start/Resume exectution", this);
-        start.setEnabled(false);
-        pause = toolBar.createButton("player_pause-ubuntu.png", "Pause/Stop exectution", this);
-        pause.setEnabled(false);
-        toolBar.addSeparator();
+
+        if (Finstruct.BETA_FEATURES) {
+            toolBar.addToggleButton(new MAction(Mode.navigate, null, "Navigation Mode", this));
+            toolBar.addToggleButton(new MAction(Mode.connect, null, "Connect Mode", this));
+            toolBar.addSeparator();
+            toolBar.startNextButtonGroup();
+            toolBar.setSelected(Mode.navigate);
+        }
+
+        if (Finstruct.EXPERIMENTAL_FEATURES) {
+            toolBar.addToggleButton(new MAction(Graph.Layout.dot, null, "dot layout", this));
+            toolBar.addToggleButton(new MAction(Graph.Layout.neato, null, "neato layout", this));
+            toolBar.addToggleButton(new MAction(Graph.Layout.fdp, null, "fdp layout", this));
+            toolBar.addSeparator();
+            toolBar.setSelected(Graph.Layout.dot);
+        }
+
+        if (Finstruct.BETA_FEATURES) {
+            start = toolBar.createButton("player_play-ubuntu.png", "Start/Resume exectution", this);
+            start.setEnabled(false);
+            pause = toolBar.createButton("player_pause-ubuntu.png", "Pause/Stop exectution", this);
+            pause.setEnabled(false);
+            toolBar.addSeparator();
+        }
+
         refreshButton = toolBar.createButton("reload-ubuntu.png", "Refresh graph", this);
         toolBar.addToggleButton(new MAction(DiverseSwitches.antialiasing, "antialias-wikimedia-public_domain.png", "Antialiasing", this), true);
         toolBar.addToggleButton(new MAction(DiverseSwitches.lineBreaks, "line-break-max.png", "Line Breaks", this), true);
@@ -990,8 +1003,6 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         rankSep.setMaximumSize(rankSep.getPreferredSize());
         toolBar.setSelected(DiverseSwitches.antialiasing, true);
         toolBar.setSelected(DiverseSwitches.lineBreaks, true);
-        toolBar.setSelected(Mode.navigate);
-        toolBar.setSelected(Graph.Layout.dot);
     }
 
     @SuppressWarnings("rawtypes")
