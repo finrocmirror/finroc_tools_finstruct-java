@@ -55,6 +55,7 @@ import org.finroc.core.plugin.CreateExternalConnectionAction;
 import org.finroc.core.plugin.ExternalConnection;
 import org.finroc.core.plugin.Plugins;
 import org.finroc.core.port.ThreadLocalCache;
+import org.finroc.finstruct.views.AbstractFinstructGraphView;
 import org.finroc.finstruct.views.PortView;
 import org.finroc.finstruct.views.StandardView;
 import org.finroc.finstruct.views.StandardViewGraphViz;
@@ -262,13 +263,15 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         }
 
         // Clear toolbar
-        toolBar.removeAll();
+        toolBar.clear();
 
         FrameworkElement lastRoot = currentView == null ? null : currentView.getRootElement();
         currentView = view;
 
         // reinit tool and menu bar with view's entries
         view.initMenuAndToolBar(menuBar, toolBar);
+        toolBar.revalidate();
+        toolBar.getParent().repaint();
 
         // fill left part of split pane
         splitPane.setLeftComponent(view.initLeftPanel(connectionPanel));
@@ -448,9 +451,23 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             Object sel = e.getPath().getLastPathComponent();
             if (!(sel instanceof TreePortWrapper)) {
                 if (sel instanceof InterfaceNode) {
-                    if (currentView != null) {
-                        logDomain.log(LogLevel.LL_DEBUG, getLogDescription(), "Setting view root to " + sel.toString());
-                        currentView.setRootElement(((InterfaceNode)sel).getFrameworkElement());
+                    InterfaceNode sel2 = (InterfaceNode)sel;
+                    if (BETA_FEATURES) {
+                        if (currentView != null) {
+                            logDomain.log(LogLevel.LL_DEBUG, getLogDescription(), "Setting view root to " + sel.toString());
+                            currentView.setRootElement(sel2.getFrameworkElement());
+                        }
+                    } else {
+                        // auto-select view
+                        Class <? extends FinstructView > viewClass = AbstractFinstructGraphView.isInterface(sel2.getFrameworkElement()) ? PortView.class : StandardViewGraphViz.class;
+                        if (currentView == null || currentView.getClass() != viewClass) {
+                            try {
+                                changeView(viewClass.newInstance());
+                            } catch (Exception e1) {
+                                e1.printStackTrace();
+                            }
+                        }
+                        currentView.setRootElement(sel2.getFrameworkElement());
                     }
                 }
             }

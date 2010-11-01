@@ -143,9 +143,9 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
     @Override
     public void initMenuAndToolBar(JMenuBar menuBar, MToolBar toolBar) {
         this.toolBar = toolBar;
-        toolBar.addToggleButton(new MAction(DiverseSwitches.autoUpdate, null, "Auto Update", this), true);
-        toolBar.add(new MAction(DiverseSwitches.singleUpdate, null, "Single Update", this));
-        toolBar.add(new MAction(DiverseSwitches.apply, null, "Apply", this));
+        toolBar.addToggleButton(new MAction(DiverseSwitches.autoUpdate, "system-upgrade-ubuntu.png", "Auto Update", this), true);
+        toolBar.add(new MAction(DiverseSwitches.singleUpdate, "reload-ubuntu.png", "Single Update", this));
+        toolBar.add(new MAction(DiverseSwitches.apply, "gtk-apply-ubuntu.png", "Apply", this));
     }
 
     @Override
