@@ -797,7 +797,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                     }
                 };
                 FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
-                filter.traverseElementTree(getSource().getFinrocElement(), null, cb);
+                filter.traverseElementTree(getSource().getFinrocElement(), cb, false);
                 connectionPanel.expandOnly(true, srcPorts);
                 connectionPanel.expandOnly(false, destPorts);
             }
