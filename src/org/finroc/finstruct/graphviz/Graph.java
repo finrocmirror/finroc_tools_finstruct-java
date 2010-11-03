@@ -253,10 +253,10 @@ public class Graph extends GraphVizElement {
      */
     private void readBounds(String boundsString) {
         String[] s = boundsString.split(",");
-        layoutBounds.x = Integer.parseInt(s[0]);
-        layoutBounds.y = Integer.parseInt(s[1]);
-        layoutBounds.width = Integer.parseInt(s[2]) - layoutBounds.x;
-        layoutBounds.height = Integer.parseInt(s[3]) - layoutBounds.y;
+        layoutBounds.x = (int)java.lang.Double.parseDouble(s[0]);
+        layoutBounds.y = (int)java.lang.Double.parseDouble(s[1]);
+        layoutBounds.width = (int)java.lang.Double.parseDouble(s[2]) - layoutBounds.x;
+        layoutBounds.height = (int)java.lang.Double.parseDouble(s[3]) - layoutBounds.y;
     }
 
     @Override
