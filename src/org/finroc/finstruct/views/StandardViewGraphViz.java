@@ -287,6 +287,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             repaint();
 
             // set start/pause icon state
+            ThreadLocalCache.get();
             updateStartPauseEnabled();
 
         } catch (Exception e) {
