@@ -86,6 +86,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
     /** Menu items */
     private JMenuItem miDisconnectDiscard, miExit;
+    private JRadioButtonMenuItem miAutoView;
     private JMenu miConnectMenu;
 
     /** Status bar */
@@ -171,18 +172,22 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         // find views
         ButtonGroup viewSelectGroup = new ButtonGroup();
         views.add(new ViewSelector(StandardViewGraphViz.class, viewSelectGroup));
-        views.add(new ViewSelector(StandardView.class, viewSelectGroup));
         views.add(new ViewSelector(PortView.class, viewSelectGroup));
-
         if (BETA_FEATURES) {
+            views.add(new ViewSelector(StandardView.class, viewSelectGroup));
+        }
 
-            // view menu
-            JMenu menuView = new JMenu("View");
-            menuFile.setMnemonic(KeyEvent.VK_V);
-            menuBar.add(menuView);
-            for (ViewSelector view : views) {
-                menuView.add(view);
-            }
+        // view menu
+        JMenu menuView = new JMenu("View");
+        menuView.setMnemonic(KeyEvent.VK_V);
+        menuBar.add(menuView);
+        miAutoView = new JRadioButtonMenuItem("Auto Select", true);
+        viewSelectGroup.add(miAutoView);
+        menuView.add(miAutoView);
+        miAutoView.addActionListener(this);
+        menuView.addSeparator();
+        for (ViewSelector view : views) {
+            menuView.add(view);
         }
 
         // Status bar
@@ -280,10 +285,12 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         splitPane.setRightComponent(new JScrollPane(view));
 
         // update menu
-        for (ViewSelector v : views) {
-            if (v.view.equals(view.getClass())) {
-                v.setSelected(true);
-                break;
+        if (!miAutoView.isSelected()) {
+            for (ViewSelector v : views) {
+                if (v.view.equals(view.getClass())) {
+                    v.setSelected(true);
+                    break;
+                }
             }
         }
 
@@ -451,15 +458,11 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             Object sel = e.getPath().getLastPathComponent();
             if (!(sel instanceof TreePortWrapper)) {
                 if (sel instanceof InterfaceNode) {
+                    logDomain.log(LogLevel.LL_DEBUG, getLogDescription(), "Setting view root to " + sel.toString());
                     InterfaceNode sel2 = (InterfaceNode)sel;
-                    if (BETA_FEATURES) {
-                        if (currentView != null) {
-                            logDomain.log(LogLevel.LL_DEBUG, getLogDescription(), "Setting view root to " + sel.toString());
-                            currentView.setRootElement(sel2.getFrameworkElement());
-                        }
-                    } else {
+                    if (miAutoView.isSelected()) {
                         // auto-select view
-                        Class <? extends FinstructView > viewClass = AbstractFinstructGraphView.isInterface(sel2.getFrameworkElement()) ? PortView.class : StandardViewGraphViz.class;
+                        Class <? extends FinstructView > viewClass = (AbstractFinstructGraphView.isInterface(sel2.getFrameworkElement()) || AbstractFinstructGraphView.isParameters(sel2.getFrameworkElement())) ? PortView.class : StandardViewGraphViz.class;
                         if (currentView == null || currentView.getClass() != viewClass) {
                             try {
                                 changeView(viewClass.newInstance());
@@ -468,6 +471,10 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                             }
                         }
                         currentView.setRootElement(sel2.getFrameworkElement());
+                    } else {
+                        if (currentView != null) {
+                            currentView.setRootElement(sel2.getFrameworkElement());
+                        }
                     }
                 }
             }

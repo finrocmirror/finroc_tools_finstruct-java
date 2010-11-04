@@ -123,6 +123,24 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         return fe.getFlag(CoreFlags.EDGE_AGGREGATOR) && fe.getFlag(EdgeAggregator.IS_INTERFACE);
     }
 
+    /**
+     * @param fe Framework element
+     * @return Is parameter node?
+     */
+    public static boolean isParameters(FrameworkElement fe) {
+        if (fe.getDescription().equalsIgnoreCase("Parameter") || fe.getDescription().equalsIgnoreCase("Parameters")) {
+            ChildIterator ci = new ChildIterator(fe);
+            FrameworkElement next = null;
+            while ((next = ci.next()) != null) {
+                if (!next.isPort()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
 
     /**
      * Returns parent of framework element that is displayed in graph
@@ -202,7 +220,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
                 // we have a group, if there's an non-port, non-interface, non-empty sub-node
                 ci.reset(fe);
                 while ((next = ci.next()) != null) {
-                    if ((!next.isPort()) && (!isInterface(next))) {
+                    if ((!next.isPort()) && (!isInterface(next)) && (!isParameters(next))) {
                         v.setGroup(true);
                     }
                 }
