@@ -45,6 +45,7 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
@@ -122,16 +123,37 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
     /** Enable experimental features? */
     public static boolean EXPERIMENTAL_FEATURES;
 
+    /** TCP Connect action */
+    public ConnectAction tcpConnect;
+
     public static void main(String[] args) {
+        String connect = null;
         for (String arg : args) {
             if (arg.equalsIgnoreCase("--beta")) {
                 BETA_FEATURES = true;
             } else if (arg.equalsIgnoreCase("--experimental")) {
                 EXPERIMENTAL_FEATURES = true;
+            } else if (arg.startsWith("--connect=")) {
+                connect = arg.substring(arg.indexOf("=") + 1);
             }
         }
 
-        new Finstruct();
+        final Finstruct finstruct = new Finstruct();
+
+        // connect ?
+        if (connect != null && finstruct.tcpConnect != null) {
+            final String address = connect;
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        finstruct.tcpConnect.connect(address);
+                    } catch (Exception e) {
+                        showErrorMessage(e, true);
+                    }
+                }
+            });
+        }
     }
 
     public Finstruct() {
@@ -150,7 +172,11 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         //miReconnectMenu = new JMenu("Reconnect");
         for (CreateExternalConnectionAction ioi : Plugins.getInstance().getExternalConnections().getBackend()) {
             if ((ioi.getFlags() & CreateExternalConnectionAction.REMOTE_EDGE_INFO) != 0) {
-                miConnectMenu.add(new ConnectAction(ioi, false, false));
+                ConnectAction action = new ConnectAction(ioi, false, false);
+                miConnectMenu.add(action);
+                if (action.ioInterface.getName().startsWith("TCP")) {
+                    tcpConnect = action;
+                }
             }
             //miDisconnectMenu.add(new ConnectAction(ioi, true, false));
             //miReconnectMenu.add(new ConnectAction(ioi, false, true));
@@ -382,18 +408,29 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                 } else if (reconnect) {
                     //ioInterface.reconnect();
                 } else {
-                    //ioInterface.connect(null);
-                    ExternalConnection ec = ioInterface.createExternalConnection();
-                    Finstruct.this.ioInterface.getRootFrameworkElement().addChild(ec);
-                    ec.init();
-                    ec.addConnectionListener(Finstruct.this);
-                    ec.connect(null);
-                    //parent.ioInterface.addModule(ioInterface.createModule());
+                    connect(null);
+                    return;
                 }
                 EventRouter.fireConnectionEvent(null, ConnectionListener.INTERFACE_UPDATED);
             } catch (Exception ex) {
                 showErrorMessage(ex, true);
             }
+        }
+
+        /**
+         * Connect
+         *
+         * @param address Address to connect to
+         */
+        private void connect(String address) throws Exception {
+            //ioInterface.connect(null);
+            ExternalConnection ec = ioInterface.createExternalConnection();
+            Finstruct.this.ioInterface.getRootFrameworkElement().addChild(ec);
+            ec.init();
+            ec.addConnectionListener(Finstruct.this);
+            ec.connect(address);
+            //parent.ioInterface.addModule(ioInterface.createModule());
+            EventRouter.fireConnectionEvent(null, ConnectionListener.INTERFACE_UPDATED);
         }
     }
 
