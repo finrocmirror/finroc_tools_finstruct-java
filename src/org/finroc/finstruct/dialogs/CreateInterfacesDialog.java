@@ -62,7 +62,7 @@ public class CreateInterfacesDialog extends MDialog {
     /**
      * Task to create an interface
      */
-    class CreationTask implements Serializable {
+    static class CreationTask implements Serializable {
 
         /** UID */
         private static final long serialVersionUID = 2945689873558975031L;
@@ -71,7 +71,7 @@ public class CreateInterfacesDialog extends MDialog {
         boolean create = true;
 
         /** Name of interface to create */
-        String name = "Interface " + creation.tasks.size();
+        String name = "Interface X";
 
         /** Interface's data classification */
         GroupInterface.DataClassification dataClassification = GroupInterface.DataClassification.ANY;
@@ -117,7 +117,7 @@ public class CreateInterfacesDialog extends MDialog {
      */
     public void show(FrameworkElement element) {
         this.element = element;
-        if (RemoteRuntime.find(element) == null || (!element.getFlag(CoreFlags.FINSTRUCTED))) {
+        if (RemoteRuntime.find(element) == null || (!element.getFlag(CoreFlags.FINSTRUCTED)) && (!element.getFlag(CoreFlags.FINSTRUCTABLE_GROUP))) {
             Finstruct.showErrorMessage("Not a remote finstructed element", false, false);
             return;
         }
@@ -239,6 +239,9 @@ public class CreateInterfacesDialog extends MDialog {
                             Finstruct.showErrorMessage("Please select unique names for new interfaces", false, false);
                             return false;
                         }
+                    }
+                    if (task.portCreationList == null) {
+                        task.portCreationList = new PortCreationList();
                     }
                     accessors.add(new FinrocObjectAccessor(task.name + " ports", task.portCreationList));
                 }

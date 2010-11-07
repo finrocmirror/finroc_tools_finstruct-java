@@ -22,12 +22,8 @@ package org.finroc.finstruct.dialogs;
 
 import java.awt.Dimension;
 import java.awt.Frame;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -35,16 +31,10 @@ import java.util.TreeSet;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import javax.swing.ListModel;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
-import javax.swing.event.ListDataEvent;
-import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
@@ -55,14 +45,14 @@ import org.finroc.core.plugin.RemoteCreateModuleAction;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.finstruct.Finstruct;
-import org.finroc.gui.util.gui.MDialog;
+import org.finroc.finstruct.util.FilteredList;
 
 /**
  * @author max
  *
  * Create Module Dialog
  */
-public class CreateModuleDialog extends MDialog implements ActionListener, CaretListener, ListSelectionListener, RuntimeListener {
+public class CreateModuleDialog extends MGridBagDialog implements ActionListener, CaretListener, ListSelectionListener, RuntimeListener, FilteredList.Filter<RemoteCreateModuleAction> {
 
     /** UID */
     private static final long serialVersionUID = -349194234472122705L;
@@ -70,29 +60,23 @@ public class CreateModuleDialog extends MDialog implements ActionListener, Caret
     /** Dialog components */
     private JTextField filter, name;
     private JComboBox group;
-    private JList jlist;
+    private FilteredList<RemoteCreateModuleAction> jlist;
     private JButton next, cancel, create;
 
     /** Parent framework element */
     private FrameworkElement parent;
 
     /** All Create Module actions */
-    private List<RemoteCreateModuleAction> createModuleActions;
+    //private List<RemoteCreateModuleAction> createModuleActions;
 
     /** Available Create Module actions with filters applied */
-    private final ArrayList<RemoteCreateModuleAction> filteredActions = new ArrayList<RemoteCreateModuleAction>();
-
-    /** Data model listeners */
-    private final ArrayList<ListDataListener> listener = new ArrayList<ListDataListener>();
+    //private final ArrayList<RemoteCreateModuleAction> filteredActions = new ArrayList<RemoteCreateModuleAction>();
 
     /** Name of Created module */
     private String created;
 
     /** Created Module - set when changed event is received via runtime listener */
     private FrameworkElement createdModule;
-
-    /** Gridbag constraints for layout */
-    private final GridBagConstraints gbc = new GridBagConstraints();
 
     public CreateModuleDialog(Frame owner) {
         super(owner, true);
@@ -107,36 +91,31 @@ public class CreateModuleDialog extends MDialog implements ActionListener, Caret
     public void show(FrameworkElement parent) {
         this.parent = parent;
 
-        // create panels
-        JPanel main = new JPanel();
-        main.setLayout(new GridBagLayout());
-        JPanel buttons = new JPanel();
-        getContentPane().add(main);
-
         // create components
+        jlist = new FilteredList<RemoteCreateModuleAction>(this);
         name = new JTextField();
         name.addCaretListener(this);
-        addComponent(main, "Module name", name, 0, false);
+        addComponent("Module name", name, 0, false);
         filter = new JTextField();
-        filter.addCaretListener(this);
-        addComponent(main, "Type name filter", filter, 1, false);
+        filter.addCaretListener(jlist);
+        addComponent("Type name filter", filter, 1, false);
         group = new JComboBox();
-        group.addActionListener(this);
-        addComponent(main, "Module group filter", group, 2, false);
-        jlist = new JList();
+        group.addActionListener(jlist);
+        addComponent("Module group filter", group, 2, false);
         jlist.addListSelectionListener(this);
         jlist.setPreferredSize(new Dimension(200, 400));
         jlist.setFont(filter.getFont());
-        addComponent(main, "", jlist, 3, true);
+        addComponent("", jlist, 3, true);
 
         // create buttons
+        JPanel buttons = new JPanel();
         cancel = createButton("Cancel", buttons);
         next = createButton("Next", buttons);
         create = createButton("Create & Edit", buttons);
-        addComponent(main, "", buttons, 4, false);
+        addComponent("", buttons, 4, false);
 
         // get create module actions
-        createModuleActions = RemoteRuntime.find(parent).getAdminInterface().getRemoteModuleTypes();
+        List<RemoteCreateModuleAction> createModuleActions = RemoteRuntime.find(parent).getAdminInterface().getRemoteModuleTypes();
 
         // fill groups and list
         SortedSet<Object> groups = new TreeSet<Object>();
@@ -145,10 +124,8 @@ public class CreateModuleDialog extends MDialog implements ActionListener, Caret
             groups.add(rcma.groupName);
         }
         group.setModel(new DefaultComboBoxModel(groups.toArray()));
-        updateListModel();
         updateButtonState();
-        jlist.setModel(new Model());
-        jlist.setSelectedIndex(0);
+        jlist.setElements(createModuleActions);
 
         // show dialog
         getRootPane().setDefaultButton(create);
@@ -157,102 +134,37 @@ public class CreateModuleDialog extends MDialog implements ActionListener, Caret
 
     }
 
-    /**
-     * Add component to dialog
-     *
-     * @param panel Panel to add to
-     * @param label Label
-     * @param c Component to add
-     * @param i Component index
-     * @param resizeY Resize in Y direction - when dialog ist resized?
-     */
-    private void addComponent(JPanel panel, String label, JComponent c, int i, boolean resizeY) {
-        gbc.gridy = i;
-        gbc.gridx = 0;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.weightx = 0.00001;
-        gbc.weighty = resizeY ? 0.2 : 0.00001;
-        gbc.insets = new Insets(3, 3, 3, 3);
-        gbc.fill = GridBagConstraints.NONE;
-        JLabel jl = new JLabel(label);
-        panel.add(jl, gbc);
-        gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.CENTER;
-        gbc.weightx = 0.2;
-        gbc.fill = GridBagConstraints.BOTH;
-        panel.add(c, gbc);
-    }
-
-    /**
-     * updates list according to filter
-     */
-    private void updateListModel() {
-        SortedSet<RemoteCreateModuleAction> front = new TreeSet<RemoteCreateModuleAction>();
-        SortedSet<RemoteCreateModuleAction> back = new TreeSet<RemoteCreateModuleAction>();
+    @Override
+    public int accept(RemoteCreateModuleAction rcma) {
         String f = filter.getText();
         String g = group.getSelectedItem().toString();
         if ("all".equals(g)) {
             g = null;
         }
-        for (RemoteCreateModuleAction rcma : createModuleActions) {
-            if (g == null || rcma.groupName.equals(g)) {
-                if (rcma.name.toLowerCase().contains(f.toLowerCase())) {
-                    if (rcma.name.toLowerCase().startsWith(f.toLowerCase())) {
-                        front.add(rcma);
-                    } else {
-                        back.add(rcma);
-                    }
+        if (g == null || rcma.groupName.equals(g)) {
+            if (rcma.name.toLowerCase().contains(f.toLowerCase())) {
+                if (rcma.name.toLowerCase().startsWith(f.toLowerCase())) {
+                    return 0;
+                } else {
+                    return 1;
                 }
             }
         }
-        ArrayList<RemoteCreateModuleAction> newList = new ArrayList<RemoteCreateModuleAction>();
-        newList.addAll(front);
-        newList.addAll(back);
-
-        // compare lists - and return if nothing changed
-        if (newList.size() == filteredActions.size()) {
-            boolean diff = false;
-            for (int i = 0; i < newList.size(); i++) {
-                if (!newList.get(i).equals(filteredActions.get(i))) {
-                    diff = true;
-                    break;
-                }
-            }
-            if (!diff) {
-                return;
-            }
-        }
-
-        filteredActions.clear();
-        filteredActions.addAll(newList);
-
-        // notify listeners
-        for (ListDataListener l : listener) {
-            l.contentsChanged(new ListDataEvent(this, ListDataEvent.CONTENTS_CHANGED, 0, filteredActions.size()));
-        }
-        if (filteredActions.size() > 0) {
-            jlist.setSelectedIndex(0);
-        }
+        return -1;
     }
-
 
     @Override
     public void caretUpdate(CaretEvent e) {
-        if (e.getSource() == filter) {
-            updateListModel();
-        } else if (e.getSource() == name) {
-            updateButtonState();
-        }
+        assert(e.getSource() == name);
+        updateButtonState();
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == group) {
-            updateListModel();
-        } else if (e.getSource() == cancel) {
+        if (e.getSource() == cancel) {
             close();
         } else if (e.getSource() == next || e.getSource() == create) {
-            RemoteCreateModuleAction rcma = (RemoteCreateModuleAction)jlist.getSelectedValue();
+            RemoteCreateModuleAction rcma = jlist.getSelectedValue();
             StructureParameterList spl = null;
             if (e.getSource() == next) {
                 spl = rcma.parameters.instantiate();
@@ -318,7 +230,7 @@ public class CreateModuleDialog extends MDialog implements ActionListener, Caret
      * Updates button state
      */
     private void updateButtonState() {
-        RemoteCreateModuleAction rcma = (RemoteCreateModuleAction)jlist.getSelectedValue();
+        RemoteCreateModuleAction rcma = jlist.getSelectedValue();
         boolean b = rcma != null && name.getText().length() > 0;
         create.setEnabled(b && rcma.parameters.size() == 0);
         next.setEnabled(b && rcma.parameters.size() > 0);
@@ -336,30 +248,4 @@ public class CreateModuleDialog extends MDialog implements ActionListener, Caret
 
     @Override
     public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {}
-
-    /**
-     * List model for JList
-     */
-    private class Model implements ListModel {
-
-        @Override
-        public int getSize() {
-            return filteredActions.size();
-        }
-
-        @Override
-        public Object getElementAt(int index) {
-            return filteredActions.get(index);
-        }
-
-        @Override
-        public void addListDataListener(ListDataListener l) {
-            listener.add(l);
-        }
-
-        @Override
-        public void removeListDataListener(ListDataListener l) {
-            listener.remove(l);
-        }
-    }
 }

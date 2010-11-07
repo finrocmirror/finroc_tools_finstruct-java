@@ -28,6 +28,7 @@ import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.util.ArrayList;
@@ -56,6 +57,7 @@ import org.finroc.core.plugin.CreateExternalConnectionAction;
 import org.finroc.core.plugin.ExternalConnection;
 import org.finroc.core.plugin.Plugins;
 import org.finroc.core.port.ThreadLocalCache;
+import org.finroc.finstruct.dialogs.FindElementDialog;
 import org.finroc.finstruct.views.AbstractFinstructGraphView;
 import org.finroc.finstruct.views.PortView;
 import org.finroc.finstruct.views.StandardView;
@@ -77,7 +79,7 @@ import org.finroc.log.LogLevel;
  *
  * Main Window class
  */
-public class Finstruct extends JFrame implements ActionListener, ConnectionListener, WindowListener, ConnectionPanel.Owner, TreeSelectionListener {
+public class Finstruct extends JFrame implements ActionListener, ConnectionListener, WindowListener, ConnectionPanel.Owner, TreeSelectionListener, KeyListener {
 
     /** UID */
     private static final long serialVersionUID = 5790020137768236619L;
@@ -86,7 +88,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
     protected InterfaceTreeModel ioInterface = new InterfaceTreeModel();
 
     /** Menu items */
-    private JMenuItem miDisconnectDiscard, miExit;
+    private JMenuItem miDisconnectDiscard, miExit, miFind;
     private JRadioButtonMenuItem miAutoView;
     private JMenu miConnectMenu;
 
@@ -195,6 +197,12 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         //miTest = createMenuEntry("Test", menuFile, KeyEvent.VK_F16);
         menuBar.setVisible(true);
 
+        // Edit menu
+        JMenu menuEdit = new JMenu("Edit");
+        menuEdit.setMnemonic(KeyEvent.VK_E);
+        menuBar.add(menuEdit);
+        miFind = createMenuEntry("Find Element...", menuEdit, KeyEvent.VK_F);
+
         // find views
         ButtonGroup viewSelectGroup = new ButtonGroup();
         views.add(new ViewSelector(StandardViewGraphViz.class, viewSelectGroup));
@@ -286,7 +294,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         for (int i = menuBar.getComponentCount() - 1; i >= 0; i--) {
             if (menuBar.getComponent(i) instanceof JMenu) {
                 String name = ((JMenu)menuBar.getComponent(i)).getText();
-                if (name.equals("File") || name.equals("View")) {
+                if (name.equals("File") || name.equals("View") || name.equals("Edit")) {
                     continue;
                 }
             }
@@ -338,6 +346,8 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             } else if (src == statusBarTimer) {
                 connectionEvent(null, 0);
                 return;
+            } else if (src == miFind) {
+                new FindElementDialog(this, false).show(this);
             }
             //requestFocus();
         } catch (Exception e) {
@@ -477,7 +487,6 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
     @Override
     public void addUndoBufferEntry(String string) {
-        // TODO Auto-generated method stub
     }
 
     @Override
@@ -486,7 +495,17 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
     }
 
     @Override public void keyPressed(KeyEvent e) {}
-    @Override public void keyReleased(KeyEvent e) {}
+    @Override public void keyReleased(KeyEvent e) {
+        int ctrlMask = KeyEvent.CTRL_DOWN_MASK;
+        int shiftAltMask = KeyEvent.ALT_DOWN_MASK | KeyEvent.SHIFT_DOWN_MASK;
+
+        // Control pressed?
+        if ((e.getModifiersEx() & (ctrlMask | shiftAltMask)) == ctrlMask) {
+            if (e.getKeyCode() == KeyEvent.VK_F) {
+                new FindElementDialog(this, false).show(this);
+            }
+        }
+    }
     @Override public void keyTyped(KeyEvent e) {}
 
     @Override
@@ -496,24 +515,32 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             if (!(sel instanceof TreePortWrapper)) {
                 if (sel instanceof InterfaceNode) {
                     logDomain.log(LogLevel.LL_DEBUG, getLogDescription(), "Setting view root to " + sel.toString());
-                    InterfaceNode sel2 = (InterfaceNode)sel;
-                    if (miAutoView.isSelected()) {
-                        // auto-select view
-                        Class <? extends FinstructView > viewClass = (AbstractFinstructGraphView.isInterface(sel2.getFrameworkElement()) || AbstractFinstructGraphView.isParameters(sel2.getFrameworkElement())) ? PortView.class : StandardViewGraphViz.class;
-                        if (currentView == null || currentView.getClass() != viewClass) {
-                            try {
-                                changeView(viewClass.newInstance());
-                            } catch (Exception e1) {
-                                e1.printStackTrace();
-                            }
-                        }
-                        currentView.setRootElement(sel2.getFrameworkElement());
-                    } else {
-                        if (currentView != null) {
-                            currentView.setRootElement(sel2.getFrameworkElement());
-                        }
-                    }
+                    showElement(((InterfaceNode)sel).getFrameworkElement());
                 }
+            }
+        }
+    }
+
+    /**
+     * Shows specified framework element in main view - taking view selection into account
+     *
+     * @param fe Framework element to show
+     */
+    public void showElement(FrameworkElement fe) {
+        if (miAutoView.isSelected()) {
+            // auto-select view
+            Class <? extends FinstructView > viewClass = (AbstractFinstructGraphView.isInterface(fe) || AbstractFinstructGraphView.isParameters(fe)) ? PortView.class : StandardViewGraphViz.class;
+            if (currentView == null || currentView.getClass() != viewClass) {
+                try {
+                    changeView(viewClass.newInstance());
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+            currentView.setRootElement(fe);
+        } else {
+            if (currentView != null) {
+                currentView.setRootElement(fe);
             }
         }
     }
@@ -530,5 +557,19 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         if (view != null) {
             view.refresh();
         }
+    }
+
+    /**
+     * @return Interface of connected runtimes
+     */
+    public InterfaceTreeModel getIoInterface() {
+        return ioInterface;
+    }
+
+    /**
+     * @return Reference to ConnectionPanel
+     */
+    public FinstructConnectionPanel getConnectionPanel() {
+        return connectionPanel;
     }
 }

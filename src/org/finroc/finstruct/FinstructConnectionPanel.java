@@ -144,6 +144,18 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     /**
+     * Expand provided node and collapse all others
+     *
+     * @param leftTree Left tree (or rather right one?)
+     * @param node Node to expand
+     */
+    public void expandOnly(boolean leftTree, FrameworkElement node) {
+        ArrayList<FrameworkElement> tmp = new ArrayList<FrameworkElement>();
+        tmp.add(node);
+        expandOnly(leftTree, tmp);
+    }
+
+    /**
      * Expand provided nodes and collapse all others
      *
      * @param leftTree Left tree (or rather right one?)
