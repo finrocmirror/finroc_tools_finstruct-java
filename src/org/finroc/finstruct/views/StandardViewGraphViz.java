@@ -549,11 +549,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
          * Places current coordinates in rect variable
          */
         public void updateRectangle() {
-            Point2D.Double pos = gvVertex.getLayoutPosition();
-            rect.x = (int)(pos.x - (gvVertex.getWidth() / 2));
-            rect.y = (int)(pos.y - (gvVertex.getHeight() / 2));
-            rect.width = (int)gvVertex.getWidth();
-            rect.height = (int)gvVertex.getHeight();
+            getVertexBounds(rect, gvVertex);
         }
 
         @Override
@@ -899,7 +895,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         @Override
         public void statusChanged() {
             if (zoom == 1) {
-                StandardViewGraphViz.this.repaint(bounds.x - 4, bounds.y - 4, bounds.width + 9, bounds.height + 9);
+                StandardViewGraphViz.this.repaint(bounds.x - 5, bounds.y - 5, bounds.width + 11, bounds.height + 11);
             } else {
                 StandardViewGraphViz.this.repaint();
             }
@@ -929,6 +925,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         /** Collapse icon */
         private ExpandIcon expandIcon;
 
+        /** label bounds */
+        private Rectangle labelBounds = null;
+
         private Subgraph(Graph parent, FrameworkElement fe) {
             super(parent);
             frameworkElement = fe;
@@ -941,6 +940,49 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
          * @param g2d Graphics object
          */
         public void paint(Graphics2D g2d) {
+            if (labelBounds == null) {
+                testLabel.setText(frameworkElement.getDescription());
+                labelBounds = new Rectangle(testLabel.getPreferredSize());
+
+                // find label location without collision with other objects
+                Rectangle vertexBounds = new Rectangle();
+                Point[] candidates = new Point[4];
+                candidates[0] = new Point(getBounds().x + 4, getBounds().y + 4);
+                candidates[3] = new Point((int)(getBounds().getMaxX() - labelBounds.width - 4), (int)(getBounds().getMaxY() - labelBounds.height - 4));
+                candidates[1] = new Point(candidates[3].x, candidates[0].y);
+                candidates[2] = new Point(candidates[0].x, candidates[3].y);
+
+                int best = -1;
+                for (int i = 0; i < candidates[3].y; i++) {
+                    boolean collision = false;
+                    if (i < 4) {
+                        labelBounds.setLocation(candidates[i]);
+                    } else {
+                        labelBounds.setLocation(candidates[0].x, candidates[0].y + i);
+                    }
+                    for (Vertex v : vertices) {
+                        getVertexBounds(vertexBounds, v.gvVertex);
+                        if (labelBounds.intersects(vertexBounds)) {
+                            collision = true;
+                        }
+                    }
+                    for (Graph g : super.getSubgraphs()) {
+                        if (labelBounds.intersects(g.getBounds())) {
+                            collision = true;
+                        }
+                    }
+                    if (!collision) {
+                        best = i;
+                        break;
+                    }
+                }
+                if (best == -1) {
+
+                    // oh, well - use top left
+                    labelBounds.setLocation(candidates[0]);
+                }
+            }
+
             Color c = brighten(getBackground(), (getParentCount() % 2) * 30);
             g2d.setColor(c);
             Rectangle r = getBounds();
@@ -949,6 +991,8 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             g2d.drawRect(r.x, r.y, r.width, r.height);
 
             expandIcon.paint(g2d, r.x + r.width - 6, r.y, false);
+
+            g2d.drawString(frameworkElement.getDescription(), labelBounds.x, labelBounds.y + labelBounds.height);
         }
     }
 
@@ -1191,6 +1235,20 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 }
             }
         }
+    }
+
+    /**
+     * Returns bounds on screen of Graphview vertex
+     *
+     * @param rect Rectangle to store result in
+     * @param gvVertex Graphview Vertex
+     */
+    private static void getVertexBounds(Rectangle rect, org.finroc.finstruct.graphviz.Vertex gvVertex) {
+        Point2D.Double pos = gvVertex.getLayoutPosition();
+        rect.x = (int)(pos.x - (gvVertex.getWidth() / 2));
+        rect.y = (int)(pos.y - (gvVertex.getHeight() / 2));
+        rect.width = (int)gvVertex.getWidth();
+        rect.height = (int)gvVertex.getHeight();
     }
 
 //    /**

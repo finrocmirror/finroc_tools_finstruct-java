@@ -27,6 +27,7 @@ import java.awt.geom.Point2D.Double;
 import java.io.BufferedOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.finroc.core.util.Files;
@@ -293,5 +294,12 @@ public class Graph extends GraphVizElement {
      */
     public Rectangle getBounds() {
         return layoutBounds;
+    }
+
+    /**
+     * @return returns unmodifiable list with subgraphs
+     */
+    public List<Graph> getSubgraphs() {
+        return Collections.unmodifiableList(subgraphs);
     }
 }
