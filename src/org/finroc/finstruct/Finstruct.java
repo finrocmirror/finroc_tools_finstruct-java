@@ -54,6 +54,7 @@ import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 
 import org.finroc.core.FrameworkElement;
+import org.finroc.core.RuntimeEnvironment;
 import org.finroc.core.plugin.ConnectionListener;
 import org.finroc.core.plugin.CreateExternalConnectionAction;
 import org.finroc.core.plugin.ExternalConnection;
@@ -136,8 +137,8 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
     /** History of views */
     protected ArrayList<HistoryElement> history = new ArrayList<HistoryElement>();
 
-    /** Current history position - if user hasn't moved backwards: history.size() */
-    protected int historyPos = 0;
+    /** Current history position - if user hasn't moved backwards: history.size() - 1 */
+    protected int historyPos = -1;
 
     /** Double-click delay in ms */
     public static final long DOUBLE_CLICK_DELAY = 500;
@@ -559,9 +560,6 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
      */
     public void showElement(FrameworkElement fe) {
 
-        // create history element for old view
-        pushViewToHistory();
-
         if (miAutoView.isSelected()) {
             // auto-select view
             Class <? extends FinstructView > viewClass = AbstractFinstructGraphView.hasOnlyPortChildren(fe) ? PortView.class : StandardViewGraphViz.class;
@@ -578,24 +576,32 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                 currentView.setRootElement(fe, null);
             }
         }
+
+        // create history element for this view
+        pushViewToHistory();
     }
 
     /**
      * Save current view as next history element
      */
     public void pushViewToHistory() {
+        if (currentView.getRootElement() == null) {
+            return;
+        }
         HistoryElement he = new HistoryElement(currentView.getClass(), currentView.getRootElement());
         Collection <? extends FrameworkElement > expanded = currentView.getExpandedElementsForHistory();
         if (expanded != null) {
-            he.expandedElements.addAll(expanded);
+            for (FrameworkElement fe : expanded) {
+                he.expandedElements.add(fe.getQualifiedName());
+            }
         }
-        if (history.size() == 0 || historyPos <= 0 || (!history.get(historyPos - 1).equals(he))) {
+        if (history.size() == 0 || historyPos <= 0 || (!history.get(historyPos).equals(he))) {
             // remove any "next" history elements
-            while (historyPos > history.size()) {
-                history.remove(historyPos);
+            while ((historyPos + 1) < history.size()) {
+                history.remove(historyPos + 1);
             }
             history.add(he);
-            historyPos = history.size();
+            historyPos = history.size() - 1;
         }
         updateHistoryButtonState();
     }
@@ -606,11 +612,19 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
      * @param newHistoryElement Index of element in history to show
      */
     private void showHistoryElement(int newHistoryElement) {
-        if (historyPos == history.size()) {
-            pushViewToHistory();
-        }
         historyPos = newHistoryElement;
         HistoryElement he = history.get(historyPos);
+        FrameworkElement root = RuntimeEnvironment.getInstance().getChildElement(he.root, false);
+        if (root == null) {
+            return;
+        }
+        ArrayList<FrameworkElement> expanded = new ArrayList<FrameworkElement>();
+        for (String e : he.expandedElements) {
+            FrameworkElement fe = RuntimeEnvironment.getInstance().getChildElement(e, false);
+            if (fe != null) {
+                expanded.add(fe);
+            }
+        }
 
         if (currentView == null || currentView.getClass() != he.view) {
             try {
@@ -619,7 +633,8 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                 e1.printStackTrace();
             }
         }
-        currentView.setRootElement(he.root, he.expandedElements);
+
+        currentView.setRootElement(root, expanded);
 
         updateHistoryButtonState();
     }
@@ -661,14 +676,14 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         Class <? extends FinstructView > view;
 
         /** Root framework element */
-        FrameworkElement root;
+        String root;
 
         /** Expanded/Selected framework element entries */
-        ArrayList<FrameworkElement> expandedElements = new ArrayList<FrameworkElement>();
+        ArrayList<String> expandedElements = new ArrayList<String>();
 
         public HistoryElement(Class <? extends FinstructView > view, FrameworkElement root) {
             this.view = view;
-            this.root = root;
+            this.root = root.getQualifiedName();
         }
 
         public boolean equals(Object other) {
@@ -676,11 +691,11 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                 return false;
             }
             HistoryElement he = (HistoryElement)other;
-            if (view != he.view || root != he.root || expandedElements.size() != he.expandedElements.size()) {
+            if (view != he.view || (!root.equals(he.root)) || expandedElements.size() != he.expandedElements.size()) {
                 return false;
             }
             for (int i = 0; i < expandedElements.size(); i++) {
-                if (expandedElements.get(i) != he.expandedElements.get(i)) {
+                if (!expandedElements.get(i).equals(he.expandedElements.get(i))) {
                     return false;
                 }
             }
