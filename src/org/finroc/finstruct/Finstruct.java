@@ -156,8 +156,8 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
         final Finstruct finstruct = new Finstruct();
 
-        // connect ?
-        if (connect != null && finstruct.tcpConnect != null) {
+        // connect
+        if (finstruct.tcpConnect != null) {
             final String address = connect;
             SwingUtilities.invokeLater(new Runnable() {
                 @Override
