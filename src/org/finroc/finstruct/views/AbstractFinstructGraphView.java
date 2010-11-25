@@ -129,16 +129,24 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
      */
     public static boolean isParameters(FrameworkElement fe) {
         if (fe.getDescription().equalsIgnoreCase("Parameter") || fe.getDescription().equalsIgnoreCase("Parameters")) {
-            ChildIterator ci = new ChildIterator(fe);
-            FrameworkElement next = null;
-            while ((next = ci.next()) != null) {
-                if (!next.isPort()) {
-                    return false;
-                }
-            }
-            return true;
+            return hasOnlyPortChildren(fe);
         }
         return false;
+    }
+
+    /**
+     * @param fe Framework element
+     * @return Are all children of framework element ports? (true if it has no children)
+     */
+    public static boolean hasOnlyPortChildren(FrameworkElement fe) {
+        ChildIterator ci = new ChildIterator(fe);
+        FrameworkElement next = null;
+        while ((next = ci.next()) != null) {
+            if (!next.isPort()) {
+                return false;
+            }
+        }
+        return true;
     }
 
 

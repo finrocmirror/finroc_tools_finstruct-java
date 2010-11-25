@@ -32,10 +32,12 @@ import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.util.ArrayList;
+import java.util.Collection;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ButtonGroup;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -92,6 +94,9 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
     private JRadioButtonMenuItem miAutoView;
     private JMenu miConnectMenu;
 
+    /** History navigation buttons */
+    private JButton back, next;
+
     /** Status bar */
     protected StatusBar statusBar;
 
@@ -127,6 +132,15 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
     /** TCP Connect action */
     public ConnectAction tcpConnect;
+
+    /** History of views */
+    protected ArrayList<HistoryElement> history = new ArrayList<HistoryElement>();
+
+    /** Current history position - if user hasn't moved backwards: history.size() */
+    protected int historyPos = 0;
+
+    /** Double-click delay in ms */
+    public static final long DOUBLE_CLICK_DELAY = 500;
 
     public static void main(String[] args) {
         String connect = null;
@@ -301,8 +315,11 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             menuBar.remove(i);
         }
 
-        // Clear toolbar
+        // Clear toolbar and add default navigation buttons
         toolBar.clear();
+        back = toolBar.createButton("back-ubuntu.png", "To last view", this);
+        next = toolBar.createButton("forward-ubuntu.png", "To next view", this);
+        toolBar.addSeparator();
 
         FrameworkElement lastRoot = currentView == null ? null : currentView.getRootElement();
         currentView = view;
@@ -330,10 +347,19 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
         // restore root element
         if (lastRoot != null) {
-            currentView.setRootElement(lastRoot);
+            currentView.setRootElement(lastRoot, null);
         }
+
+        updateHistoryButtonState();
     }
 
+    /**
+     * Update state of history buttons
+     */
+    public void updateHistoryButtonState() {
+        next.setEnabled(historyPos < history.size() - 1);
+        back.setEnabled(historyPos > 0);
+    }
 
     @Override
     public void actionPerformed(ActionEvent ae) {
@@ -348,6 +374,10 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                 return;
             } else if (src == miFind) {
                 new FindElementDialog(this, false).show(this);
+            } else if (src == next) {
+                showHistoryElement(historyPos + 1);
+            } else if (src == back) {
+                showHistoryElement(historyPos - 1);
             }
             //requestFocus();
         } catch (Exception e) {
@@ -463,6 +493,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            pushViewToHistory();
             try {
                 changeView(view.newInstance());
             } catch (Exception e1) {
@@ -527,9 +558,13 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
      * @param fe Framework element to show
      */
     public void showElement(FrameworkElement fe) {
+
+        // create history element for old view
+        pushViewToHistory();
+
         if (miAutoView.isSelected()) {
             // auto-select view
-            Class <? extends FinstructView > viewClass = (AbstractFinstructGraphView.isInterface(fe) || AbstractFinstructGraphView.isParameters(fe)) ? PortView.class : StandardViewGraphViz.class;
+            Class <? extends FinstructView > viewClass = AbstractFinstructGraphView.hasOnlyPortChildren(fe) ? PortView.class : StandardViewGraphViz.class;
             if (currentView == null || currentView.getClass() != viewClass) {
                 try {
                     changeView(viewClass.newInstance());
@@ -537,12 +572,56 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                     e1.printStackTrace();
                 }
             }
-            currentView.setRootElement(fe);
+            currentView.setRootElement(fe, null);
         } else {
             if (currentView != null) {
-                currentView.setRootElement(fe);
+                currentView.setRootElement(fe, null);
             }
         }
+    }
+
+    /**
+     * Save current view as next history element
+     */
+    public void pushViewToHistory() {
+        HistoryElement he = new HistoryElement(currentView.getClass(), currentView.getRootElement());
+        Collection <? extends FrameworkElement > expanded = currentView.getExpandedElementsForHistory();
+        if (expanded != null) {
+            he.expandedElements.addAll(expanded);
+        }
+        if (history.size() == 0 || historyPos <= 0 || (!history.get(historyPos - 1).equals(he))) {
+            // remove any "next" history elements
+            while (historyPos > history.size()) {
+                history.remove(historyPos);
+            }
+            history.add(he);
+            historyPos = history.size();
+        }
+        updateHistoryButtonState();
+    }
+
+    /**
+     * Show element stored in history
+     *
+     * @param newHistoryElement Index of element in history to show
+     */
+    private void showHistoryElement(int newHistoryElement) {
+        if (historyPos == history.size()) {
+            pushViewToHistory();
+        }
+        historyPos = newHistoryElement;
+        HistoryElement he = history.get(historyPos);
+
+        if (currentView == null || currentView.getClass() != he.view) {
+            try {
+                changeView(he.view.newInstance());
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        }
+        currentView.setRootElement(he.root, he.expandedElements);
+
+        updateHistoryButtonState();
     }
 
     private String getLogDescription() {
@@ -571,5 +650,41 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
      */
     public FinstructConnectionPanel getConnectionPanel() {
         return connectionPanel;
+    }
+
+    /**
+     * Element of view history
+     */
+    public class HistoryElement {
+
+        /** View used */
+        Class <? extends FinstructView > view;
+
+        /** Root framework element */
+        FrameworkElement root;
+
+        /** Expanded/Selected framework element entries */
+        ArrayList<FrameworkElement> expandedElements = new ArrayList<FrameworkElement>();
+
+        public HistoryElement(Class <? extends FinstructView > view, FrameworkElement root) {
+            this.view = view;
+            this.root = root;
+        }
+
+        public boolean equals(Object other) {
+            if (other == null || (!(other instanceof HistoryElement))) {
+                return false;
+            }
+            HistoryElement he = (HistoryElement)other;
+            if (view != he.view || root != he.root || expandedElements.size() != he.expandedElements.size()) {
+                return false;
+            }
+            for (int i = 0; i < expandedElements.size(); i++) {
+                if (expandedElements.get(i) != he.expandedElements.get(i)) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 }

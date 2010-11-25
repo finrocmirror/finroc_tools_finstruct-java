@@ -24,6 +24,7 @@ import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import javax.swing.JMenuBar;
@@ -78,7 +79,7 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
     //private static final Font FONT = new JLabel().getFont().deriveFont(Font.PLAIN);
 
     @Override
-    protected synchronized void rootElementChanged() {
+    protected synchronized void rootElementChanged(ArrayList<FrameworkElement> expandedElements) {
         tmpResultList.clear();
         FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.STATUS_FLAGS | CoreFlags.IS_PORT, CoreFlags.READY | CoreFlags.PUBLISHED | CoreFlags.IS_PORT);
         filter.traverseElementTree(getRootElement(), this, null);
@@ -219,6 +220,11 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
                 logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
             }
         }
+    }
+
+    @Override
+    public Collection <? extends FrameworkElement > getExpandedElementsForHistory() {
+        return null;
     }
 }
 

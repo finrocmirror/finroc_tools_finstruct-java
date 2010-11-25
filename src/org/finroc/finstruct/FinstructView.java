@@ -21,6 +21,9 @@
 
 package org.finroc.finstruct;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 import javax.swing.JComponent;
 import javax.swing.JMenuBar;
 import javax.swing.JPanel;
@@ -74,16 +77,19 @@ public abstract class FinstructView extends JPanel {
     /**
      * Called after root element changed
      * (Typically view will display a new graph for this element)
+     *
+     * @param expandedElements Expanded element - may be null
      */
-    protected abstract void rootElementChanged();
+    protected abstract void rootElementChanged(ArrayList<FrameworkElement> expandedElements);
 
     /**
      * @param root Root element of view
+     * @param expandedElements
      */
-    void setRootElement(FrameworkElement root) {
+    void setRootElement(FrameworkElement root, ArrayList<FrameworkElement> expandedElements) {
         if (rootElement != root) {
             rootElement = root;
-            rootElementChanged();
+            rootElementChanged(expandedElements);
         }
     }
 
@@ -109,4 +115,9 @@ public abstract class FinstructView extends JPanel {
     public Finstruct getFinstruct() {
         return finstruct;
     }
+
+    /**
+     * @return Any expanded/selected elements for storing view state in history
+     */
+    public abstract Collection <? extends FrameworkElement > getExpandedElementsForHistory();
 }

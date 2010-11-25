@@ -24,6 +24,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Paint;
+import java.util.ArrayList;
 import java.util.Collection;
 
 import org.apache.commons.collections15.Transformer;
@@ -85,7 +86,7 @@ public class StandardView extends AbstractFinstructGraphView<AbstractFinstructGr
     }
 
     @Override
-    protected void rootElementChanged() {
+    protected void rootElementChanged(ArrayList<FrameworkElement> expandedElements) {
 
         // create new graph
         graph = new DirectedSparseGraph<VertexAnnotation, Edge>();
@@ -133,5 +134,8 @@ public class StandardView extends AbstractFinstructGraphView<AbstractFinstructGr
         return fe.frameworkElement.getDescription();
     }
 
-
+    @Override
+    public Collection <? extends FrameworkElement > getExpandedElementsForHistory() {
+        return null;
+    }
 }

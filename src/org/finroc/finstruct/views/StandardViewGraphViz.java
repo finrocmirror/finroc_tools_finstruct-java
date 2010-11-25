@@ -194,8 +194,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     }
 
     @Override
-    protected synchronized void rootElementChanged() {
+    protected synchronized void rootElementChanged(ArrayList<FrameworkElement> expandedElements) {
         expandedGroups.clear();
+        expandedGroups.addAll(expandedElements != null ? expandedElements : new ArrayList<FrameworkElement>(0));
         relayout();
 
         // get Admin interface
@@ -414,6 +415,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         /** Label lines to print (framework element description with line changes) */
         private ArrayList<String> label = new ArrayList<String>();
 
+        /** Timestamp when user last clicked on this element (for double-click) */
+        private long lastClick;
+
         public Vertex(FrameworkElement fe) {
             super(fe);
             reset();
@@ -585,12 +589,25 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
         @Override
         public void mouseReleased(MouseEvent event, MouseHandler over) {
-            if (over != null && over != this && (over instanceof Vertex) && inConnectionMode()) {
-                Vertex v = (Vertex)over;
-                expandInTree(true, frameworkElement);
-                expandInTree(false, v.frameworkElement);
+            if (inConnectionMode()) {
+                if (over != null && over != this && (over instanceof Vertex)) {
+                    Vertex v = (Vertex)over;
+                    expandInTree(true, frameworkElement);
+                    expandInTree(false, v.frameworkElement);
+                }
+                StandardViewGraphViz.this.repaint();
             }
-            StandardViewGraphViz.this.repaint();
+            if (over == this) {
+                long time = System.currentTimeMillis();
+                if (time - lastClick < Finstruct.DOUBLE_CLICK_DELAY) {
+                    if (frameworkElement.childCount() > 0) {
+                        getFinstruct().showElement(frameworkElement);
+                    }
+                } else {
+                    expandInTree(true, frameworkElement);
+                    lastClick = System.currentTimeMillis();
+                }
+            }
         }
 
         /**
@@ -903,7 +920,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
         @Override
         public void mouseReleased(MouseEvent event, MouseHandler over) {
-            if (over == this) {
+            if (over == this && event.getButton() == MouseEvent.BUTTON1) {
                 if (expandedGroups.contains(group)) {
                     expandedGroups.remove(group);
                 } else {
@@ -1249,6 +1266,11 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         rect.y = (int)(pos.y - (gvVertex.getHeight() / 2));
         rect.width = (int)gvVertex.getWidth();
         rect.height = (int)gvVertex.getHeight();
+    }
+
+    @Override
+    public Collection <? extends FrameworkElement > getExpandedElementsForHistory() {
+        return expandedGroups;
     }
 
 //    /**
