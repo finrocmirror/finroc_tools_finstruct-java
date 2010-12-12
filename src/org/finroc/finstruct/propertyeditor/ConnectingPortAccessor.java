@@ -92,4 +92,11 @@ public class ConnectingPortAccessor<T extends TypedObject> extends PortAccessor<
     protected AbstractPort portForSetting() {
         return partner;
     }
+
+    /**
+     * @return Wrapped port
+     */
+    public AbstractPort getPort() {
+        return wrapped;
+    }
 }

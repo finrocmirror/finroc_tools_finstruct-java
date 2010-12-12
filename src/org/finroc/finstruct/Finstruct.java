@@ -62,6 +62,7 @@ import org.finroc.core.plugin.Plugins;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.finstruct.dialogs.FindElementDialog;
 import org.finroc.finstruct.views.AbstractFinstructGraphView;
+import org.finroc.finstruct.views.Ib2cView;
 import org.finroc.finstruct.views.PortView;
 import org.finroc.finstruct.views.StandardView;
 import org.finroc.finstruct.views.StandardViewGraphViz;
@@ -222,6 +223,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         ButtonGroup viewSelectGroup = new ButtonGroup();
         views.add(new ViewSelector(StandardViewGraphViz.class, viewSelectGroup));
         views.add(new ViewSelector(PortView.class, viewSelectGroup));
+        views.add(new ViewSelector(Ib2cView.class, viewSelectGroup));
         if (BETA_FEATURES) {
             views.add(new ViewSelector(StandardView.class, viewSelectGroup));
         }

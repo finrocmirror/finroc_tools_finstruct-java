@@ -98,7 +98,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     private final JLabel twoLineTestLabel = new JLabel("<HTML>X<BR>Y</HTML>");
 
     /** when drawing a string: y increment per text line */
-    private final int lineIncrementY;
+    protected final int lineIncrementY;
 
     /** Height of label with a single line */
     private final int labelBaseHeight = testLabel.getPreferredSize().height;
@@ -223,7 +223,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
      *
      * (SubGraphs are created for entries in expandedGroups)
      */
-    private void relayout() {
+    protected void relayout() {
         try {
             final FrameworkElement root = getRootElement();
 
@@ -404,16 +404,16 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     class Vertex extends AbstractFinstructGraphView.VertexAnnotation implements MouseHandler {
 
         /** graphviz vertex */
-        private org.finroc.finstruct.graphviz.Vertex gvVertex;
+        protected org.finroc.finstruct.graphviz.Vertex gvVertex;
 
         /** Expand icon - if group */
-        private ExpandIcon expandIcon;
+        protected ExpandIcon expandIcon;
 
         /** Temporary Rectangle variable */
-        private final Rectangle rect = new Rectangle();
+        protected final Rectangle rect = new Rectangle();
 
         /** Label lines to print (framework element description with line changes) */
-        private ArrayList<String> label = new ArrayList<String>();
+        protected ArrayList<String> label = new ArrayList<String>();
 
         /** Timestamp when user last clicked on this element (for double-click) */
         private long lastClick;
@@ -528,7 +528,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         /**
          * @return 0 = no highlighting, 1 = minor highlighting, 2 = major highlighting
          */
-        private int getHighlightLevel() {
+        protected int getHighlightLevel() {
             MouseHandler mo = mouseHandlers.getMouseOver();
             MouseHandler ma = mouseHandlers.getActiveHandler();
 
@@ -637,7 +637,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
      * @param amount Amount to brighten each color
      * @return Brighter color
      */
-    private Color brighten(Color color, int amount) {
+    protected Color brighten(Color color, int amount) {
         return new Color(Math.min(255, color.getRed() + amount), Math.min(255, color.getGreen() + amount), Math.min(255, color.getBlue() + amount));
     }
 
@@ -877,7 +877,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
          * @param y Y-Position of icon
          * @param expand Draw Expand icon? ('+' rather than '-')
          */
-        private void paint(Graphics2D g2d, int x, int y, boolean expand) {
+        public void paint(Graphics2D g2d, int x, int y, boolean expand) {
             Rectangle a = bounds;
             a.x = x;
             a.y = y;
