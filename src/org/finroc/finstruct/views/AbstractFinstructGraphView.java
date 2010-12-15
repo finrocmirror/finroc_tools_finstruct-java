@@ -31,7 +31,7 @@ import java.util.TreeMap;
 import javax.swing.JComponent;
 
 import org.finroc.core.Annotatable;
-import org.finroc.core.ChildIterator;
+import org.finroc.core.FrameworkElement.ChildIterator;
 import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.FrameworkElementTreeFilter;
