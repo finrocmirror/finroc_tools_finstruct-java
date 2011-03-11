@@ -61,7 +61,7 @@ public class StructureParameterAccessor implements PropertyAccessor {
         if (getType() == String.class) {
             return wrapped.getRemoteValue();
         } else {
-            return ObjectCloner.clone(wrapped.getValueRaw());
+            return ObjectCloner.clone(wrapped.valPointer().getData());
         }
     }
 
