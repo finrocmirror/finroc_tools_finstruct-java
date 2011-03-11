@@ -51,6 +51,7 @@ import org.finroc.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.gui.util.propertyeditor.PropertyList;
 import org.finroc.gui.util.propertyeditor.StandardComponentFactory;
 import org.finroc.log.LogLevel;
+import org.finroc.serialization.Serialization;
 
 /**
  * @author max
@@ -334,7 +335,7 @@ public class CreateInterfacesDialog extends MDialog {
                             RemoteRuntime rr = RemoteRuntime.find(element);
                             int handle = rr.getRemoteHandle(element);
                             StructureParameterList elementParamList = (StructureParameterList)rr.getAdminInterface().getAnnotation(handle, StructureParameterList.TYPE);
-                            elementParamList.get(0).set(task.portCreationList.serialize());
+                            elementParamList.get(0).set(Serialization.serialize(task.portCreationList));
                             rr.getAdminInterface().setAnnotation(handle, elementParamList);
 
                             setPortListCount--;

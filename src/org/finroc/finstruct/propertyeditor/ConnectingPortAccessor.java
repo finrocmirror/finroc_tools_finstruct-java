@@ -25,7 +25,7 @@ import org.finroc.core.port.PortCreationInfo;
 import org.finroc.core.port.PortFlags;
 import org.finroc.core.port.cc.CCPortBase;
 import org.finroc.core.port.std.PortBase;
-import org.finroc.core.portdatabase.TypedObject;
+import org.finroc.serialization.RRLibSerializable;
 
 /**
  * @author max
@@ -33,7 +33,7 @@ import org.finroc.core.portdatabase.TypedObject;
  * Provides PropertyAccessor adapter for ports.
  * It creates an extra port that is connected to port to wrap.
  */
-public class ConnectingPortAccessor<T extends TypedObject> extends PortAccessor<T> {
+public class ConnectingPortAccessor<T extends RRLibSerializable> extends PortAccessor<T> {
 
     /** Wrapped partner (network) port */
     protected final AbstractPort partner;

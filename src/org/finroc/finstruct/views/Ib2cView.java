@@ -30,9 +30,8 @@ import javax.swing.SwingUtilities;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.datatype.CoreNumber;
 import org.finroc.core.port.AbstractPort;
+import org.finroc.core.port.PortListener;
 import org.finroc.core.port.cc.CCPortBase;
-import org.finroc.core.port.cc.CCPortData;
-import org.finroc.core.port.cc.CCPortListener;
 import org.finroc.finstruct.propertyeditor.ConnectingPortAccessor;
 
 /**
@@ -93,7 +92,7 @@ public class Ib2cView extends StandardViewGraphViz {
      * Activation, Activity and Target Rating as horizontal Bars
      */
     @SuppressWarnings("rawtypes")
-    public class BehaviourVertex extends Vertex implements CCPortListener, Runnable {
+    public class BehaviourVertex extends Vertex implements PortListener, Runnable {
 
         /** ports used to get behaviour data via push */
         @SuppressWarnings("unchecked")
@@ -210,7 +209,7 @@ public class Ib2cView extends StandardViewGraphViz {
         }
 
         @Override
-        public void portChanged(CCPortBase origin, CCPortData value) {
+        public void portChanged(AbstractPort origin, Object value) {
             SwingUtilities.invokeLater(this);
         }
     }

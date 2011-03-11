@@ -35,6 +35,7 @@ import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.FrameworkElementTreeFilter;
 import org.finroc.core.port.AbstractPort;
+import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.finstruct.FinstructView;
 import org.finroc.finstruct.propertyeditor.ConnectingPortAccessor;
 import org.finroc.finstruct.propertyeditor.FinrocComponentFactory;
@@ -120,7 +121,7 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
 
         // create new panel
         for (AbstractPort port : portsToShow) {
-            if (port.getDataType().isCCType() || port.getDataType().isStdType()) {
+            if (FinrocTypeInfo.isCCType(port.getDataType()) || FinrocTypeInfo.isStdType(port.getDataType())) {
                 @SuppressWarnings("rawtypes")
                 ConnectingPortAccessor cpa = new ConnectingPortAccessor(port, commonParent.getQualifiedLink());
                 ports.add(cpa);

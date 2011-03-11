@@ -20,27 +20,28 @@
  */
 package org.finroc.finstruct.propertyeditor;
 
-import org.finroc.core.portdatabase.TypedObject;
+import org.finroc.core.portdatabase.SerializationHelper;
 import org.finroc.gui.util.propertyeditor.ObjectAccessor;
+import org.finroc.serialization.RRLibSerializable;
 
 /**
  * @author max
  *
  * ObjectAccessor for finroc objects
  */
-public class FinrocObjectAccessor extends ObjectAccessor<TypedObject> {
+public class FinrocObjectAccessor extends ObjectAccessor<RRLibSerializable> {
 
-    public FinrocObjectAccessor(TypedObject wrapped) {
-        super(wrapped.getType().getName() + " object", wrapped);
+    public FinrocObjectAccessor(RRLibSerializable wrapped) {
+        super(wrapped.getClass().getSimpleName() + " object", wrapped);
     }
 
-    public FinrocObjectAccessor(String name, TypedObject wrapped) {
+    public FinrocObjectAccessor(String name, RRLibSerializable wrapped) {
         super(name, wrapped);
     }
 
     @Override
-    public void set(TypedObject newValue) throws Exception {
-        TypedObjectCloner.cloneHelper(newValue, wrapped);
+    public void set(RRLibSerializable newValue) throws Exception {
+        SerializationHelper.deepCopy(newValue, wrapped);
     }
 
     @Override

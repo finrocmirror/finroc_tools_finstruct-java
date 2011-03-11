@@ -29,6 +29,8 @@ import org.finroc.core.parameter.StructureParameterList;
 import org.finroc.core.portdatabase.CoreSerializable;
 import org.finroc.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.gui.util.propertyeditor.PropertyAccessor;
+import org.finroc.serialization.RRLibSerializable;
+import org.finroc.serialization.Serialization;
 
 /**
  * @author max
@@ -66,7 +68,7 @@ public class StructureParameterAccessor implements PropertyAccessor {
     @Override
     public void set(Object newValue) throws Exception {
         if (newValue instanceof CoreSerializable) {
-            wrapped.set(((CoreSerializable)newValue).serialize());
+            wrapped.set(Serialization.serialize((RRLibSerializable)newValue));
         } else {
             assert(newValue instanceof String);
             wrapped.set(newValue.toString());

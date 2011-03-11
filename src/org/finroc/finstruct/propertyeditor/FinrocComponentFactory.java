@@ -28,15 +28,7 @@ import org.finroc.core.FrameworkElement;
 import org.finroc.core.datatype.DataTypeReference;
 import org.finroc.core.datatype.PortCreationList;
 import org.finroc.core.port.net.RemoteRuntime;
-import org.finroc.core.port.std.CCDataList;
-import org.finroc.core.port.std.PortDataList;
-import org.finroc.core.portdatabase.CoreSerializable;
-import org.finroc.core.portdatabase.DataType;
-import org.finroc.core.portdatabase.DataTypeRegister;
-import org.finroc.core.portdatabase.JavaOnlyPortDataFactory;
 import org.finroc.core.portdatabase.SerializationHelper;
-import org.finroc.core.portdatabase.TypedObject;
-import org.finroc.core.portdatabase.TypedObjectList;
 import org.finroc.gui.util.propertyeditor.ComboBoxEditor;
 import org.finroc.gui.util.propertyeditor.ComponentFactory;
 import org.finroc.gui.util.propertyeditor.FieldAccessorFactory;
@@ -48,6 +40,10 @@ import org.finroc.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.gui.util.propertyeditor.PropertyListAccessor;
 import org.finroc.gui.util.propertyeditor.PropertyListEditor;
 import org.finroc.gui.util.propertyeditor.StandardComponentFactory;
+import org.finroc.serialization.DataTypeBase;
+import org.finroc.serialization.RRLibSerializable;
+import org.finroc.serialization.Serialization;
+import org.finroc.serialization.StringInputStream;
 
 /**
  * @author max
@@ -73,10 +69,11 @@ public class FinrocComponentFactory implements ComponentFactory {
         Class<?> type = acc.getType();
         PropertyEditComponent wpec = null;
 
-        if (TypedObjectList.class.isAssignableFrom(type)) {
+        /*if (TypedObjectList.class.isAssignableFrom(type)) {
             wpec = new PropertyListEditor(new FinrocComponentFactory(commonParent), new StandardComponentFactory());
             acc = new TypedObjectListAdapter((PropertyAccessor<TypedObjectList>)acc);
-        } else if (type.equals(PortCreationList.class)) {
+        } else*/
+        if (type.equals(PortCreationList.class)) {
             wpec = new PropertyListEditor(new FinrocComponentFactory(commonParent), new StandardComponentFactory());
             wpec.setPreferredSize(new Dimension(800, 200));
             acc = new PortCreationListAdapter((PropertyAccessor<PortCreationList>)acc);
@@ -84,9 +81,8 @@ public class FinrocComponentFactory implements ComponentFactory {
             RemoteRuntime rr = RemoteRuntime.find(commonParent);
             ArrayList<String> types = new ArrayList<String>();
             if (rr == null) { // use local data types
-                DataTypeRegister dtr = DataTypeRegister.getInstance();
-                for (short i = 0; i < dtr.getMaxTypeIndex(); i++) {
-                    DataType dt = dtr.getDataType(i);
+                for (short i = 0; i < DataTypeBase.getTypeCount(); i++) {
+                    DataTypeBase dt = DataTypeBase.getType(i);
                     if (dt != null) {
                         types.add(dt.getName());
                     }
@@ -95,11 +91,11 @@ public class FinrocComponentFactory implements ComponentFactory {
                 types.addAll(rr.getRemoteTypes().getRemoteTypeNames());
             }
             wpec = new ComboBoxEditor<String>(types.toArray(new String[0]));
-            acc = new CoreSerializableAdapter((PropertyAccessor<CoreSerializable>)acc, type, DataTypeReference.TYPE);
-        } else if (CoreSerializable.class.isAssignableFrom(type)) {
-            DataType dt = TypedObject.class.isAssignableFrom(type) ? DataTypeRegister.getInstance().getDataType(acc.getType()) : null;
+            acc = new CoreSerializableAdapter((PropertyAccessor<RRLibSerializable>)acc, type, DataTypeReference.TYPE);
+        } else if (RRLibSerializable.class.isAssignableFrom(type)) {
+            DataTypeBase dt = DataTypeBase.findType(acc.getType());
             wpec = new CoreSerializableDefaultEditor(type);
-            acc = new CoreSerializableAdapter((PropertyAccessor<CoreSerializable>)acc, type, dt);
+            acc = new CoreSerializableAdapter((PropertyAccessor<RRLibSerializable>)acc, type, dt);
         }
 
         if (wpec != null) {
@@ -111,15 +107,15 @@ public class FinrocComponentFactory implements ComponentFactory {
     /**
      * Allows using CoreSerializables in TextEditor
      */
-    public static class CoreSerializableAdapter extends PropertyAccessorAdapter<CoreSerializable, String> {
+    public static class CoreSerializableAdapter extends PropertyAccessorAdapter<RRLibSerializable, String> {
 
         /** Expected finroc class of property */
         private final Class<?> finrocClass;
 
         /** Finroc DataType of property - if available */
-        private final DataType dataType;
+        private final DataTypeBase dataType;
 
-        public CoreSerializableAdapter(PropertyAccessor<CoreSerializable> wrapped, Class<?> finrocClass, DataType dataType) {
+        public CoreSerializableAdapter(PropertyAccessor<RRLibSerializable> wrapped, Class<?> finrocClass, DataTypeBase dataType) {
             super(wrapped, String.class);
             this.finrocClass = finrocClass;
             this.dataType = dataType;
@@ -127,124 +123,124 @@ public class FinrocComponentFactory implements ComponentFactory {
 
         @Override
         public void set(String s) throws Exception {
-            if (dataType != null && TypedObject.class.isAssignableFrom(finrocClass)) {
-                DataType dt = SerializationHelper.getTypedStringDataType(dataType, s);
-                CoreSerializable buffer = (CoreSerializable)JavaOnlyPortDataFactory.rawCreate(dt);
+            if (dataType != null && RRLibSerializable.class.isAssignableFrom(finrocClass)) {
+                DataTypeBase dt = SerializationHelper.getTypedStringDataType(dataType, s);
+                RRLibSerializable buffer = (RRLibSerializable)dt.createInstance();
                 SerializationHelper.typedStringDeserialize(buffer, s);
                 wrapped.set(buffer);
             } else {
-                CoreSerializable buffer = (CoreSerializable)JavaOnlyPortDataFactory.rawCreate(finrocClass);
-                buffer.deserialize(s);
+                RRLibSerializable buffer = (RRLibSerializable)finrocClass.newInstance(); /*(RRLibSerializable)JavaOnlyPortDataFactory.rawCreate(finrocClass);*/
+                buffer.deserialize(new StringInputStream(s));
                 wrapped.set(buffer);
             }
         }
 
         @Override
         public String get() throws Exception {
-            CoreSerializable cs = wrapped.get();
+            RRLibSerializable cs = wrapped.get();
             if (cs == null) {
                 return "";
             }
-            if (dataType != null && TypedObject.class.isAssignableFrom(finrocClass)) {
-                return SerializationHelper.typedStringSerialize(dataType, (TypedObject)wrapped.get());
+            if (dataType != null && RRLibSerializable.class.isAssignableFrom(finrocClass)) {
+                return SerializationHelper.typedStringSerialize(dataType, wrapped.get(), dataType);
             } else {
-                return wrapped.get().serialize();
+                return Serialization.serialize(wrapped.get());
             }
         }
     }
 
-    /**
-     * Allows using TypedObjectList in PropertyListEditor
-     */
-    @SuppressWarnings("rawtypes")
-    public static class TypedObjectListAdapter extends PropertyAccessorAdapter<TypedObjectList, TypedObjectListAdapter.TypedObjectListAccessor> {
-
-        /** Expected finroc class of property */
-        //private final Class<?> finrocClass;
-
-        /** Finroc DataType of property - if available */
-        //private final DataType dataType;
-
-        public TypedObjectListAdapter(PropertyAccessor<TypedObjectList> wrapped/*, Class<?> finrocClass, DataType dataType*/) {
-            super(wrapped, TypedObjectListAccessor.class);
-            /*this.finrocClass = finrocClass;
-            this.dataType = dataType;*/
-        }
-
-        @Override
-        public TypedObjectListAccessor get() throws Exception {
-            return new TypedObjectListAccessor(wrapped.get());
-        }
-
-        @Override
-        public void set(TypedObjectListAccessor newValue) throws Exception {
-            wrapped.set(newValue.wrapped);
-        }
-
-        /** Wrapper for TypedObjectLists */
-        public class TypedObjectListAccessor implements PropertyListAccessor, ObjectCloner.Cloneable {
-
-            /** Wrapped TypedObjectList */
-            private final TypedObjectList wrapped;
-
-            private TypedObjectListAccessor(TypedObjectList wrapped) {
-                this.wrapped = wrapped;
-            }
-
-            @Override
-            public boolean equals(Object o) {
-                return (o instanceof TypedObjectListAccessor && wrapped.equals(((TypedObjectListAccessor)o).wrapped));
-            }
-
-            @Override
-            public Object clone() {
-                return new TypedObjectListAccessor(ObjectCloner.clone(wrapped));
-            }
-
-            @Override
-            public Class getElementType() {
-                return wrapped.getElementType().getJavaClass();
-            }
-
-            @Override
-            public int getMaxEntries() {
-                return Integer.MAX_VALUE;
-            }
-
-            @Override
-            public int size() {
-                return wrapped.getSize();
-            }
-
-            @Override
-            public Object get(int index) {
-                if (wrapped instanceof CCDataList) {
-                    return ((CCDataList)wrapped).getWithoutExtraLock(index);
-                } else {
-                    return ((PortDataList)wrapped).getWithoutExtraLock(index);
-                }
-            }
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public List getElementAccessors(Object element) {
-                ArrayList result = new ArrayList();
-                result.add(new FinrocObjectAccessor((TypedObject)element));
-                return result;
-            }
-
-            @Override
-            public void addElement() {
-                wrapped.setSize(wrapped.getSize() + 1, wrapped.getElementType());
-            }
-
-            @Override
-            public void removeElement(int index) {
-                wrapped.removeElement(index);
-            }
-
-        }
-    }
+//    /**
+//     * Allows using TypedObjectList in PropertyListEditor
+//     */
+//    @SuppressWarnings("rawtypes")
+//    public static class TypedObjectListAdapter extends PropertyAccessorAdapter<TypedObjectList, TypedObjectListAdapter.TypedObjectListAccessor> {
+//
+//        /** Expected finroc class of property */
+//        //private final Class<?> finrocClass;
+//
+//        /** Finroc DataType of property - if available */
+//        //private final DataType dataType;
+//
+//        public TypedObjectListAdapter(PropertyAccessor<TypedObjectList> wrapped/*, Class<?> finrocClass, DataType dataType*/) {
+//            super(wrapped, TypedObjectListAccessor.class);
+//            /*this.finrocClass = finrocClass;
+//            this.dataType = dataType;*/
+//        }
+//
+//        @Override
+//        public TypedObjectListAccessor get() throws Exception {
+//            return new TypedObjectListAccessor(wrapped.get());
+//        }
+//
+//        @Override
+//        public void set(TypedObjectListAccessor newValue) throws Exception {
+//            wrapped.set(newValue.wrapped);
+//        }
+//
+//        /** Wrapper for TypedObjectLists */
+//        public class TypedObjectListAccessor implements PropertyListAccessor, ObjectCloner.Cloneable {
+//
+//            /** Wrapped TypedObjectList */
+//            private final TypedObjectList wrapped;
+//
+//            private TypedObjectListAccessor(TypedObjectList wrapped) {
+//                this.wrapped = wrapped;
+//            }
+//
+//            @Override
+//            public boolean equals(Object o) {
+//                return (o instanceof TypedObjectListAccessor && wrapped.equals(((TypedObjectListAccessor)o).wrapped));
+//            }
+//
+//            @Override
+//            public Object clone() {
+//                return new TypedObjectListAccessor(ObjectCloner.clone(wrapped));
+//            }
+//
+//            @Override
+//            public Class getElementType() {
+//                return wrapped.getElementType().getJavaClass();
+//            }
+//
+//            @Override
+//            public int getMaxEntries() {
+//                return Integer.MAX_VALUE;
+//            }
+//
+//            @Override
+//            public int size() {
+//                return wrapped.getSize();
+//            }
+//
+//            @Override
+//            public Object get(int index) {
+//                if (wrapped instanceof CCDataList) {
+//                    return ((CCDataList)wrapped).getWithoutExtraLock(index);
+//                } else {
+//                    return ((PortDataList)wrapped).getWithoutExtraLock(index);
+//                }
+//            }
+//
+//            @SuppressWarnings("unchecked")
+//            @Override
+//            public List getElementAccessors(Object element) {
+//                ArrayList result = new ArrayList();
+//                result.add(new FinrocObjectAccessor((TypedObject)element));
+//                return result;
+//            }
+//
+//            @Override
+//            public void addElement() {
+//                wrapped.setSize(wrapped.getSize() + 1, wrapped.getElementType());
+//            }
+//
+//            @Override
+//            public void removeElement(int index) {
+//                wrapped.removeElement(index);
+//            }
+//
+//        }
+//    }
 
     /**
      * Allows using TypedObjectList in PropertyListEditor
