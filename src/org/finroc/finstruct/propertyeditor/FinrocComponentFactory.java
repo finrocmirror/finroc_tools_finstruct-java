@@ -142,9 +142,9 @@ public class FinrocComponentFactory implements ComponentFactory {
                 return "";
             }
             if (dataType != null && RRLibSerializable.class.isAssignableFrom(finrocClass)) {
-                return SerializationHelper.typedStringSerialize(dataType, wrapped.get(), dataType);
+                return SerializationHelper.typedStringSerialize(dataType, cs, dataType);
             } else {
-                return Serialization.serialize(wrapped.get());
+                return Serialization.serialize(cs);
             }
         }
     }
