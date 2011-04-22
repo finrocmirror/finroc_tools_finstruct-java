@@ -52,7 +52,7 @@ public class TypedObjectCloner implements CloneHandler {
 
     @Override
     public boolean handles(Object o) {
-        return o instanceof TypedObject;
+        return o instanceof RRLibSerializable;
     }
 
     @SuppressWarnings("unchecked")
