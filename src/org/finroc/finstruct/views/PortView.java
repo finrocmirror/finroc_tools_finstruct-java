@@ -200,6 +200,11 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
 
         @Override
         public void portChanged() {
+            SwingUtilities.invokeLater(this);
+        }
+
+        @Override
+        public void run() {
             boolean aa = toolBar.isSelected(DiverseSwitches.autoUpdate);
             boolean upd = initialValueRetrieve;
             if (initialValueRetrieve) {
@@ -209,16 +214,11 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
                 }
             }
             if (aa || upd) {
-                SwingUtilities.invokeLater(this);
-            }
-        }
-
-        @Override
-        public void run() {
-            try {
-                component.updateValue();
-            } catch (Exception e) {
-                logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+                try {
+                    component.updateValue();
+                } catch (Exception e) {
+                    logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+                }
             }
         }
     }

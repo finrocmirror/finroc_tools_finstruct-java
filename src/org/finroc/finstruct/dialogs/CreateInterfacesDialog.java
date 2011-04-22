@@ -39,6 +39,7 @@ import org.finroc.core.finstructable.GroupInterface.PortDirection;
 import org.finroc.core.parameter.StructureParameterList;
 import org.finroc.core.plugin.RemoteCreateModuleAction;
 import org.finroc.core.port.AbstractPort;
+import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.finstruct.Finstruct;
 import org.finroc.finstruct.propertyeditor.FinrocComponentFactory;
@@ -87,7 +88,7 @@ public class CreateInterfacesDialog extends MDialog {
         transient PortCreationList portCreationList;
     }
 
-    class CreationTasksContainer {
+    static class CreationTasksContainer {
         PropertyList<CreationTask> tasks = new PropertyList<CreationTask>(CreationTask.class, 10);;
     }
 
@@ -274,6 +275,15 @@ public class CreateInterfacesDialog extends MDialog {
                 closeInitial = true;
             } else if (e.getSource() == create) {
 
+                // apply changes
+                for (PropertyEditComponent<?> wpec : propPanel.getComponentList()) {
+                    try {
+                        wpec.applyChanges();
+                    } catch (Exception e1) {
+                        Finstruct.logDomain.log(LogLevel.LL_ERROR, "ParameterEditDialog", e1);
+                    }
+                }
+
                 setPortListCount = 0;
                 RemoteRuntime rr = RemoteRuntime.find(element);
 
@@ -325,24 +335,34 @@ public class CreateInterfacesDialog extends MDialog {
         }
 
         @Override
-        public synchronized void runtimeChange(byte changeType, FrameworkElement element) {
+        public synchronized void runtimeChange(byte changeType, final FrameworkElement element) {
             if (changeType == RuntimeListener.ADD && element.getParent() == CreateInterfacesDialog.this.element) {
-                for (CreationTask task : creation.tasks) {
+                for (final CreationTask task : creation.tasks) {
                     if (element.getDescription().equals(task.name) && task.portCreationList.getSize() > 0) {
 
-                        // okay, the port list of this element needs to be set
-                        try {
-                            RemoteRuntime rr = RemoteRuntime.find(element);
-                            int handle = rr.getRemoteHandle(element);
-                            StructureParameterList elementParamList = (StructureParameterList)rr.getAdminInterface().getAnnotation(handle, StructureParameterList.TYPE);
-                            elementParamList.get(0).set(Serialization.serialize(task.portCreationList));
-                            rr.getAdminInterface().setAnnotation(handle, elementParamList);
+                        new Thread(new Runnable() {
 
-                            setPortListCount--;
-                            this.notifyAll();
-                        } catch (Exception e) {
-                            Finstruct.showErrorMessage("Failed to set annotation list", true, true);
-                        }
+                            @Override
+                            public void run() {
+                                ThreadLocalCache.get();
+                                synchronized (PortsDialog.this) {
+                                    // okay, the port list of this element needs to be set
+                                    try {
+                                        RemoteRuntime rr = RemoteRuntime.find(element);
+                                        int handle = rr.getRemoteHandle(element);
+                                        StructureParameterList elementParamList = (StructureParameterList)rr.getAdminInterface().getAnnotation(handle, StructureParameterList.TYPE);
+                                        elementParamList.get(0).set(Serialization.serialize(task.portCreationList));
+                                        rr.getAdminInterface().setAnnotation(handle, elementParamList);
+
+                                        setPortListCount--;
+                                        PortsDialog.this.notifyAll();
+                                    } catch (Exception e) {
+                                        Finstruct.showErrorMessage("Failed to set annotation list", true, true);
+                                    }
+                                }
+                            }
+
+                        }).start();
 
                         return;
                     }
