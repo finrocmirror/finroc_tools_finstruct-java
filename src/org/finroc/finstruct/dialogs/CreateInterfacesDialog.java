@@ -335,17 +335,23 @@ public class CreateInterfacesDialog extends MDialog {
         }
 
         @Override
-        public synchronized void runtimeChange(byte changeType, final FrameworkElement element) {
+        public void runtimeChange(byte changeType, final FrameworkElement element) {
             if (changeType == RuntimeListener.ADD && element.getParent() == CreateInterfacesDialog.this.element) {
-                for (final CreationTask task : creation.tasks) {
-                    if (element.getDescription().equals(task.name) && task.portCreationList.getSize() > 0) {
 
-                        new Thread(new Runnable() {
+                new Thread(new Runnable() {
 
-                            @Override
-                            public void run() {
-                                ThreadLocalCache.get();
-                                synchronized (PortsDialog.this) {
+                    @Override
+                    public void run() {
+
+                        System.out.println("Started thread for " + element.getQualifiedName());
+                        synchronized (PortsDialog.this) {
+
+                            System.out.println("Started2 thread for " + element.getQualifiedName());
+
+                            for (final CreationTask task : creation.tasks) {
+                                if (element.getDescription().equals(task.name) && task.portCreationList.getSize() > 0) {
+
+                                    ThreadLocalCache.get();
                                     // okay, the port list of this element needs to be set
                                     try {
                                         RemoteRuntime rr = RemoteRuntime.find(element);
@@ -361,12 +367,10 @@ public class CreateInterfacesDialog extends MDialog {
                                     }
                                 }
                             }
-
-                        }).start();
-
-                        return;
+                            return;
+                        }
                     }
-                }
+                }).start();
             }
         }
 

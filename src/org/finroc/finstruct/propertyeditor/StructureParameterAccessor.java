@@ -67,7 +67,7 @@ public class StructureParameterAccessor implements PropertyAccessor {
 
     @Override
     public void set(Object newValue) throws Exception {
-        if (newValue instanceof CoreSerializable) {
+        if (newValue instanceof RRLibSerializable) {
             wrapped.set(Serialization.serialize((RRLibSerializable)newValue));
         } else {
             assert(newValue instanceof String);

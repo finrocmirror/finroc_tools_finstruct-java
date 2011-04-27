@@ -407,13 +407,22 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         //}
     }
 
-    public static void showErrorMessage(Exception e, boolean printStackTrace) {
+    public static void showErrorMessage(final Exception e, final boolean printStackTrace) {
         if (printStackTrace) {
             logDomain.log(LogLevel.LL_ERROR, "Finstruct", e);
         } else {
             logDomain.log(LogLevel.LL_ERROR, "Finstruct", e.getMessage());
         }
-        JOptionPane.showMessageDialog(null, (printStackTrace ? (e.getClass().getName() + "\n") : "") + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        if (SwingUtilities.isEventDispatchThread()) {
+            JOptionPane.showMessageDialog(null, (printStackTrace ? (e.getClass().getName() + "\n") : "") + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        } else {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    JOptionPane.showMessageDialog(null, (printStackTrace ? (e.getClass().getName() + "\n") : "") + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+        }
     }
 
     public static void showErrorMessage(String string, boolean throwException, boolean printStackTrace) {

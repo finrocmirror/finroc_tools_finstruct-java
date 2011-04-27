@@ -237,12 +237,19 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
     }
 
     @Override
-    public synchronized void runtimeChange(byte changeType, FrameworkElement element) {
+    public void runtimeChange(byte changeType, final FrameworkElement element) {
         if (changeType == RuntimeListener.ADD && element.getParent() == parent) {
-            if (element.getDescription().equals(created)) {
-                createdModule = element;
-                notifyAll();
-            }
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (CreateModuleDialog.this) {
+                        if (element.getDescription().equals(created)) {
+                            createdModule = element;
+                            CreateModuleDialog.this.notifyAll();
+                        }
+                    }
+                }
+            }).start();
         }
     }
 

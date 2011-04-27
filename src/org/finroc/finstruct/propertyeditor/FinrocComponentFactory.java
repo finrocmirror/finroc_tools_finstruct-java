@@ -262,7 +262,7 @@ public class FinrocComponentFactory implements ComponentFactory {
         }
 
         /** Wrapper for TypedObjectLists */
-        public class PortCreationListAccessor implements PropertyListAccessor<PortCreationList.Entry>, ObjectCloner.Cloneable {
+        public static class PortCreationListAccessor implements PropertyListAccessor<PortCreationList.Entry>, ObjectCloner.Cloneable {
 
             /** Wrapped TypedObjectList */
             private final PortCreationList wrapped;
