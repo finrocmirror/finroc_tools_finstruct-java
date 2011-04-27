@@ -31,6 +31,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -60,6 +61,7 @@ import org.finroc.core.plugin.CreateExternalConnectionAction;
 import org.finroc.core.plugin.ExternalConnection;
 import org.finroc.core.plugin.Plugins;
 import org.finroc.core.port.ThreadLocalCache;
+import org.finroc.core.util.Files;
 import org.finroc.finstruct.dialogs.FindElementDialog;
 import org.finroc.finstruct.views.AbstractFinstructGraphView;
 import org.finroc.finstruct.views.Ib2cView;
@@ -153,6 +155,15 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                 EXPERIMENTAL_FEATURES = true;
             } else if (arg.startsWith("--connect=")) {
                 connect = arg.substring(arg.indexOf("=") + 1);
+            } else if (arg.equals("-h") || arg.equals("--help")) {
+                try {
+                    for (String s : Files.readLines(Finstruct.class.getResourceAsStream("help.txt"))) {
+                        System.out.println(s);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return;
             }
         }
 

@@ -1,0 +1,12 @@
+
+Finstruct
+
+Usage: finstruct [options]
+Start finstruct using specified options. 
+
+available options:
+
+--connect=<address>  Connect to specified address at startup.								
+--beta               Enable beta features.
+--experimental       Enable experimental features.
+

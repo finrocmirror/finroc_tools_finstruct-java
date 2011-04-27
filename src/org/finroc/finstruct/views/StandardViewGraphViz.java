@@ -1019,10 +1019,10 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         // tool bar
         this.toolBar = toolBar;
 
+        toolBar.addToggleButton(new MAction(Mode.navigate, null, "Navigation Mode", this));
+        toolBar.addToggleButton(new MAction(Mode.connect, null, "Connect Mode", this));
+        toolBar.addSeparator();
         if (Finstruct.BETA_FEATURES) {
-            toolBar.addToggleButton(new MAction(Mode.navigate, null, "Navigation Mode", this));
-            toolBar.addToggleButton(new MAction(Mode.connect, null, "Connect Mode", this));
-            toolBar.addSeparator();
             toolBar.startNextButtonGroup();
             toolBar.setSelected(Mode.navigate);
         }
