@@ -35,6 +35,7 @@ import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.FrameworkElementTreeFilter;
 import org.finroc.core.port.AbstractPort;
+import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.finstruct.FinstructView;
 import org.finroc.finstruct.propertyeditor.ConnectingPortAccessor;
@@ -205,6 +206,8 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
 
         @Override
         public void run() {
+            //System.out.println("Running for " + component.toString());
+            ThreadLocalCache.get();
             boolean aa = toolBar.isSelected(DiverseSwitches.autoUpdate);
             boolean upd = initialValueRetrieve;
             if (initialValueRetrieve) {
