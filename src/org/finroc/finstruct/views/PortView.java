@@ -41,6 +41,7 @@ import org.finroc.finstruct.FinstructView;
 import org.finroc.finstruct.propertyeditor.ConnectingPortAccessor;
 import org.finroc.finstruct.propertyeditor.FinrocComponentFactory;
 import org.finroc.finstruct.propertyeditor.PortAccessor;
+import org.finroc.finstruct.propertyeditor.UnknownTypePortAccessor;
 import org.finroc.gui.util.gui.MAction;
 import org.finroc.gui.util.gui.MActionEvent;
 import org.finroc.gui.util.gui.MToolBar;
@@ -125,6 +126,10 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
             if (FinrocTypeInfo.isCCType(port.getDataType()) || FinrocTypeInfo.isStdType(port.getDataType())) {
                 @SuppressWarnings("rawtypes")
                 ConnectingPortAccessor cpa = new ConnectingPortAccessor(port, commonParent.getQualifiedLink());
+                ports.add(cpa);
+            } else if (FinrocTypeInfo.get(port.getDataType()).getType() == FinrocTypeInfo.Type.UNKNOWN && port.asNetPort() != null) {
+                @SuppressWarnings("rawtypes")
+                ConnectingPortAccessor cpa = new UnknownTypePortAccessor(port.asNetPort(), commonParent.getQualifiedLink());
                 ports.add(cpa);
             }
         }

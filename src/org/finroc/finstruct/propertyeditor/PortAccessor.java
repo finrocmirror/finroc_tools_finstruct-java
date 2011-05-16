@@ -58,7 +58,7 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
     private boolean listening = false;
 
     /** Port accessor listener */
-    private Listener listener;
+    protected Listener listener;
 
     static {
         TypedObjectCloner.register();
@@ -72,8 +72,17 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
         assert(wrapped instanceof PortBase || wrapped instanceof CCPortBase);
         this.wrapped = wrapped;
         name = wrapped.getQualifiedLink().substring(rootName.length() + 1);
-
     }
+
+    /**
+     * Constructor for derived classes
+     *
+     * @param wrapped Wrapped port, may be null
+     */
+    protected PortAccessor(AbstractPort wrapped) {
+        this.wrapped = wrapped;
+    }
+
 
     @SuppressWarnings("unchecked")
     @Override

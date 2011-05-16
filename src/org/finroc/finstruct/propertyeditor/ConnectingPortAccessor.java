@@ -45,6 +45,15 @@ public class ConnectingPortAccessor<T extends RRLibSerializable> extends PortAcc
     }
 
     /**
+     * Constructor for derived classes
+     */
+    protected ConnectingPortAccessor(String portLink, String rootName) {
+        super(null);
+        partner = null;
+        name = portLink.substring(rootName.length() + 1);
+    }
+
+    /**
      * @param partner Partner port
      * @return port creation info
      */
