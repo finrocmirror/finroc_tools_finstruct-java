@@ -26,7 +26,6 @@ import java.util.List;
 
 import org.finroc.core.parameter.StructureParameterBase;
 import org.finroc.core.parameter.StructureParameterList;
-import org.finroc.core.portdatabase.CoreSerializable;
 import org.finroc.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.gui.util.propertyeditor.PropertyAccessor;
 import org.finroc.serialization.RRLibSerializable;
