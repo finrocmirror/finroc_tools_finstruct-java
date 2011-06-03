@@ -215,17 +215,17 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
             ThreadLocalCache.get();
             boolean aa = toolBar.isSelected(DiverseSwitches.autoUpdate);
             boolean upd = initialValueRetrieve;
-            if (initialValueRetrieve) {
-                initialValueRetrieve = false;
-                if (!aa) {
-                    port.setAutoUpdate(false);
-                }
-            }
             if (aa || upd) {
                 try {
                     component.updateValue();
                 } catch (Exception e) {
                     logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+                }
+            }
+            if (initialValueRetrieve) {
+                initialValueRetrieve = false;
+                if (!aa) {
+                    port.setAutoUpdate(false);
                 }
             }
         }

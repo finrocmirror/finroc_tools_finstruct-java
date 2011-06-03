@@ -69,6 +69,7 @@ import org.finroc.finstruct.views.PortView;
 import org.finroc.finstruct.views.StandardView;
 import org.finroc.finstruct.views.StandardViewGraphViz;
 import org.finroc.gui.ConnectionPanel;
+import org.finroc.gui.GUIUiBase;
 import org.finroc.gui.StatusBar;
 import org.finroc.gui.commons.EventRouter;
 import org.finroc.gui.util.gui.IconManager;
@@ -190,7 +191,8 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         this.setMinimumSize(new Dimension(640, 480));
         setTitle("finstruct");
 
-        IconManager.getInstance().setResourceFolder(Finstruct.class, "icon");
+        IconManager.getInstance().addResourceFolder(GUIUiBase.class, "icons");
+        IconManager.getInstance().addResourceFolder(Finstruct.class, "icon");
 
         // Create menu
         menuBar = new JMenuBar();

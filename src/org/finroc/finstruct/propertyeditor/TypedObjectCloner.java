@@ -26,7 +26,6 @@ import org.finroc.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.jc.log.LogDefinitions;
 import org.finroc.log.LogDomain;
 import org.finroc.serialization.RRLibSerializable;
-import org.finroc.serialization.TypedObject;
 
 /**
  * @author max

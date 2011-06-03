@@ -40,6 +40,7 @@ import org.finroc.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.gui.util.propertyeditor.PropertyListAccessor;
 import org.finroc.gui.util.propertyeditor.PropertyListEditor;
 import org.finroc.gui.util.propertyeditor.StandardComponentFactory;
+import org.finroc.plugin.datatype.PaintablePortData;
 import org.finroc.serialization.DataTypeBase;
 import org.finroc.serialization.RRLibSerializable;
 import org.finroc.serialization.Serialization;
@@ -92,6 +93,8 @@ public class FinrocComponentFactory implements ComponentFactory {
             }
             wpec = new ComboBoxEditor<String>(types.toArray(new String[0]));
             acc = new CoreSerializableAdapter((PropertyAccessor<RRLibSerializable>)acc, type, DataTypeReference.TYPE);
+        } else if (PaintablePortData.class.isAssignableFrom(type)) {
+            wpec = new PaintableViewer();
         } else if (RRLibSerializable.class.isAssignableFrom(type)) {
             DataTypeBase dt = DataTypeBase.findType(acc.getType());
             wpec = new CoreSerializableDefaultEditor(type);
