@@ -273,7 +273,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
         // Change to standard view
         try {
-            changeView(views.get(0).view.newInstance());
+            changeView(views.get(0).view.newInstance(), true);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -316,8 +316,9 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
      * Changes view
      *
      * @param view View to change to
+     * @param restoreRoot call setRootElement with old root on new View?
      */
-    private void changeView(FinstructView view) {
+    private void changeView(FinstructView view, boolean restoreRoot) {
         view.finstruct = this;
 
         // Clear menu bar
@@ -362,7 +363,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         }
 
         // restore root element
-        if (lastRoot != null) {
+        if (lastRoot != null && restoreRoot) {
             currentView.setRootElement(lastRoot, null);
         }
 
@@ -520,7 +521,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         public void actionPerformed(ActionEvent e) {
             pushViewToHistory();
             try {
-                changeView(view.newInstance());
+                changeView(view.newInstance(), true);
             } catch (Exception e1) {
                 e1.printStackTrace();
             }
@@ -589,7 +590,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             Class <? extends FinstructView > viewClass = AbstractFinstructGraphView.hasOnlyPortChildren(fe) ? PortView.class : StandardViewGraphViz.class;
             if (currentView == null || currentView.getClass() != viewClass) {
                 try {
-                    changeView(viewClass.newInstance());
+                    changeView(viewClass.newInstance(), false);
                 } catch (Exception e1) {
                     e1.printStackTrace();
                 }
@@ -652,7 +653,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
         if (currentView == null || currentView.getClass() != he.view) {
             try {
-                changeView(he.view.newInstance());
+                changeView(he.view.newInstance(), false);
             } catch (Exception e1) {
                 e1.printStackTrace();
             }
