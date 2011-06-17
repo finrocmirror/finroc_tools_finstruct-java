@@ -124,10 +124,12 @@ public class UnknownTypePortAccessor extends ConnectingPortAccessor<CoreString> 
 
     @Override
     public void handleReturn(AbstractMethod method, CoreString r) {
-        currentString = new CoreString();
-        currentString.set(r.toString());
-        PortDataManager.getManager(r).releaseLock();
-        super.portChanged(np.getPort(), currentString);
+        if (r != null) {
+            currentString = new CoreString();
+            currentString.set(r.toString());
+            PortDataManager.getManager(r).releaseLock();
+            super.portChanged(np.getPort(), currentString);
+        }
     }
 
     @Override

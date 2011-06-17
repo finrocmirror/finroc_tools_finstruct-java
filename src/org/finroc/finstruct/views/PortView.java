@@ -127,7 +127,7 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
                 @SuppressWarnings("rawtypes")
                 ConnectingPortAccessor cpa = new ConnectingPortAccessor(port, commonParent.getQualifiedLink());
                 ports.add(cpa);
-            } else if (FinrocTypeInfo.get(port.getDataType()).getType() == FinrocTypeInfo.Type.UNKNOWN && port.asNetPort() != null) {
+            } else if (FinrocTypeInfo.get(port.getDataType()).getType() == FinrocTypeInfo.Type.UNKNOWN_CC || FinrocTypeInfo.get(port.getDataType()).getType() == FinrocTypeInfo.Type.UNKNOWN_STD && port.asNetPort() != null) {
                 @SuppressWarnings("rawtypes")
                 ConnectingPortAccessor cpa = new UnknownTypePortAccessor(port.asNetPort(), commonParent.getQualifiedLink());
                 ports.add(cpa);
