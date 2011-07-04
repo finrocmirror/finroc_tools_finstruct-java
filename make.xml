@@ -1,6 +1,6 @@
 <targets>
   <finrocjavaprogram name="finstruct" libs="finroc_plugin_blackboard.jar finroc_plugin_data_types.jar finroc_plugin_tcp.jar fingui.jar">
-    <sources>src/** lib/*.jar</sources>
-    <script name="finstruct" main-class="org.finroc.finstruct.Finstruct"/>
+    <sources>**.java **.png **.txt</sources>
+    <script name="finstruct" main-class="org.finroc.tools.finstruct.Finstruct"/>
   </finrocjavaprogram>
 </targets>
