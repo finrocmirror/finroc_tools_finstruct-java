@@ -72,6 +72,8 @@ import org.finroc.tools.gui.GUIUiBase;
 import org.finroc.tools.gui.StatusBar;
 import org.finroc.tools.gui.commons.EventRouter;
 import org.finroc.tools.gui.util.gui.IconManager;
+import org.finroc.tools.gui.util.gui.MAction;
+import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.treemodel.InterfaceNode;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
@@ -89,6 +91,9 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
     /** UID */
     private static final long serialVersionUID = 5790020137768236619L;
+
+    /** Control modes */
+    public enum Mode { navigate, connect, paramconnect }
 
     /** Interface of connected runtimes */
     protected InterfaceTreeModel ioInterface = new InterfaceTreeModel();
@@ -332,10 +337,19 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         }
 
         // Clear toolbar and add default navigation buttons
+        Mode lastMode = toolBar.getSelection(Mode.values());
         toolBar.clear();
         back = toolBar.createButton("back-ubuntu.png", "To last view", this);
         next = toolBar.createButton("forward-ubuntu.png", "To next view", this);
         toolBar.addSeparator();
+        toolBar.addToggleButton(new MAction(Mode.navigate, null, "Navigate", this));
+        toolBar.addToggleButton(new MAction(Mode.connect, null, "Connect", this));
+        if (Finstruct.BETA_FEATURES) {
+            toolBar.addToggleButton(new MAction(Mode.paramconnect, null, "Parameter-Connect", this));
+        }
+        toolBar.setSelected(lastMode == null ? Mode.navigate : lastMode);
+        toolBar.addSeparator();
+        toolBar.startNextButtonGroup();
 
         FrameworkElement lastRoot = currentView == null ? null : currentView.getRootElement();
         currentView = view;
@@ -363,10 +377,18 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
         // restore root element
         if (lastRoot != null && restoreRoot) {
-            currentView.setRootElement(lastRoot, null);
+            setViewRootElement(lastRoot, null);
         }
 
         updateHistoryButtonState();
+    }
+
+    public void setViewRootElement(FrameworkElement root, ArrayList<FrameworkElement> expandedElements) {
+        currentView.setRootElement(root, expandedElements);
+
+        if (toolBar.isSelected(Mode.paramconnect)) {
+            connectionPanel.setRightTree(new ConfigFileModel(root));
+        }
     }
 
     /**
@@ -377,6 +399,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         back.setEnabled(historyPos > 0);
     }
 
+    @SuppressWarnings("rawtypes")
     @Override
     public void actionPerformed(ActionEvent ae) {
         try {
@@ -394,6 +417,11 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                 showHistoryElement(historyPos + 1);
             } else if (src == back) {
                 showHistoryElement(historyPos - 1);
+            } else if (ae instanceof MActionEvent) {
+                Enum e = ((MActionEvent)ae).getEnumID();
+                if (e instanceof Mode) {
+                    connectionPanel.setRightTree(e == Mode.connect ? connectionPanel.getLeftTree() : e == Mode.paramconnect ? new ConfigFileModel(currentView.getRootElement()) : null);
+                }
             }
             //requestFocus();
         } catch (Exception e) {
@@ -594,10 +622,10 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
                     e1.printStackTrace();
                 }
             }
-            currentView.setRootElement(fe, null);
+            setViewRootElement(fe, null);
         } else {
             if (currentView != null) {
-                currentView.setRootElement(fe, null);
+                setViewRootElement(fe, null);
             }
         }
 
@@ -658,7 +686,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             }
         }
 
-        currentView.setRootElement(root, expanded);
+        setViewRootElement(root, expanded);
 
         updateHistoryButtonState();
     }
@@ -725,5 +753,12 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             }
             return true;
         }
+    }
+
+    /**
+     * @return Current finstruct view
+     */
+    public FinstructView getCurrentView() {
+        return currentView;
     }
 }

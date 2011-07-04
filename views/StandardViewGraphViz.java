@@ -121,9 +121,6 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     /** Expanded groups */
     private ArrayList<Subgraph> subgraphs = new ArrayList<Subgraph>();
 
-    /** Control modes */
-    private enum Mode { navigate, connect }
-
     /** reference to toolBar */
     private MToolBar toolBar;
 
@@ -1019,14 +1016,6 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         // tool bar
         this.toolBar = toolBar;
 
-        toolBar.addToggleButton(new MAction(Mode.navigate, null, "Navigation Mode", this));
-        toolBar.addToggleButton(new MAction(Mode.connect, null, "Connect Mode", this));
-        toolBar.addSeparator();
-        if (Finstruct.BETA_FEATURES) {
-            toolBar.startNextButtonGroup();
-            toolBar.setSelected(Mode.navigate);
-        }
-
         if (Finstruct.EXPERIMENTAL_FEATURES) {
             toolBar.addToggleButton(new MAction(Graph.Layout.dot, null, "dot layout", this));
             toolBar.addToggleButton(new MAction(Graph.Layout.neato, null, "neato layout", this));
@@ -1076,8 +1065,6 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             Enum e = ((MActionEvent)ae).getEnumID();
             if (e instanceof Graph.Layout) {
                 relayout();
-            } else if (e instanceof Mode) {
-                connectionPanel.setRightTree(e == Mode.connect ? connectionPanel.getLeftTree() : null);
             } else if (e == DiverseSwitches.antialiasing) {
                 repaint();
             } else if (e == DiverseSwitches.lineBreaks) {
@@ -1184,7 +1171,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
      * @return Is View in connection mode?
      */
     private boolean inConnectionMode() {
-        return toolBar.getSelection(Mode.values()) == Mode.connect;
+        return toolBar.getSelection(Finstruct.Mode.values()) == Finstruct.Mode.connect;
     }
 
     @Override
