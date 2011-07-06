@@ -62,6 +62,7 @@ import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.FrameworkElementTreeFilter;
 import org.finroc.core.RuntimeEnvironment;
+import org.finroc.core.admin.AdminServer;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
@@ -305,9 +306,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 return;
             }
             try {
-                boolean executing = rr.getAdminInterface().isExecuting(rr.getRemoteHandle(getRootElement()));
-                start.setEnabled(!executing);
-                pause.setEnabled(executing);
+                int executing = rr.getAdminInterface().isExecuting(rr.getRemoteHandle(getRootElement()));
+                start.setEnabled(executing == AdminServer.STOPPED || executing == AdminServer.BOTH);
+                pause.setEnabled(executing == AdminServer.STARTED || executing == AdminServer.BOTH);
             } catch (Exception e) {
                 start.setEnabled(false);
                 pause.setEnabled(false);
@@ -1117,9 +1118,9 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 Finstruct.showErrorMessage("Root Element is not a child of a remote runtime", false, false);
             } else {
                 if (ae.getSource() == start) {
-                    rr.getAdminInterface().startExecution();
+                    rr.getAdminInterface().startExecution(rr.getRemoteHandle(getRootElement()));
                 } else {
-                    rr.getAdminInterface().pauseExecution();
+                    rr.getAdminInterface().pauseExecution(rr.getRemoteHandle(getRootElement()));
                 }
                 updateStartPauseEnabled();
             }

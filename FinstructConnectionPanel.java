@@ -288,7 +288,6 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         return null;
     }
 
-
     @Override
     public void setRightTree(TreeModel tm) {
         if (getRightTree() instanceof ConfigFileModel) {
