@@ -54,6 +54,7 @@ import javax.swing.Timer;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 
+import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.RuntimeEnvironment;
 import org.finroc.core.plugin.ConnectionListener;
@@ -614,7 +615,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
         if (miAutoView.isSelected()) {
             // auto-select view
-            Class <? extends FinstructView > viewClass = AbstractFinstructGraphView.hasOnlyPortChildren(fe) ? PortView.class : StandardViewGraphViz.class;
+            Class <? extends FinstructView > viewClass = AbstractFinstructGraphView.hasOnlyPortChildren(fe) && (!fe.getFlag(CoreFlags.FINSTRUCTABLE_GROUP)) ? PortView.class : StandardViewGraphViz.class;
             if (currentView == null || currentView.getClass() != viewClass) {
                 try {
                     changeView(viewClass.newInstance(), false);
