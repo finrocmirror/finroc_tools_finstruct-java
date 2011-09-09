@@ -20,6 +20,7 @@
  */
 package org.finroc.tools.finstruct.dialogs;
 
+import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.event.ActionEvent;
@@ -31,6 +32,7 @@ import java.util.TreeSet;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.event.CaretEvent;
@@ -61,7 +63,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
     private JTextField filter, name;
     private JComboBox group;
     private FilteredList<RemoteCreateModuleAction> jlist;
-    private JButton next, cancel, create;
+    private JButton next, cancel, create, load;
 
     /** Parent framework element */
     private FrameworkElement parent;
@@ -90,6 +92,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
      */
     public void show(FrameworkElement parent) {
         this.parent = parent;
+        setTitle("Create Module");
 
         // create components
         jlist = new FilteredList<RemoteCreateModuleAction>(this);
@@ -99,11 +102,19 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
         filter = new JTextField();
         filter.addCaretListener(jlist);
         addComponent("Type name filter", filter, 1, false);
+        JPanel library = new JPanel();
+        BorderLayout bl = new BorderLayout();
+        bl.setHgap(4);
+        library.setLayout(bl);
         group = new JComboBox();
         group.addActionListener(jlist);
-        addComponent("Module group filter", group, 2, false);
+        library.add(group, BorderLayout.CENTER);
+        load = new JButton("Load...");
+        load.addActionListener(this);
+        library.add(load, BorderLayout.EAST);
+        addComponent("Module library", library, 2, false);
         jlist.addListSelectionListener(this);
-        jlist.setPreferredSize(new Dimension(200, 400));
+        jlist.setPreferredSize(new Dimension(350, 400));
         jlist.setFont(filter.getFont());
         addComponent("", jlist, 3, true);
 
@@ -115,9 +126,24 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
         addComponent("", buttons, 4, false);
 
         // get create module actions
-        List<RemoteCreateModuleAction> createModuleActions = RemoteRuntime.find(parent).getAdminInterface().getRemoteModuleTypes();
+        updateCreateModuleActions(RemoteRuntime.find(parent).getAdminInterface().getRemoteModuleTypes());
 
-        // fill groups and list
+        // show dialog
+        getRootPane().setDefaultButton(create);
+        pack();
+        setVisible(true);
+
+    }
+
+    /**
+     * Fill groups and list
+     *
+     * @param createModuleActions Current create module actions
+     */
+    public void updateCreateModuleActions(List<RemoteCreateModuleAction> createModuleActions) {
+        if (createModuleActions == null) {
+            return;
+        }
         SortedSet<Object> groups = new TreeSet<Object>();
         groups.add("all");
         for (RemoteCreateModuleAction rcma : createModuleActions) {
@@ -126,12 +152,6 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
         group.setModel(new DefaultComboBoxModel(groups.toArray()));
         updateButtonState();
         jlist.setElements(createModuleActions);
-
-        // show dialog
-        getRootPane().setDefaultButton(create);
-        pack();
-        setVisible(true);
-
     }
 
     @Override
@@ -163,6 +183,17 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == cancel) {
             close();
+        } else if (e.getSource() == load) {
+            RemoteRuntime rr = RemoteRuntime.find(parent);
+            List<String> libs = rr.getAdminInterface().getModuleLibraries();
+            if (libs != null && libs.size() > 0) {
+                String load = new LoadModuleLibraryDialog((JFrame)getOwner()).show(libs);
+                if (load != null) {
+                    updateCreateModuleActions(rr.getAdminInterface().loadModuleLibrary(load));
+                }
+            } else {
+                Finstruct.showErrorMessage("There don't appear to be any more modules to load", false, false);
+            }
         } else if (e.getSource() == next || e.getSource() == create) {
             RemoteCreateModuleAction rcma = jlist.getSelectedValue();
             StructureParameterList spl = null;
