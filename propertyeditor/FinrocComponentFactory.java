@@ -40,6 +40,7 @@ import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.util.propertyeditor.PropertyListAccessor;
 import org.finroc.tools.gui.util.propertyeditor.PropertyListEditor;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
+import org.finroc.plugins.data_types.ContainsStrings;
 import org.finroc.plugins.data_types.PaintablePortData;
 import org.rrlib.finroc_core_utils.serialization.DataTypeBase;
 import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
@@ -95,7 +96,7 @@ public class FinrocComponentFactory implements ComponentFactory {
             acc = new CoreSerializableAdapter((PropertyAccessor<RRLibSerializable>)acc, type, DataTypeReference.TYPE);
         } else if (PaintablePortData.class.isAssignableFrom(type)) {
             wpec = new PaintableViewer();
-        } else if (RRLibSerializable.class.isAssignableFrom(type)) {
+        } else if (RRLibSerializable.class.isAssignableFrom(type) && (!ContainsStrings.class.isAssignableFrom(type))) {
             DataTypeBase dt = DataTypeBase.findType(acc.getType());
             wpec = new CoreSerializableDefaultEditor(type);
             acc = new CoreSerializableAdapter((PropertyAccessor<RRLibSerializable>)acc, type, dt);
