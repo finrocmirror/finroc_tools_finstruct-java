@@ -68,6 +68,9 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
     /** Parent framework element */
     private FrameworkElement parent;
 
+    /** Last auto-set name (when clicking on list) */
+    private String autoSetName = "";
+
     /** All Create Module actions */
     //private List<RemoteCreateModuleAction> createModuleActions;
 
@@ -255,6 +258,12 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
     @Override
     public void valueChanged(ListSelectionEvent e) {
         updateButtonState();
+        if (name.getText().equals(autoSetName)) {
+            autoSetName = jlist.getSelectedValue().name;
+            name.setText(autoSetName);
+        } else {
+            autoSetName = "";
+        }
     }
 
     /**
