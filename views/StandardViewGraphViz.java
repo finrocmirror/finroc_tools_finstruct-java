@@ -598,7 +598,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
             if (over == this) {
                 long time = System.currentTimeMillis();
                 if (time - lastClick < Finstruct.DOUBLE_CLICK_DELAY) {
-                    if (frameworkElement.childCount() > 0) {
+                    if (frameworkElement.childCount() > 0 || frameworkElement.getFlag(CoreFlags.FINSTRUCTABLE_GROUP)) {
                         getFinstruct().showElement(frameworkElement);
                     }
                 } else {

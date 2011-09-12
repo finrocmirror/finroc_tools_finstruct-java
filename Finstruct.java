@@ -57,10 +57,12 @@ import javax.swing.event.TreeSelectionListener;
 import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.RuntimeEnvironment;
+import org.finroc.core.RuntimeListener;
 import org.finroc.core.plugin.ConnectionListener;
 import org.finroc.core.plugin.CreateExternalConnectionAction;
 import org.finroc.core.plugin.ExternalConnection;
 import org.finroc.core.plugin.Plugins;
+import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.util.Files;
 import org.finroc.tools.finstruct.dialogs.FindElementDialog;
@@ -88,7 +90,7 @@ import org.rrlib.finroc_core_utils.log.LogLevel;
  *
  * Main Window class
  */
-public class Finstruct extends JFrame implements ActionListener, ConnectionListener, WindowListener, ConnectionPanel.Owner, TreeSelectionListener, KeyListener {
+public class Finstruct extends JFrame implements ActionListener, ConnectionListener, WindowListener, ConnectionPanel.Owner, TreeSelectionListener, KeyListener, RuntimeListener {
 
     /** UID */
     private static final long serialVersionUID = 5790020137768236619L;
@@ -301,6 +303,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         statusBarTimer.start();
 
         connectionPanel.addSelectionListener(this);
+        RuntimeEnvironment.getInstance().addListener(this);
     }
 
     /**
@@ -390,6 +393,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
         if (toolBar.isSelected(Mode.paramconnect)) {
             connectionPanel.setRightTree(new ConfigFileModel(root));
         }
+        connectionPanel.repaint();
     }
 
     /**
@@ -761,5 +765,29 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
      */
     public FinstructView getCurrentView() {
         return currentView;
+    }
+
+    @Override
+    public void runtimeChange(byte changeType, final FrameworkElement element) {
+
+        // If nothing is displayed change view to any remote runtime
+        if (changeType == RuntimeListener.ADD && getCurrentView() != null && getCurrentView().getRootElement() == null) {
+            if (element.getParent().getFlag(CoreFlags.ALTERNATE_LINK_ROOT) && element.getParent().getFlag(CoreFlags.NETWORK_ELEMENT)) {
+                SwingUtilities.invokeLater(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        connectionPanel.expandOnly(true, element);
+                        //connectionPanel.
+                        showElement(element);
+                    }
+
+                });
+            }
+        }
+    }
+
+    @Override
+    public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {
     }
 }
