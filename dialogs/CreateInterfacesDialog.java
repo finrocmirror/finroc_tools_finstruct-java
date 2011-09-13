@@ -297,8 +297,8 @@ public class CreateInterfacesDialog extends MDialog {
                         for (CreationTask task : creation.tasks) {
                             if (task.create) {
                                 String[] params = new String[4];
-                                params[0] = "" + task.dataClassification.ordinal();
-                                params[1] = "" + task.portDirection.ordinal();
+                                params[0] = Serialization.serialize(task.dataClassification);
+                                params[1] = Serialization.serialize(task.portDirection);
                                 params[2] = "" + task.shared;
                                 params[3] = "" + task.globallyUniqueLinks;
                                 if (rr.getAdminInterface().createModule(createInterfaceAction, task.name, rr.getRemoteHandle(element), params) && task.portCreationList.getSize() > 0) {

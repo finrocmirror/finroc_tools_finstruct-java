@@ -24,6 +24,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -33,6 +35,7 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.gui.util.gui.MDialog;
 
 /**
@@ -40,7 +43,7 @@ import org.finroc.tools.gui.util.gui.MDialog;
  *
  * Dialog to choose a module library to load
  */
-public class LoadModuleLibraryDialog extends MDialog {
+public class LoadModuleLibraryDialog extends MDialog implements MouseListener {
 
     /** UID */
     private static final long serialVersionUID = 9130805331512378849L;
@@ -49,6 +52,10 @@ public class LoadModuleLibraryDialog extends MDialog {
     private JButton load, cancel;
     private JList list;
     private String selected;
+
+    /** Double-Click-detection */
+    private long lastClick = 0;
+    private String lastSelected = "";
 
     public LoadModuleLibraryDialog(MDialog owner) {
         super(owner, true);
@@ -72,6 +79,7 @@ public class LoadModuleLibraryDialog extends MDialog {
         list = new JList(moduleLibraries.toArray());
         list.setPreferredSize(new Dimension(350, 550));
         list.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        list.addMouseListener(this);
         main.add(list, BorderLayout.CENTER);
 
         // create buttons
@@ -99,4 +107,27 @@ public class LoadModuleLibraryDialog extends MDialog {
             close();
         }
     }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {}
+
+    @Override
+    public void mousePressed(MouseEvent e) {}
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+        if (System.currentTimeMillis() - lastClick < Finstruct.DOUBLE_CLICK_DELAY && lastSelected == list.getSelectedValue().toString()) {
+            selected = list.getSelectedValue().toString();
+            close();
+        } else {
+            lastClick = System.currentTimeMillis();
+            lastSelected = list.getSelectedValue().toString();
+        }
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {}
+
+    @Override
+    public void mouseExited(MouseEvent e) {}
 }
