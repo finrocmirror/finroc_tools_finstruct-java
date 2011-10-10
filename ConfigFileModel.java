@@ -111,14 +111,15 @@ public class ConfigFileModel extends DefaultTreeModel {
         for (XMLNode.ConstChildIterator port = xmlParent.getChildrenBegin(); port.get() != xmlParent.getChildrenEnd(); port.next()) {
             XMLNode child = port.get();
             try {
+                String slashedUid = (uid.length() == 0 ? "" : (uid + "/"));
                 if (child.getName() == "node") {
                     DefaultMutableTreeNode n = new DefaultMutableTreeNode(child.getStringAttribute("name"));
                     parent.add(n);
-                    String uid2 = uid + "/" + n.toString();
+                    String uid2 = slashedUid + n.toString();
                     createNodes(n, child, uid2);
                 } else if (child.getName() == "value") {
                     String name = child.getStringAttribute("name");
-                    ConfigEntryWrapper n = new ConfigEntryWrapper(uid + "/" + name, name);
+                    ConfigEntryWrapper n = new ConfigEntryWrapper(slashedUid + name, name);
                     parent.add(n);
                 }
             } catch (XML2WrapperException e) {

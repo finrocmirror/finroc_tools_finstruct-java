@@ -772,7 +772,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
         // If nothing is displayed change view to any remote runtime
         if (changeType == RuntimeListener.ADD && getCurrentView() != null && getCurrentView().getRootElement() == null) {
-            if (element.getParent().getFlag(CoreFlags.ALTERNATE_LINK_ROOT) && element.getParent().getFlag(CoreFlags.NETWORK_ELEMENT)) {
+            if (element.getParent().getFlag(CoreFlags.ALTERNATE_LINK_ROOT) && element.getParent().getFlag(CoreFlags.NETWORK_ELEMENT) && (element.getFlag(CoreFlags.FINSTRUCTABLE_GROUP) || element.getFlag(CoreFlags.EDGE_AGGREGATOR))) {
                 SwingUtilities.invokeLater(new Runnable() {
 
                     @Override
