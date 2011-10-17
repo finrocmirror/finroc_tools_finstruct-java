@@ -83,7 +83,11 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
         RemoteRuntime rr = RemoteRuntime.find(element);
         elementParamList = (StructureParameterList)rr.getAdminInterface().getAnnotation(rr.getRemoteHandle(element), StructureParameterList.TYPE);
         if (elementParamList != null) {
-            show(elementParamList, element);
+            if (elementParamList.size() > 0) {
+                show(elementParamList, element);
+            } else {
+                pressedOk = true;
+            }
         } else if (warnIfNoParameters) {
             Finstruct.showErrorMessage("Cannot get parameter list for " + element.getQualifiedLink(), false, false);
         }
