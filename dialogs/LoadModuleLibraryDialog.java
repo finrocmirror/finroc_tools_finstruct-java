@@ -33,6 +33,7 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
 
 import org.finroc.tools.finstruct.Finstruct;
@@ -77,10 +78,12 @@ public class LoadModuleLibraryDialog extends MDialog implements MouseListener {
 
         // create components
         list = new JList(moduleLibraries.toArray());
-        list.setPreferredSize(new Dimension(350, 550));
+        //list.setPreferredSize(new Dimension(350, 550));
         list.setBorder(BorderFactory.createLineBorder(Color.BLACK));
         list.addMouseListener(this);
-        main.add(list, BorderLayout.CENTER);
+        JScrollPane js = new JScrollPane(list);
+        js.setPreferredSize(new Dimension(380, 550));
+        main.add(js, BorderLayout.CENTER);
 
         // create buttons
         JPanel buttons = new JPanel();
