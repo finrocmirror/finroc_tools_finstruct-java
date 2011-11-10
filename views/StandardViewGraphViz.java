@@ -1099,6 +1099,10 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
                 Finstruct.showErrorMessage("Element is not a child of a remote runtime", false, false);
             } else {
                 rr.getAdminInterface().deleteElement(rr.getRemoteHandle(rightClickedOn));
+                try {
+                    Thread.sleep(750);
+                } catch (InterruptedException e) {}
+                relayout();
             }
         } else if (ae.getSource() == miEditModule) {
             new ParameterEditDialog(getFinstruct()).show(rightClickedOn, true);
