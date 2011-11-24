@@ -42,6 +42,7 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -67,6 +68,7 @@ import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
 import org.finroc.core.port.net.RemoteRuntime;
+import org.finroc.core.util.Files;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.dialogs.CreateInterfacesDialog;
 import org.finroc.tools.finstruct.dialogs.CreateModuleDialog;
@@ -148,6 +150,21 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
     /** Framework element that right-click-menu was opened upon */
     private FrameworkElement rightClickedOn;
+
+    static {
+        boolean ok = false;
+        try {
+            Process p = Runtime.getRuntime().exec("dog -V");
+            p.waitFor();
+            if (Files.readLines(p.getErrorStream()).get(0).contains("graphviz")) {
+                ok = true;
+            }
+        } catch (Exception e) {}
+        if (!ok) {
+            logDomain.log(LogLevel.LL_ERROR, "Intialization", "Graphviz (dot executable) does not seem to be installed.");
+            System.exit(-1);
+        }
+    }
 
     public StandardViewGraphViz() {
         testLabel.setFont(FONT);
