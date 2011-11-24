@@ -154,7 +154,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     static {
         boolean ok = false;
         try {
-            Process p = Runtime.getRuntime().exec("dog -V");
+            Process p = Runtime.getRuntime().exec("dot -V");
             p.waitFor();
             if (Files.readLines(p.getErrorStream()).get(0).contains("graphviz")) {
                 ok = true;
