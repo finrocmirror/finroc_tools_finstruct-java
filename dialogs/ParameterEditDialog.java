@@ -30,11 +30,11 @@ import javax.swing.JDialog;
 import javax.swing.JPanel;
 
 import org.finroc.core.FrameworkElement;
-import org.finroc.core.parameter.StructureParameterList;
+import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.propertyeditor.FinrocComponentFactory;
-import org.finroc.tools.finstruct.propertyeditor.StructureParameterAccessor;
+import org.finroc.tools.finstruct.propertyeditor.StaticParameterAccessor;
 import org.finroc.tools.gui.util.gui.MDialog;
 import org.finroc.tools.gui.util.propertyeditor.PropertiesPanel;
 import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
@@ -64,7 +64,7 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
     private FrameworkElement element;
 
     /** Remote Element property list */
-    private StructureParameterList elementParamList;
+    private StaticParameterList elementParamList;
 
     public ParameterEditDialog(Frame owner) {
         super(owner, true);
@@ -81,7 +81,7 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
     public void show(FrameworkElement element, boolean warnIfNoParameters) {
         this.element = element;
         RemoteRuntime rr = RemoteRuntime.find(element);
-        elementParamList = (StructureParameterList)rr.getAdminInterface().getAnnotation(rr.getRemoteHandle(element), StructureParameterList.TYPE);
+        elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(rr.getRemoteHandle(element), StaticParameterList.TYPE);
         if (elementParamList != null) {
             if (elementParamList.size() > 0) {
                 show(elementParamList, element);
@@ -94,14 +94,14 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
     }
 
     /**
-     * @param spl StructureParameterList to edit parameters of
+     * @param spl StaticParameterList to edit parameters of
      * @param fe Framework element (edited - or parent)
      */
-    public void show(StructureParameterList spl, FrameworkElement fe) {
+    public void show(StaticParameterList spl, FrameworkElement fe) {
 
         // Create property panel
         propPanel = new PropertiesPanel(new FinrocComponentFactory(fe), new StandardComponentFactory());
-        propPanel.init(StructureParameterAccessor.createForList(spl), true);
+        propPanel.init(StaticParameterAccessor.createForList(spl), true);
         getContentPane().add(propPanel, BorderLayout.CENTER);
 
         // Create buttons

@@ -102,7 +102,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 if (pi != null) {
                     RemoteRuntime rr = RemoteRuntime.find(np);
                     AdminClient ac = rr.getAdminInterface();
-                    pi.setConfigEntry(other.getUid(), true);
+                    pi.setConfigEntry("/" + other.getUid(), true);
                     ac.setAnnotation(rr.getRemoteHandle(np.getPort()), pi);
                     return;
                 }

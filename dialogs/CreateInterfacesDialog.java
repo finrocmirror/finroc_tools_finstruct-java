@@ -36,7 +36,7 @@ import org.finroc.core.datatype.PortCreationList;
 import org.finroc.core.finstructable.GroupInterface;
 import org.finroc.core.finstructable.GroupInterface.DataClassification;
 import org.finroc.core.finstructable.GroupInterface.PortDirection;
-import org.finroc.core.parameter.StructureParameterList;
+import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.plugin.RemoteCreateModuleAction;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
@@ -356,7 +356,7 @@ public class CreateInterfacesDialog extends MDialog {
                                     try {
                                         RemoteRuntime rr = RemoteRuntime.find(element);
                                         int handle = rr.getRemoteHandle(element);
-                                        StructureParameterList elementParamList = (StructureParameterList)rr.getAdminInterface().getAnnotation(handle, StructureParameterList.TYPE);
+                                        StaticParameterList elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(handle, StaticParameterList.TYPE);
                                         elementParamList.get(0).set(Serialization.serialize(task.portCreationList));
                                         rr.getAdminInterface().setAnnotation(handle, elementParamList);
 

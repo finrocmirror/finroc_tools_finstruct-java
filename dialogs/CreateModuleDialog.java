@@ -42,7 +42,7 @@ import javax.swing.event.ListSelectionListener;
 
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.RuntimeListener;
-import org.finroc.core.parameter.StructureParameterList;
+import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.plugin.RemoteCreateModuleAction;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.net.RemoteRuntime;
@@ -199,7 +199,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
             }
         } else if (e.getSource() == next || e.getSource() == create) {
             RemoteCreateModuleAction rcma = jlist.getSelectedValue();
-            StructureParameterList spl = null;
+            StaticParameterList spl = null;
             if (e.getSource() == next) {
                 spl = rcma.parameters.instantiate();
                 ParameterEditDialog ped = new ParameterEditDialog(this);

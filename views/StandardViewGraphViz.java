@@ -42,7 +42,6 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -1300,7 +1299,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 //
 //        public void actionPerformed(ActionEvent e) {
 //          try {
-//              // show dialog to specify structure parameters
+//              // show dialog to specify static parameters
 //
 //              // create module
 //              //action.adminInterface.createModule(action, name, parentHandle, params);

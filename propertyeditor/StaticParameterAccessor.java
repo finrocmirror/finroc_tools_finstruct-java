@@ -24,8 +24,8 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.finroc.core.parameter.StructureParameterBase;
-import org.finroc.core.parameter.StructureParameterList;
+import org.finroc.core.parameter.StaticParameterBase;
+import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.tools.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
 import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
@@ -34,15 +34,15 @@ import org.rrlib.finroc_core_utils.serialization.Serialization;
 /**
  * @author max
  *
- * Accesor for StructureParameters
+ * Accesor for StaticParameters
  */
 @SuppressWarnings("rawtypes")
-public class StructureParameterAccessor implements PropertyAccessor {
+public class StaticParameterAccessor implements PropertyAccessor {
 
     /** Wrapped parameter */
-    protected final StructureParameterBase wrapped;
+    protected final StaticParameterBase wrapped;
 
-    public StructureParameterAccessor(StructureParameterBase wrapped) {
+    public StaticParameterAccessor(StaticParameterBase wrapped) {
         this.wrapped = wrapped;
     }
 
@@ -85,13 +85,13 @@ public class StructureParameterAccessor implements PropertyAccessor {
     }
 
     /**
-     * @param spl Structure parameter list
+     * @param spl Static parameter list
      * @return List of accessors for list
      */
-    public static List < PropertyAccessor<? >> createForList(StructureParameterList spl) {
+    public static List < PropertyAccessor<? >> createForList(StaticParameterList spl) {
         ArrayList < PropertyAccessor<? >> result = new ArrayList < PropertyAccessor<? >> ();
         for (int i = 0; i < spl.size(); i++) {
-            result.add(new StructureParameterAccessor(spl.get(i)));
+            result.add(new StaticParameterAccessor(spl.get(i)));
         }
         return result;
     }
