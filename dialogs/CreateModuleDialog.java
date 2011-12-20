@@ -37,6 +37,8 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
@@ -54,7 +56,7 @@ import org.finroc.tools.finstruct.util.FilteredList;
  *
  * Create Module Dialog
  */
-public class CreateModuleDialog extends MGridBagDialog implements ActionListener, CaretListener, ListSelectionListener, RuntimeListener, FilteredList.Filter<RemoteCreateModuleAction> {
+public class CreateModuleDialog extends MGridBagDialog implements ActionListener, CaretListener, ListSelectionListener, RuntimeListener, FilteredList.Filter<RemoteCreateModuleAction>, ListDataListener {
 
     /** UID */
     private static final long serialVersionUID = -349194234472122705L;
@@ -120,6 +122,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
         jlist.setPreferredSize(new Dimension(350, 400));
         jlist.setFont(filter.getFont());
         addComponent("", jlist, 3, true);
+        jlist.getModel().addListDataListener(this);
 
         // create buttons
         JPanel buttons = new JPanel();
@@ -258,7 +261,9 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
     @Override
     public void valueChanged(ListSelectionEvent e) {
         updateButtonState();
-        if (name.getText().equals(autoSetName)) {
+        if (jlist.getSelectedValue() == null) {
+            return;
+        } else if (name.getText().equals(autoSetName)) {
             autoSetName = jlist.getSelectedValue().name;
             name.setText(autoSetName);
         } else {
@@ -295,4 +300,19 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
 
     @Override
     public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {}
+
+    @Override
+    public void contentsChanged(ListDataEvent e) {
+        valueChanged(null);
+    }
+
+    @Override
+    public void intervalAdded(ListDataEvent e) {
+        valueChanged(null);
+    }
+
+    @Override
+    public void intervalRemoved(ListDataEvent e) {
+        valueChanged(null);
+    }
 }
