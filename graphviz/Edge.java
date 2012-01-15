@@ -25,6 +25,7 @@ import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Point2D.Double;
 
+import org.finroc.plugins.data_types.util.BezierSpline;
 import org.finroc.tools.finstruct.graphviz.Graph.Layout;
 
 /**
@@ -39,19 +40,11 @@ public class Edge extends GraphVizElement {
     private final Vertex source, destination;
 
     /** Path containing Points to draw spline with (as returned by layouter) */
-    private Path2D.Double path;
+    private BezierSpline path;
     //private Point2D.Double[] splinePoints;
 
     /** Reverse edge while layouting with dot? */
     private boolean reversedInDotLayout;
-
-    /** Parameter T for spline curves */
-    private static final double T = 0;
-
-    /** Precalculated helper variables for spline curves */
-    private static final double X = (1 - T) / 4;
-    private static final double Y = (1 + T) / 2;
-    private static final double Z = (1 - T) / 2;
 
     public Edge(Vertex source, Vertex destination) {
         this.source = source;
@@ -93,35 +86,17 @@ public class Edge extends GraphVizElement {
 
         // parse points
         String[] points = extractAttributeValue(line, "pos").split(" ");
-        Point2D.Double[] splinePoints = new Point2D.Double[points.length + 2];
+        Point2D.Double[] splinePoints = new Point2D.Double[points.length];
         String s = points[0];
         if (s.startsWith("e,")) {
             s = s.substring(2);
         }
         splinePoints[0] = toPoint(s, nullVector);
-        splinePoints[1] = splinePoints[0]; // duplicate first point
         for (int i = points.length - 1; i >= 1; i--) {
-            splinePoints[points.length + 1 - i] = toPoint(points[i], nullVector);
+            splinePoints[points.length - i] = toPoint(points[i], nullVector);
         }
-        splinePoints[points.length + 1] = splinePoints[points.length]; // duplicate last point
 
-        // create path
-        path = new Path2D.Double(Path2D.WIND_NON_ZERO, points.length);
-        path.moveTo(splinePoints[0].x, splinePoints[0].y);
-        for (int i = 0; i < points.length - 1; i++) {
-            Point2D.Double p1 = splinePoints[i + 1];
-            Point2D.Double p2 = splinePoints[i + 2];
-            Point2D.Double p3 = splinePoints[i + 3];
-            double b1x = Y * p1.x + Z * p2.x;
-            double b1y = Y * p1.y + Z * p2.y;
-            double b2x = Z * p1.x + Y * p2.x;
-            double b2y = Z * p1.y + Y * p2.y;
-            double b3x = X * (p1.x + p3.x) + Y * p2.x;
-            double b3y = X * (p1.y + p3.y) + Y * p2.y;
-            path.curveTo(b1x, b1y, b2x, b2y, b3x, b3y);
-        }
-        Point2D.Double last = splinePoints[splinePoints.length - 1];
-        path.lineTo(last.x, last.y);
+        path = new BezierSpline(splinePoints);
     }
 
     /**
