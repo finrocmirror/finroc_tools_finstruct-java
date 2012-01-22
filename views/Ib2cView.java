@@ -200,7 +200,7 @@ public class Ib2cView extends StandardViewGraphViz {
             } else if (d < 0) {
                 d = 0;
             }
-            return (int)(d *((double)rect.width));
+            return (int)(d * ((double)rect.width));
         }
 
         @Override
