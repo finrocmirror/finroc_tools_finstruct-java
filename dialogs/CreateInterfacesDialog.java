@@ -349,7 +349,7 @@ public class CreateInterfacesDialog extends MDialog {
                             System.out.println("Started2 thread for " + element.getQualifiedName());
 
                             for (final CreationTask task : creation.tasks) {
-                                if (element.getDescription().equals(task.name) && task.portCreationList.getSize() > 0) {
+                                if (element.getName().equals(task.name) && task.portCreationList.getSize() > 0) {
 
                                     ThreadLocalCache.get();
                                     // okay, the port list of this element needs to be set

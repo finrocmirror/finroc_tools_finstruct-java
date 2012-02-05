@@ -121,9 +121,9 @@ public class FindElementDialog extends MGridBagDialog implements FilteredList.Fi
     public int accept(WrappedFrameworkElement t) {
         String f = filter.getText().toLowerCase();
         FrameworkElement fe = t.fe;
-        if (fe.getDescription().toLowerCase().startsWith(f)) {
+        if (fe.getName().toLowerCase().startsWith(f)) {
             return 0;
-        } else if (fe.getDescription().toLowerCase().contains(f)) {
+        } else if (fe.getName().toLowerCase().contains(f)) {
             return 1;
         } else if (fe.getQualifiedName().toLowerCase().contains(f)) {
             return 2;
@@ -151,9 +151,9 @@ public class FindElementDialog extends MGridBagDialog implements FilteredList.Fi
         public String toString() {
             String qname = fe.getParent().getQualifiedName();
             if (qname.length() > 0) {
-                return fe.getDescription() + "    (" + qname.substring(1) + ")";
+                return fe.getName() + "    (" + qname.substring(1) + ")";
             } else {
-                return fe.getDescription();
+                return fe.getName();
             }
         }
     }

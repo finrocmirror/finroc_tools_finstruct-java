@@ -435,7 +435,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
         public Vertex(FrameworkElement fe) {
             super(fe);
             reset();
-            gvVertex.setAttributeQuoted("description", fe.getDescription());
+            gvVertex.setAttributeQuoted("description", fe.getName());
         }
 
         public void reset() {
@@ -444,7 +444,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
             // find optimal line breaks
             boolean lineBreaks = toolBar.isSelected(DiverseSwitches.lineBreaks);
-            String[] words = frameworkElement.getDescription().split("\\s");
+            String[] words = frameworkElement.getName().split("\\s");
             assert(words.length < 20);
             double bestScore = Integer.MAX_VALUE;
             ArrayList<String> bestText = new ArrayList<String>();
@@ -972,7 +972,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
          */
         public void paint(Graphics2D g2d) {
             if (labelBounds == null) {
-                testLabel.setText(frameworkElement.getDescription());
+                testLabel.setText(frameworkElement.getName());
                 labelBounds = new Rectangle(testLabel.getPreferredSize());
 
                 // find label location without collision with other objects
@@ -1023,7 +1023,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
 
             expandIcon.paint(g2d, r.x + r.width - 6, r.y, false);
 
-            g2d.drawString(frameworkElement.getDescription(), labelBounds.x, labelBounds.y + labelBounds.height);
+            g2d.drawString(frameworkElement.getName(), labelBounds.x, labelBounds.y + labelBounds.height);
         }
     }
 

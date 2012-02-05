@@ -58,7 +58,7 @@ public class ConnectingPortAccessor<T extends RRLibSerializable> extends PortAcc
      * @return port creation info
      */
     protected static PortCreationInfo createPci(AbstractPort partner) {
-        PortCreationInfo pci = new PortCreationInfo(partner.getDescription() + "-panel");
+        PortCreationInfo pci = new PortCreationInfo(partner.getName() + "-panel");
         pci.dataType = partner.getDataType();
         if (partner.isOutputPort()) {
             pci.flags = PortFlags.INPUT_PORT;

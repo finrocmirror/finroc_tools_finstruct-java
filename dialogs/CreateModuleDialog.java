@@ -288,7 +288,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
                 @Override
                 public void run() {
                     synchronized (CreateModuleDialog.this) {
-                        if (element.getDescription().equals(created)) {
+                        if (element.getName().equals(created)) {
                             createdModule = element;
                             CreateModuleDialog.this.notifyAll();
                         }

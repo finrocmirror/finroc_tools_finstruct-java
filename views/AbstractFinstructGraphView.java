@@ -75,7 +75,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
                 }
             }
         }
-        return (one & all) || (all & fe.getDescription().toLowerCase().contains("output") && (!fe.getDescription().toLowerCase().contains("input")));
+        return (one & all) || (all & fe.getName().toLowerCase().contains("output") && (!fe.getName().toLowerCase().contains("input")));
     }
 
     /**
@@ -96,7 +96,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
                 }
             }
         }
-        return (one & all) || (all & fe.getDescription().toLowerCase().contains("input") && (!fe.getDescription().toLowerCase().contains("output")));
+        return (one & all) || (all & fe.getName().toLowerCase().contains("input") && (!fe.getName().toLowerCase().contains("output")));
     }
 
     /**
@@ -128,7 +128,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
      * @return Is parameter node?
      */
     public static boolean isParameters(FrameworkElement fe) {
-        if (fe.getDescription().equalsIgnoreCase("Parameter") || fe.getDescription().equalsIgnoreCase("Parameters")) {
+        if (fe.getName().equalsIgnoreCase("Parameter") || fe.getName().equalsIgnoreCase("Parameters")) {
             return hasOnlyPortChildren(fe);
         }
         return false;
