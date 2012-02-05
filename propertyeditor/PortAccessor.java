@@ -34,8 +34,8 @@ import org.finroc.core.port.std.PortBase;
 import org.finroc.core.port.std.PortDataManager;
 import org.finroc.tools.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
-import org.rrlib.finroc_core_utils.serialization.DataTypeBase;
-import org.rrlib.finroc_core_utils.serialization.GenericObject;
+import org.rrlib.finroc_core_utils.rtti.DataTypeBase;
+import org.rrlib.finroc_core_utils.rtti.GenericObject;
 import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
 import org.rrlib.finroc_core_utils.serialization.Serialization;
 

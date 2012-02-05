@@ -42,7 +42,7 @@ import org.finroc.tools.gui.util.propertyeditor.PropertyListEditor;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.finroc.plugins.data_types.ContainsStrings;
 import org.finroc.plugins.data_types.PaintablePortData;
-import org.rrlib.finroc_core_utils.serialization.DataTypeBase;
+import org.rrlib.finroc_core_utils.rtti.DataTypeBase;
 import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
 import org.rrlib.finroc_core_utils.serialization.Serialization;
 import org.rrlib.finroc_core_utils.serialization.StringInputStream;
