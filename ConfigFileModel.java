@@ -144,7 +144,7 @@ public class ConfigFileModel extends DefaultTreeModel {
      * @return Entry, if it exists below node
      */
     private ConfigEntryWrapper getHelper(DefaultMutableTreeNode node, String uid) {
-        if (node instanceof ConfigEntryWrapper && ((ConfigEntryWrapper)node).getUid().equals(uid)) {
+        if (node instanceof ConfigEntryWrapper && (((ConfigEntryWrapper)node).getUid().equals(uid) || ("/" + ((ConfigEntryWrapper)node).getUid()).equals(uid))) {
             return (ConfigEntryWrapper)node;
         }
         for (int i = 0; i < node.getChildCount(); i++) {
