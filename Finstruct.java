@@ -58,6 +58,7 @@ import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.RuntimeEnvironment;
 import org.finroc.core.RuntimeListener;
+import org.finroc.core.RuntimeSettings;
 import org.finroc.core.plugin.ConnectionListener;
 import org.finroc.core.plugin.CreateExternalConnectionAction;
 import org.finroc.core.plugin.ExternalConnection;
@@ -155,6 +156,9 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
     public static final long DOUBLE_CLICK_DELAY = 500;
 
     public static void main(String[] args) {
+        RuntimeSettings.setUseCCPorts(false);
+        RuntimeSettings.setMaxCoreRegisterIndexBits(19);
+
         String connect = null;
         for (String arg : args) {
             if (arg.equalsIgnoreCase("--beta")) {
