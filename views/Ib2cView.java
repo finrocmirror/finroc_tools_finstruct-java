@@ -113,7 +113,7 @@ public class Ib2cView extends StandardViewGraphViz {
                 }
                 ports[i] = new ConnectingPortAccessor<CoreNumber>(ap, "");
                 ports4BehaviourAccess.add(ports[i]);
-                ((CCPortBase)ports[i].getPort()).addPortListenerRaw(this);
+                ((PortBase)ports[i].getPort()).addPortListenerRaw(this);
                 ports[i].init();
                 ports[i].setAutoUpdate(true);
             }
