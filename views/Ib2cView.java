@@ -31,7 +31,7 @@ import org.finroc.core.FrameworkElement;
 import org.finroc.core.datatype.CoreNumber;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
-import org.finroc.core.port.cc.CCPortBase;
+import org.finroc.core.port.std.PortBase;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 
 /**
