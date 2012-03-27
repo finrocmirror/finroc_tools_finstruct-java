@@ -40,7 +40,7 @@ import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
 import org.rrlib.finroc_core_utils.serialization.Serialization;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Provides PropertyAccessor adapter for ports.
  * It creates an extra port that is connected to port to wrap.

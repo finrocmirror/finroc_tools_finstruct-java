@@ -51,7 +51,7 @@ import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Displays port-values and lets user manipulate them
  */

@@ -49,7 +49,7 @@ import org.finroc.tools.finstruct.FinstructView;
  *
  * Contains various utility functions.
  */
-public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGraphView.VertexAnnotation, E extends AbstractFinstructGraphView.Edge> extends FinstructView {
+public abstract class AbstractGraphView<V extends AbstractGraphView<V, E>.Vertex, E extends AbstractGraphView<V, E>.Edge> extends FinstructView {
 
     /** UID */
     private static final long serialVersionUID = 1516347489852848159L;
@@ -222,16 +222,21 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         }
 
         // mark groups
-        for (V v : result) {
-            FrameworkElement fe = v.frameworkElement;
+        for (final V v : result) {
+            final FrameworkElement fe = v.frameworkElement;
             if ((!fe.isPort()) && (!isInterface(fe))) {
-                // we have a group, if there's an non-port, non-interface, non-empty sub-node
-                ci.reset(fe);
-                while ((next = ci.next()) != null) {
-                    if ((!next.isPort()) && (!isInterface(next)) && (!isParameters(next))) {
-                        v.setGroup(true);
+
+                // we have a group, if there's an interface more than one level below
+
+                FrameworkElementTreeFilter f = new FrameworkElementTreeFilter();
+                f.traverseElementTree(fe, new FrameworkElementTreeFilter.Callback<Integer>() {
+                    @Override
+                    public void treeFilterCallback(FrameworkElement child, Integer customParam) {
+                        if (child.getParent() != fe && child.getFlag(CoreFlags.EDGE_AGGREGATOR) && child.getFlag(EdgeAggregator.IS_INTERFACE)) {
+                            v.setGroup(true);
+                        }
                     }
-                }
+                }, null);
             }
         }
 
@@ -284,6 +289,33 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
     }
 
     /**
+     * @param v Vertex to get color for
+     * @return Base color to draw vertex in
+     */
+    public Color getVertexColor(Vertex v) {
+        if (v.specialNode == SpecialNode.SensorInput || v.specialNode == SpecialNode.SensorOutput) {
+            return Color.yellow;
+        } else if (v.specialNode == SpecialNode.ControllerInput || v.specialNode == SpecialNode.ControllerOutput) {
+            return Color.red;
+        }
+        return v.isGroup() ? DARK_BLUE : Color.blue;
+    }
+
+    /**
+     * @param e Edge to get color for
+     * @return Base color to draw edge in
+     */
+    public Color getEdgeColor(Edge e) {
+        if (e.isSensorData()) {
+            return Color.YELLOW;
+        }
+        if (e.isControllerData()) {
+            return Color.RED;
+        }
+        return Color.BLACK;
+    }
+
+    /**
      * @author max
      *
      * Holds result for method above
@@ -296,7 +328,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
     /**
      * Edge in View
      */
-    public static class Edge extends Annotatable implements Serializable, Comparable<Edge> {
+    public class Edge extends Annotatable implements Serializable, Comparable<Edge> {
 
         /** UID */
         private static final long serialVersionUID = 7311395657703973551L;
@@ -305,13 +337,13 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         public int dataTypeFlags;
 
         /** Source and destination vertex of edge */
-        private VertexAnnotation source, destination;
+        private Vertex source, destination;
 
         public Edge() {}
 
         @Override
         public boolean equals(Object other) {
-            if (other instanceof Edge) {
+            if (other instanceof AbstractGraphView.Edge) {
                 Edge e = (Edge)other;
                 return source == e.source && destination == e.destination;
             }
@@ -326,14 +358,14 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         /**
          * @return Source vertex of edge
          */
-        public VertexAnnotation getSource() {
+        public Vertex getSource() {
             return source;
         }
 
         /**
          * @return Destination vertex of edge
          */
-        public VertexAnnotation getDestination() {
+        public Vertex getDestination() {
             return destination;
         }
 
@@ -355,13 +387,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
          * @return Edge color
          */
         public Color getColor() {
-            if (isSensorData()) {
-                return Color.YELLOW;
-            }
-            if (isControllerData()) {
-                return Color.RED;
-            }
-            return Color.BLACK;
+            return getEdgeColor(this);
         }
 
         @Override
@@ -393,15 +419,12 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
     public final static Color DARK_BLUE = Color.BLUE.darker().darker();
 
     /**
-     * Annotation for every Finroc FrameworkElement that is currently displayed in graph
+     * Vertex for every Finroc FrameworkElement that is currently displayed in graph
      */
-    public static class VertexAnnotation { /*extends FinrocAnnotation*/
-
-        /** UID */
-        private static final long serialVersionUID = 2426163929118989165L;
+    public class Vertex {
 
         /** Marks special interfaces */
-        private SpecialNode specialNode;
+        protected SpecialNode specialNode;
 
         /** Finroc element that this vertex represents */
         protected final FrameworkElement frameworkElement;
@@ -412,7 +435,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
         /**
          * @param fe Finroc element that this vertex represents
          */
-        public VertexAnnotation(FrameworkElement fe) {
+        public Vertex(FrameworkElement fe) {
             frameworkElement = fe;
         }
 
@@ -430,20 +453,6 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
             specialNode = null;
             isGroup = false;
         }
-
-//        @Override
-//        public void initDataType() {
-//        }
-//
-//        @Override
-//        public void deserialize(CoreInput is) {
-//            throw new RuntimeException("Unsupported");
-//        }
-//
-//        @Override
-//        public void serialize(CoreOutput os) {
-//            throw new RuntimeException("Unsupported");
-//        }
 
         /**
          * @return Should node have fixed position in graph?
@@ -470,12 +479,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
          * @return Node color in graph
          */
         public Color getColor() {
-            if (specialNode == SpecialNode.SensorInput || specialNode == SpecialNode.SensorOutput) {
-                return Color.yellow;
-            } else if (specialNode == SpecialNode.ControllerInput || specialNode == SpecialNode.ControllerOutput) {
-                return Color.red;
-            }
-            return isGroup ? DARK_BLUE : Color.blue;
+            return getVertexColor(this);
         }
 
         /**
@@ -531,7 +535,7 @@ public abstract class AbstractFinstructGraphView<V extends AbstractFinstructGrap
      */
     @SuppressWarnings("unchecked")
     protected V createVertexInstance(FrameworkElement fe) {
-        return (V)new VertexAnnotation(fe);
+        return (V)new Vertex(fe);
     }
 
     /**

@@ -85,7 +85,7 @@ import org.rrlib.finroc_core_utils.log.LogLevel;
  *
  * Standard View - similar to standard view in MCABrowser
  */
-public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener, MouseMotionListener, MouseListener, ChangeListener {
+public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz.Vertex, StandardViewGraphViz.Edge> implements ActionListener, MouseMotionListener, MouseListener, ChangeListener {
 
     /** UID */
     private static final long serialVersionUID = 5168689573715463737L;
@@ -415,7 +415,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     /**
      * Combined (Finstruct/GraphViz vertex)
      */
-    class Vertex extends AbstractFinstructGraphView.VertexAnnotation implements MouseHandler {
+    class Vertex extends AbstractGraphView.Vertex implements MouseHandler {
 
         /** graphviz vertex */
         protected org.finroc.tools.finstruct.graphviz.Vertex gvVertex;
@@ -658,7 +658,7 @@ public class StandardViewGraphViz extends AbstractFinstructGraphView<StandardVie
     /**
      * Combined (Finstruct/GraphViz edge)
      */
-    class Edge extends AbstractFinstructGraphView.Edge implements MouseHandler {
+    class Edge extends AbstractGraphView.Edge implements MouseHandler {
 
         /** UID */
         private static final long serialVersionUID = -1804606674849562189L;

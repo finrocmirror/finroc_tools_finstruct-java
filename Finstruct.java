@@ -67,7 +67,7 @@ import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.util.Files;
 import org.finroc.tools.finstruct.dialogs.FindElementDialog;
-import org.finroc.tools.finstruct.views.AbstractFinstructGraphView;
+import org.finroc.tools.finstruct.views.AbstractGraphView;
 import org.finroc.tools.finstruct.views.Ib2cView;
 import org.finroc.tools.finstruct.views.PortView;
 import org.finroc.tools.finstruct.views.StandardViewGraphViz;
@@ -623,7 +623,7 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
 
         if (miAutoView.isSelected()) {
             // auto-select view
-            Class <? extends FinstructView > viewClass = AbstractFinstructGraphView.hasOnlyPortChildren(fe) && (!fe.getFlag(CoreFlags.FINSTRUCTABLE_GROUP)) ? PortView.class : StandardViewGraphViz.class;
+            Class <? extends FinstructView > viewClass = AbstractGraphView.hasOnlyPortChildren(fe) && (!fe.getFlag(CoreFlags.FINSTRUCTABLE_GROUP)) ? PortView.class : StandardViewGraphViz.class;
             if (currentView == null || currentView.getClass() != viewClass) {
                 try {
                     changeView(viewClass.newInstance(), false);

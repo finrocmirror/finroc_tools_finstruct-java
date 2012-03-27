@@ -40,7 +40,7 @@ import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
 import org.finroc.core.port.net.RemoteRuntime;
-import org.finroc.tools.finstruct.views.AbstractFinstructGraphView;
+import org.finroc.tools.finstruct.views.AbstractGraphView;
 import org.finroc.tools.gui.ConnectionPanel;
 import org.finroc.tools.gui.util.gui.MJTree;
 import org.finroc.tools.gui.util.treemodel.InterfaceNode;
@@ -262,9 +262,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 return new Color(222, 222, 222);
                 /*} else if (finstruct.getCurrentView() != null && fe.isChildOf(finstruct.getCurrentView().getRootElement())) {
                     return new Color(233, 233, 233);*/
-            } else if (AbstractFinstructGraphView.isControllerInterface(fe)) {
+            } else if (AbstractGraphView.isControllerInterface(fe)) {
                 return new Color(255, 190, 210);
-            } else if (AbstractFinstructGraphView.isSensorInterface(fe)) {
+            } else if (AbstractGraphView.isSensorInterface(fe)) {
                 return new Color(255, 255, 165);
             }
         }
