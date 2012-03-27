@@ -49,7 +49,8 @@ import org.finroc.tools.finstruct.FinstructView;
  *
  * Contains various utility functions.
  */
-public abstract class AbstractGraphView<V extends AbstractGraphView<V, E>.Vertex, E extends AbstractGraphView<V, E>.Edge> extends FinstructView {
+@SuppressWarnings("rawtypes")
+public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E extends AbstractGraphView.Edge> extends FinstructView {
 
     /** UID */
     private static final long serialVersionUID = 1516347489852848159L;
@@ -184,6 +185,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView<V, E>.Vertex
      * @param root Root
      * @return List
      */
+    @SuppressWarnings("unchecked")
     public List<V> getVertices(FrameworkElement root) {
         ChildIterator ci = new ChildIterator(root);
         ArrayList<V> result = new ArrayList<V>();
@@ -261,6 +263,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView<V, E>.Vertex
             lookup.put(v.frameworkElement, v);
         }
         FrameworkElementTreeFilter.Callback<Boolean> cb = new FrameworkElementTreeFilter.Callback<Boolean>() {
+            @SuppressWarnings("unchecked")
             @Override
             public void treeFilterCallback(FrameworkElement fe, Boolean unused) {
                 if (fe.isChildOf(root)) {
@@ -341,6 +344,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView<V, E>.Vertex
 
         public Edge() {}
 
+        @SuppressWarnings("unchecked")
         @Override
         public boolean equals(Object other) {
             if (other instanceof AbstractGraphView.Edge) {
