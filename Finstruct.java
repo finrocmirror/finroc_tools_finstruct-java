@@ -530,9 +530,16 @@ public class Finstruct extends JFrame implements ActionListener, ConnectionListe
             Finstruct.this.ioInterface.getRootFrameworkElement().addChild(ec);
             ec.init();
             ec.addConnectionListener(Finstruct.this);
-            ec.connect(address);
-            //parent.ioInterface.addModule(ioInterface.createModule());
-            EventRouter.fireConnectionEvent(null, ConnectionListener.INTERFACE_UPDATED);
+            if (address == null) {
+                address = JOptionPane.showInputDialog(null, ioInterface.getName() + ": Please input connection address", ec.getConnectionAddress());
+            }
+            if (address != null) {
+                ec.connect(address);
+                // parent.ioInterface.addModule(ioInterface.createModule());
+                EventRouter.fireConnectionEvent(null, ConnectionListener.INTERFACE_UPDATED);
+            } else {
+                ec.managedDelete();
+            }
         }
     }
 
