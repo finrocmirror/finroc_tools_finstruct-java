@@ -27,6 +27,7 @@ import java.util.List;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.datatype.DataTypeReference;
 import org.finroc.core.datatype.PortCreationList;
+import org.finroc.core.datatype.XML;
 import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.core.portdatabase.SerializationHelper;
 import org.finroc.tools.gui.util.propertyeditor.ComboBoxEditor;
@@ -96,6 +97,8 @@ public class FinrocComponentFactory implements ComponentFactory {
             acc = new CoreSerializableAdapter((PropertyAccessor<RRLibSerializable>)acc, type, DataTypeReference.TYPE);
         } else if (PaintablePortData.class.isAssignableFrom(type)) {
             wpec = new PaintableViewer();
+        } else if (XML.class.isAssignableFrom(type)) {
+            wpec = new XMLEditor();
         } else if (RRLibSerializable.class.isAssignableFrom(type) && (!ContainsStrings.class.isAssignableFrom(type))) {
             DataTypeBase dt = DataTypeBase.findType(acc.getType());
             wpec = new CoreSerializableDefaultEditor(type);

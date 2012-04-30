@@ -57,11 +57,7 @@ public class StaticParameterAccessor implements PropertyAccessor {
 
     @Override
     public Object get() throws Exception {
-        if (getType() == String.class) {
-            return wrapped.getRemoteValue();
-        } else {
-            return ObjectCloner.clone(wrapped.valPointer().getData());
-        }
+        return ObjectCloner.clone(wrapped.valPointer().getData());
     }
 
     @Override

@@ -36,6 +36,8 @@ import org.finroc.core.datatype.PortCreationList;
 import org.finroc.core.finstructable.GroupInterface;
 import org.finroc.core.finstructable.GroupInterface.DataClassification;
 import org.finroc.core.finstructable.GroupInterface.PortDirection;
+import org.finroc.core.parameter.StaticParameterBool;
+import org.finroc.core.parameter.StaticParameterEnum;
 import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.plugin.RemoteCreateModuleAction;
 import org.finroc.core.port.AbstractPort;
@@ -296,12 +298,12 @@ public class CreateInterfacesDialog extends MDialog {
                         // Create modules
                         for (CreationTask task : creation.tasks) {
                             if (task.create) {
-                                String[] params = new String[4];
-                                params[0] = Serialization.serialize(task.dataClassification);
-                                params[1] = Serialization.serialize(task.portDirection);
-                                params[2] = "" + task.shared;
-                                params[3] = "" + task.globallyUniqueLinks;
-                                if (rr.getAdminInterface().createModule(createInterfaceAction, task.name, rr.getRemoteHandle(element), params) && task.portCreationList.getSize() > 0) {
+                                StaticParameterList spl = new StaticParameterList();
+                                spl.add(new StaticParameterEnum<GroupInterface.DataClassification>("", task.dataClassification));
+                                spl.add(new StaticParameterEnum<GroupInterface.PortDirection>("", task.portDirection));
+                                spl.add(new StaticParameterBool("", task.shared));
+                                spl.add(new StaticParameterBool("", task.globallyUniqueLinks));
+                                if (rr.getAdminInterface().createModule(createInterfaceAction, task.name, rr.getRemoteHandle(element), spl) && task.portCreationList.getSize() > 0) {
                                     setPortListCount++;
                                 }
                             }

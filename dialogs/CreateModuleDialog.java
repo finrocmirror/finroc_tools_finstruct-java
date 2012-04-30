@@ -214,15 +214,6 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
                 }
             }
 
-            // create module
-            String[] sa = null;
-            if (spl != null) {
-                sa = new String[spl.size()];
-                for (int i = 0; i < spl.size(); i++) {
-                    sa[i] = spl.get(i).serializeValue();
-                }
-            }
-
             RemoteRuntime rr = RemoteRuntime.find(parent);
 
             // wait for creation and possibly open dialog for editing parameters
@@ -232,7 +223,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
                     parent.getRuntime().addListener(this);
                     created = name.getText();
                     long moduleCreatedAt = System.currentTimeMillis();
-                    if (rr.getAdminInterface().createModule(rcma, name.getText(), rr.getRemoteHandle(parent), sa)) {
+                    if (rr.getAdminInterface().createModule(rcma, name.getText(), rr.getRemoteHandle(parent), spl)) {
                         while (createdModule == null && System.currentTimeMillis() < moduleCreatedAt + 2000) {
                             try {
                                 wait(500);
