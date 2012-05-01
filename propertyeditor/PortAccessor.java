@@ -36,6 +36,7 @@ import org.finroc.tools.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
 import org.rrlib.finroc_core_utils.rtti.DataTypeBase;
 import org.rrlib.finroc_core_utils.rtti.GenericObject;
+import org.rrlib.finroc_core_utils.serialization.EnumValue;
 import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
 import org.rrlib.finroc_core_utils.serialization.Serialization;
 
@@ -129,7 +130,7 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
         } else {
             PortBase pb = (PortBase)ap;
             //PortData pd = (PortData)newValue;
-            PortDataManager result = PortDataManager.create(DataTypeBase.findType(newValue.getClass()));
+            PortDataManager result = PortDataManager.create((newValue instanceof EnumValue) ? ((EnumValue)newValue).getType() : DataTypeBase.findType(newValue.getClass()));
             Serialization.deepCopy(newValue, result.getObject().<T>getData(), null);
             if (ap.getFlag(CoreFlags.NETWORK_ELEMENT)) {
                 RemoteRuntime.find(ap).getAdminInterface().setRemotePortValue(ap.asNetPort(), result);

@@ -25,11 +25,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.finroc.core.FrameworkElement;
+import org.finroc.core.datatype.CoreBoolean;
 import org.finroc.core.datatype.DataTypeReference;
 import org.finroc.core.datatype.PortCreationList;
 import org.finroc.core.datatype.XML;
 import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.core.portdatabase.SerializationHelper;
+import org.finroc.tools.gui.util.propertyeditor.BooleanEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComboBoxEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComponentFactory;
 import org.finroc.tools.gui.util.propertyeditor.FieldAccessorFactory;
@@ -44,6 +46,7 @@ import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.finroc.plugins.data_types.ContainsStrings;
 import org.finroc.plugins.data_types.PaintablePortData;
 import org.rrlib.finroc_core_utils.rtti.DataTypeBase;
+import org.rrlib.finroc_core_utils.serialization.EnumValue;
 import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
 import org.rrlib.finroc_core_utils.serialization.Serialization;
 import org.rrlib.finroc_core_utils.serialization.StringInputStream;
@@ -99,6 +102,11 @@ public class FinrocComponentFactory implements ComponentFactory {
             wpec = new PaintableViewer();
         } else if (XML.class.isAssignableFrom(type)) {
             wpec = new XMLEditor();
+        } else if (type.isEnum() || type.equals(EnumValue.class)) {
+            wpec = new EnumEditor();
+        } else if (CoreBoolean.class.isAssignableFrom(type)) {
+            wpec = new BooleanEditor();
+            acc = new CoreBooleanAdapter((PropertyAccessor<CoreBoolean>)acc);
         } else if (RRLibSerializable.class.isAssignableFrom(type) && (!ContainsStrings.class.isAssignableFrom(type))) {
             DataTypeBase dt = DataTypeBase.findType(acc.getType());
             wpec = new CoreSerializableDefaultEditor(type);
@@ -326,4 +334,24 @@ public class FinrocComponentFactory implements ComponentFactory {
 
         }
     }
+
+    public class CoreBooleanAdapter extends PropertyAccessorAdapter<CoreBoolean, Boolean> {
+
+        public CoreBooleanAdapter(PropertyAccessor<CoreBoolean> wrapped) {
+            super(wrapped, Boolean.class);
+        }
+
+        @Override
+        public Boolean get() throws Exception {
+            CoreBoolean b = wrapped.get();
+            return b == null ? false : b.get();
+        }
+
+        @Override
+        public void set(Boolean newValue) throws Exception {
+            wrapped.set(new CoreBoolean(newValue));
+        }
+
+    }
+
 }
