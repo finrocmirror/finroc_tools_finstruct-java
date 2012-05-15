@@ -128,7 +128,7 @@ public class CreateInterfacesDialog extends MDialog {
 
         RemoteRuntime rr = RemoteRuntime.find(element);
         for (RemoteCreateModuleAction a : rr.getAdminInterface().getRemoteModuleTypes()) {
-            if (a.groupName.equals("core") || a.groupName.equals("libfinroc_core.so") && a.name.equals("Interface")) {
+            if (a.groupName.equals("core") || a.groupName.equals("libfinroc_plugin_runtime_construction.so") && a.name.equals("Interface")) {
                 createInterfaceAction = a;
                 break;
             }
