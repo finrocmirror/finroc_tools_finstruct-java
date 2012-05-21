@@ -157,7 +157,7 @@ public class Ib2cView extends StandardViewGraphViz {
             Color bar1 = brighten(Color.yellow, brighten);
             Color bar2 = brighten(Color.green.darker(), brighten);
             Color bar3 = brighten(Color.red, brighten);
-            Color background = brighten(Color.blue, brighten);
+            Color background = brighten(getColor(), brighten);
 
             // draw background
             g2d.setColor(background);
