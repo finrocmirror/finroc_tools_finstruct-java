@@ -615,7 +615,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 long time = System.currentTimeMillis();
                 if (time - lastClick < Finstruct.DOUBLE_CLICK_DELAY) {
                     if (frameworkElement.childCount() > 0 || frameworkElement.getFlag(CoreFlags.FINSTRUCTABLE_GROUP)) {
-                        getFinstruct().showElement(frameworkElement);
+                        getFinstructWindow().showElement(frameworkElement);
                     }
                 } else {
                     expandInTree(true, frameworkElement);
@@ -640,7 +640,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                     expand.add(next);
                 }
             }
-            connectionPanel.expandOnly(leftTree, expand);
+            if (connectionPanel != null) {
+                connectionPanel.expandOnly(leftTree, expand);
+            }
         }
     }
 
@@ -826,8 +828,10 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 };
                 FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
                 filter.traverseElementTree(getSource().getFinrocElement(), cb, false);
-                connectionPanel.expandOnly(true, srcPorts);
-                connectionPanel.expandOnly(false, destPorts);
+                if (connectionPanel != null) {
+                    connectionPanel.expandOnly(true, srcPorts);
+                    connectionPanel.expandOnly(false, destPorts);
+                }
             }
         }
     }
@@ -1062,16 +1066,18 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         nodeSep.addChangeListener(this);
         nodeSep.setPreferredSize(new Dimension(50, nodeSep.getPreferredSize().height));
         nodeSep.setMaximumSize(nodeSep.getPreferredSize());
-        nodeSep.getEditor().getComponent(0).addKeyListener(getFinstruct());
         toolBar.add(new JLabel("ranksep"));
         rankSep = new JSpinner(new SpinnerNumberModel(0.5, 0.05, 2.0, 0.05));
         toolBar.add(rankSep);
         rankSep.addChangeListener(this);
         rankSep.setPreferredSize(new Dimension(50, rankSep.getPreferredSize().height));
         rankSep.setMaximumSize(rankSep.getPreferredSize());
-        rankSep.getEditor().getComponent(0).addKeyListener(getFinstruct());
         toolBar.setSelected(DiverseSwitches.antialiasing, true);
         toolBar.setSelected(DiverseSwitches.lineBreaks, true);
+        if (getFinstruct() != null) {
+            nodeSep.getEditor().getComponent(0).addKeyListener(getFinstruct());
+            rankSep.getEditor().getComponent(0).addKeyListener(getFinstruct());
+        }
     }
 
     @SuppressWarnings("rawtypes")
@@ -1096,7 +1102,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         } else if (ae.getSource() == zoom1) {
             setZoom(1);
         } else if (ae.getSource() == miCreateModule) {
-            CreateModuleDialog cmd = new CreateModuleDialog(getFinstruct());
+            CreateModuleDialog cmd = new CreateModuleDialog(getFinstructWindow());
             cmd.show(rightClickedOn);
             relayout();
         } else if (ae.getSource() == miSaveChanges) {

@@ -28,8 +28,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import javax.swing.JMenuItem;
 import javax.swing.Timer;
 import javax.swing.tree.TreeModel;
+import javax.swing.tree.TreeNode;
 
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.FrameworkElementTreeFilter;
@@ -64,6 +66,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     /** Swing timer for repaint */
     private final Timer timer = new Timer(500, this);
 
+    /** menu items */
+    private final JMenuItem miOpenInNewWindow;
+
     /**
      * @param owner Parent of connection panel
      * @param treeFont Font to use for tree
@@ -72,6 +77,10 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         super(owner, treeFont);
         finstruct = owner;
         timer.setRepeats(false);
+
+        miOpenInNewWindow = new JMenuItem("Open in new Window");
+        miOpenInNewWindow.addActionListener(this);
+        popupMenu.add(miOpenInNewWindow, 0);
     }
 
     @Override
@@ -250,6 +259,13 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             repaint();
             finstruct.refreshView();
             return;
+        } else if (e.getSource() == miOpenInNewWindow) {
+            MJTree<TreePortWrapper> ptree = popupOnRight ? rightTree : leftTree;
+            TreeNode tnp = getTreeNodeFromPos(ptree);
+            FinstructWindow fw = new FinstructWindow(finstruct);
+            fw.showElement(((InterfaceNode)tnp).getFrameworkElement());
+            fw.pack();
+            fw.setVisible(true);
         }
         super.actionPerformed(e);
     }
