@@ -295,4 +295,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         }
         super.setRightTree(tm);
     }
+
+    @Override
+    public boolean drawPortConnected(TreePortWrapper port) {
+        return false;
+    }
 }
