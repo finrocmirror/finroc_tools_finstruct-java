@@ -1064,13 +1064,13 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         nodeSep = new JSpinner(new SpinnerNumberModel(0.25, 0.05, 2.0, 0.05));
         toolBar.add(nodeSep);
         nodeSep.addChangeListener(this);
-        nodeSep.setPreferredSize(new Dimension(50, nodeSep.getPreferredSize().height));
+        nodeSep.setPreferredSize(new Dimension(60, nodeSep.getPreferredSize().height));
         nodeSep.setMaximumSize(nodeSep.getPreferredSize());
         toolBar.add(new JLabel("ranksep"));
         rankSep = new JSpinner(new SpinnerNumberModel(0.5, 0.05, 2.0, 0.05));
         toolBar.add(rankSep);
         rankSep.addChangeListener(this);
-        rankSep.setPreferredSize(new Dimension(50, rankSep.getPreferredSize().height));
+        rankSep.setPreferredSize(new Dimension(60, rankSep.getPreferredSize().height));
         rankSep.setMaximumSize(rankSep.getPreferredSize());
         toolBar.setSelected(DiverseSwitches.antialiasing, true);
         toolBar.setSelected(DiverseSwitches.lineBreaks, true);

@@ -45,6 +45,8 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.UIManager;
+import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 
@@ -128,6 +130,16 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
                 EXPERIMENTAL_FEATURES = true;
             } else if (arg.startsWith("--connect=")) {
                 connect = arg.substring(arg.indexOf("=") + 1);
+            } else if (arg.equals("--shiny")) {
+                try {
+                    for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                        if ("Nimbus".equals(info.getName())) {
+                            UIManager.setLookAndFeel(info.getClassName());
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                }
             } else if (arg.equals("-h") || arg.equals("--help")) {
                 try {
                     for (String s : Files.readLines(Finstruct.class.getResourceAsStream("help.txt"))) {
