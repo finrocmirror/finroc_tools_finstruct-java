@@ -7,6 +7,7 @@ Start finstruct using specified options.
 available options:
 
 --connect=<address>  Connect to specified address at startup.								
+--classic            Use Java Swing classic look and feel
 --beta               Enable beta features.
 --experimental       Enable experimental features.
 

@@ -123,6 +123,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         RuntimeSettings.setMaxCoreRegisterIndexBits(19);
 
         String connect = null;
+        boolean shiny = true;
         for (String arg : args) {
             if (arg.equalsIgnoreCase("--beta")) {
                 BETA_FEATURES = true;
@@ -130,16 +131,8 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
                 EXPERIMENTAL_FEATURES = true;
             } else if (arg.startsWith("--connect=")) {
                 connect = arg.substring(arg.indexOf("=") + 1);
-            } else if (arg.equals("--shiny")) {
-                try {
-                    for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-                        if ("Nimbus".equals(info.getName())) {
-                            UIManager.setLookAndFeel(info.getClassName());
-                            break;
-                        }
-                    }
-                } catch (Exception e) {
-                }
+            } else if (arg.equals("--classic")) {
+                shiny = false;
             } else if (arg.equals("-h") || arg.equals("--help")) {
                 try {
                     for (String s : Files.readLines(Finstruct.class.getResourceAsStream("help.txt"))) {
@@ -150,6 +143,17 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
                 }
                 return;
             }
+        }
+
+        if (shiny) {
+            try {
+                for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                    if ("Nimbus".equals(info.getName())) {
+                        UIManager.setLookAndFeel(info.getClassName());
+                        break;
+                    }
+                }
+            } catch (Exception e) {}
         }
 
         final String address = connect;
