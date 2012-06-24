@@ -152,22 +152,23 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
             }
         }
 
-        final Finstruct finstruct = new Finstruct();
+        final String address = connect;
+        SwingUtilities.invokeLater(new Runnable() {
 
-        // connect
-        if (finstruct.tcpConnect != null) {
-            final String address = connect;
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
+            @Override
+            public void run() {
+                final Finstruct finstruct = new Finstruct();
+
+                // connect
+                if (finstruct.tcpConnect != null) {
                     try {
                         finstruct.tcpConnect.connect(address);
                     } catch (Exception e) {
                         showErrorMessage(e, true);
                     }
                 }
-            });
-        }
+            }
+        });
     }
 
     public Finstruct() {
