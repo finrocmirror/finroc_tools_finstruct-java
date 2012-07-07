@@ -118,24 +118,24 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
             throw new Exception("Port not ready");
         }
         if (ap instanceof CCPortBase) {
-            if (ap.getFlag(CoreFlags.NETWORK_ELEMENT)) {
+            if (ap.getFlag(CoreFlags.NETWORK_ELEMENT) && (ap.isOutputPort())) {
                 CCPortDataManager c = ThreadLocalCache.get().getUnusedInterThreadBuffer(DataTypeBase.findType(newValue.getClass()));
                 Serialization.deepCopy(newValue, c.getObject().<T>getData(), null);
                 RemoteRuntime.find(ap).getAdminInterface().setRemotePortValue(ap.asNetPort(), c);
             } else {
                 CCPortDataManagerTL c = ThreadLocalCache.get().getUnusedBuffer(DataTypeBase.findType(newValue.getClass()));
                 Serialization.deepCopy(newValue, c.getObject().<T>getData(), null);
-                ((CCPortBase)ap).publish(c);
+                ((CCPortBase)wrapped).publish(c);
             }
         } else {
             PortBase pb = (PortBase)ap;
             //PortData pd = (PortData)newValue;
             PortDataManager result = PortDataManager.create((newValue instanceof EnumValue) ? ((EnumValue)newValue).getType() : DataTypeBase.findType(newValue.getClass()));
             Serialization.deepCopy(newValue, result.getObject().<T>getData(), null);
-            if (ap.getFlag(CoreFlags.NETWORK_ELEMENT)) {
+            if (ap.getFlag(CoreFlags.NETWORK_ELEMENT) && (ap.isOutputPort())) {
                 RemoteRuntime.find(ap).getAdminInterface().setRemotePortValue(ap.asNetPort(), result);
             } else {
-                pb.publish(result);
+                ((PortBase)wrapped).publish(result);
             }
         }
     }
