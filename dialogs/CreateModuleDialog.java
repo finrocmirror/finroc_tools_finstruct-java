@@ -217,13 +217,15 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
             RemoteRuntime rr = RemoteRuntime.find(parent);
 
             // wait for creation and possibly open dialog for editing parameters
+            String error = "";
             synchronized (this) {
 
                 try {
                     parent.getRuntime().addListener(this);
                     created = name.getText();
                     long moduleCreatedAt = System.currentTimeMillis();
-                    if (rr.getAdminInterface().createModule(rcma, name.getText(), rr.getRemoteHandle(parent), spl)) {
+                    error = rr.getAdminInterface().createModule(rcma, name.getText(), rr.getRemoteHandle(parent), spl);
+                    if (error.length() == 0) {
                         while (createdModule == null && System.currentTimeMillis() < moduleCreatedAt + 2000) {
                             try {
                                 wait(500);
@@ -244,8 +246,11 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
                     parent.getRuntime().removeListener(this);
                 }
             }
-
-            close();
+            if (error.length() == 0) {
+                close();
+            } else {
+                Finstruct.showErrorMessage("Error creating module: " + error, false, false);
+            }
         }
     }
 

@@ -303,8 +303,11 @@ public class CreateInterfacesDialog extends MDialog {
                                 spl.add(new StaticParameterEnum<GroupInterface.PortDirection>("", task.portDirection));
                                 spl.add(new StaticParameterBool("", task.shared));
                                 spl.add(new StaticParameterBool("", task.globallyUniqueLinks));
-                                if (rr.getAdminInterface().createModule(createInterfaceAction, task.name, rr.getRemoteHandle(element), spl) && task.portCreationList.getSize() > 0) {
+                                String error = rr.getAdminInterface().createModule(createInterfaceAction, task.name, rr.getRemoteHandle(element), spl);
+                                if (error.length() == 0 && task.portCreationList.getSize() > 0) {
                                     setPortListCount++;
+                                } else if (error.length() > 0) {
+                                    Finstruct.showErrorMessage("Error creating interfaces: " + error, false, false);
                                 }
                             }
                         }

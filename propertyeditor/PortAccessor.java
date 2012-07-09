@@ -23,6 +23,7 @@ package org.finroc.tools.finstruct.propertyeditor;
 import java.lang.annotation.Annotation;
 
 import org.finroc.core.CoreFlags;
+import org.finroc.core.datatype.CoreString;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
 import org.finroc.core.port.ThreadLocalCache;
@@ -30,8 +31,12 @@ import org.finroc.core.port.cc.CCPortBase;
 import org.finroc.core.port.cc.CCPortDataManager;
 import org.finroc.core.port.cc.CCPortDataManagerTL;
 import org.finroc.core.port.net.RemoteRuntime;
+import org.finroc.core.port.rpc.MethodCallException;
+import org.finroc.core.port.rpc.method.AbstractMethod;
+import org.finroc.core.port.rpc.method.AsyncReturnHandler;
 import org.finroc.core.port.std.PortBase;
 import org.finroc.core.port.std.PortDataManager;
+import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
 import org.rrlib.finroc_core_utils.rtti.DataTypeBase;
@@ -60,6 +65,8 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
 
     /** Port accessor listener */
     protected Listener listener;
+
+    protected final ErrorPrinter errorPrinter = new ErrorPrinter();
 
     static {
         TypedObjectCloner.register();
@@ -118,22 +125,20 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
             throw new Exception("Port not ready");
         }
         if (ap instanceof CCPortBase) {
-            if (ap.getFlag(CoreFlags.NETWORK_ELEMENT) && (ap.isOutputPort())) {
+            if (ap.getFlag(CoreFlags.NETWORK_ELEMENT)) {
                 CCPortDataManager c = ThreadLocalCache.get().getUnusedInterThreadBuffer(DataTypeBase.findType(newValue.getClass()));
                 Serialization.deepCopy(newValue, c.getObject().<T>getData(), null);
-                RemoteRuntime.find(ap).getAdminInterface().setRemotePortValue(ap.asNetPort(), c);
+                RemoteRuntime.find(ap).getAdminInterface().setRemotePortValue(ap.asNetPort(), c, errorPrinter);
             } else {
                 CCPortDataManagerTL c = ThreadLocalCache.get().getUnusedBuffer(DataTypeBase.findType(newValue.getClass()));
                 Serialization.deepCopy(newValue, c.getObject().<T>getData(), null);
                 ((CCPortBase)wrapped).publish(c);
             }
         } else {
-            PortBase pb = (PortBase)ap;
-            //PortData pd = (PortData)newValue;
             PortDataManager result = PortDataManager.create((newValue instanceof EnumValue) ? ((EnumValue)newValue).getType() : DataTypeBase.findType(newValue.getClass()));
             Serialization.deepCopy(newValue, result.getObject().<T>getData(), null);
-            if (ap.getFlag(CoreFlags.NETWORK_ELEMENT) && (ap.isOutputPort())) {
-                RemoteRuntime.find(ap).getAdminInterface().setRemotePortValue(ap.asNetPort(), result);
+            if (ap.getFlag(CoreFlags.NETWORK_ELEMENT)) {
+                RemoteRuntime.find(ap).getAdminInterface().setRemotePortValue(ap.asNetPort(), result, errorPrinter);
             } else {
                 ((PortBase)wrapped).publish(result);
             }
@@ -200,5 +205,27 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
     @Override
     public boolean isModifiable() {
         return true;
+    }
+
+    class ErrorPrinter implements AsyncReturnHandler<CoreString> {
+
+        @Override
+        public void handleReturn(AbstractMethod method, CoreString r) {
+            if (r != null) {
+                if (r.toString().length() > 0) {
+                    printError(r.toString());
+                }
+                PortDataManager.getManager(r).releaseLock();
+            }
+        }
+
+        @Override
+        public void handleMethodCallException(AbstractMethod method, MethodCallException mce) {
+            printError(mce.getMessage());
+        }
+
+        public void printError(String s) {
+            Finstruct.showErrorMessage("Setting port value of '" + portForSetting().getQualifiedLink() + "' failed: " + s, false, false);
+        }
     }
 }
