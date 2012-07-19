@@ -80,7 +80,7 @@ public class FinrocComponentFactory implements ComponentFactory {
             acc = new TypedObjectListAdapter((PropertyAccessor<TypedObjectList>)acc);
         } else*/
         if (type.equals(PortCreationList.class)) {
-            wpec = new PropertyListEditor(new FinrocComponentFactory(commonParent), new StandardComponentFactory());
+            wpec = new PropertyListEditor(panel, new FinrocComponentFactory(commonParent), new StandardComponentFactory());
             wpec.setPreferredSize(new Dimension(800, 200));
             acc = new PortCreationListAdapter((PropertyAccessor<PortCreationList>)acc);
         } else if (DataTypeReference.class.equals(type)) {
