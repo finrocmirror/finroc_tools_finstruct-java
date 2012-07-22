@@ -39,11 +39,16 @@ import org.finroc.core.admin.AdminClient;
 import org.finroc.core.parameter.ConfigFile;
 import org.finroc.core.parameter.ParameterInfo;
 import org.finroc.core.port.AbstractPort;
+import org.finroc.core.port.PortFlags;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
 import org.finroc.core.port.net.RemoteRuntime;
+import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.tools.finstruct.views.AbstractGraphView;
 import org.finroc.tools.gui.ConnectionPanel;
+import org.finroc.tools.gui.ConnectorIcon;
+import org.finroc.tools.gui.ConnectorIcon.IconColor;
+import org.finroc.tools.gui.ConnectorIcon.LineStart;
 import org.finroc.tools.gui.util.gui.MJTree;
 import org.finroc.tools.gui.util.treemodel.InterfaceNode;
 import org.finroc.tools.gui.util.treemodel.PortWrapper;
@@ -315,5 +320,33 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     @Override
     public boolean drawPortConnected(TreePortWrapper port) {
         return false;
+    }
+
+    @Override
+    protected LineStart getLineStartPosition(PortWrapper port, PortWrapper partner) {
+        if (getRightTree() instanceof ConfigFileModel) {
+            return ConnectorIcon.LineStart.Default;
+        }
+        NetPort np = getNetPort((TreePortWrapper)port);
+        if (np != null) {
+            if (np.getRemoteEdgeDestinations().contains(partner.getPort())) {
+                return ConnectorIcon.LineStart.Outgoing;
+            } else {
+                NetPort npPartner = getNetPort((TreePortWrapper)partner);
+                if (npPartner.getRemoteEdgeDestinations().contains(port.getPort())) {
+                    return ConnectorIcon.LineStart.Incoming;
+                }
+                // Ok, there's no connection yet
+            }
+        }
+        return ConnectorIcon.LineStart.Default;
+    }
+
+    @Override
+    public ConnectorIcon getConnectorIcon(TreePortWrapper port, boolean rightTree, IconColor color, boolean brighter) {
+        final ConnectorIcon.Type iconType = new ConnectorIcon.Type();
+        boolean rpc = FinrocTypeInfo.isMethodType(port.getPort().getDataType(), true);
+        iconType.set(port.isInputPort(), port.getPort().getFlag(PortFlags.PROXY), rpc, rightTree, brighter, color, rightTree ? rightBackgroundColor : leftBackgroundColor);
+        return ConnectorIcon.getIcon(iconType, HEIGHT);
     }
 }

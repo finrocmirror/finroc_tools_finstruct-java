@@ -39,6 +39,7 @@ import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.EdgeAggregator;
 import org.finroc.core.port.PortFlags;
 import org.finroc.core.port.net.NetPort;
+import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.tools.finstruct.FinstructConnectionPanel;
 import org.finroc.tools.finstruct.FinstructView;
 
@@ -67,9 +68,9 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         boolean all = true;
         if (isInterface(fe)) {
             ChildIterator ci = new ChildIterator(fe);
-            FrameworkElement next = null;
-            while ((next = ci.next()) != null) {
-                if (next.isPort()) {
+            AbstractPort next = null;
+            while ((next = ci.nextPort()) != null) {
+                if (!FinrocTypeInfo.isMethodType(next.getDataType(), true)) {
                     boolean output = next.getFlag(PortFlags.IS_OUTPUT_PORT);
                     one |= output;
                     all &= output;
@@ -88,9 +89,9 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         boolean all = true;
         if (isInterface(fe)) {
             ChildIterator ci = new ChildIterator(fe);
-            FrameworkElement next = null;
-            while ((next = ci.next()) != null) {
-                if (next.isPort()) {
+            AbstractPort next = null;
+            while ((next = ci.nextPort()) != null) {
+                if (!FinrocTypeInfo.isMethodType(next.getDataType(), true)) {
                     boolean input = !next.getFlag(PortFlags.IS_OUTPUT_PORT);
                     one |= input;
                     all &= input;
