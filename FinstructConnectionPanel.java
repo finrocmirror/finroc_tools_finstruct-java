@@ -96,7 +96,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         if (getRightTree() instanceof ConfigFileModel) {
             return o1.getPort().getAnnotation(ParameterInfo.TYPE) != null || o2.getPort().getAnnotation(ParameterInfo.TYPE) != null;
         } else {
-            return o1.getPort().mayConnectTo(o2.getPort()) || o2.getPort().mayConnectTo(o1.getPort());
+            return o1.getPort().mayConnectTo(o2.getPort(), false) || o2.getPort().mayConnectTo(o1.getPort(), false);
         }
     }
 
@@ -125,7 +125,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 NetPort np2 = port2.getPort().asNetPort();
                 AdminClient ac = RemoteRuntime.find(np1).getAdminInterface();
                 if (ac != null) {
-                    if (port.getPort().mayConnectTo(port2.getPort()) || port2.getPort().mayConnectTo(port.getPort())) {
+                    if (port.getPort().mayConnectTo(port2.getPort(), false) || port2.getPort().mayConnectTo(port.getPort(), false)) {
                         ac.connect(np1, np2);
                         timer.restart();
                         return;

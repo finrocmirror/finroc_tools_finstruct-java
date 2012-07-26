@@ -76,12 +76,7 @@ public class ConnectingPortAccessor<T extends RRLibSerializable> extends PortAcc
     /** Init port */
     public void init() {
         wrapped.init();
-        if (wrapped.isOutputPort()) {
-            wrapped.connectToTarget(partner);
-        } else {
-            wrapped.connectToSource(partner);
-        }
-        //setAutoUpdate(false);
+        wrapped.connectTo(partner, wrapped.isOutputPort() ? AbstractPort.ConnectDirection.TO_TARGET : AbstractPort.ConnectDirection.TO_SOURCE, false);
     }
 
     /**
