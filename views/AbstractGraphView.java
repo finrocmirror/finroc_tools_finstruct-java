@@ -197,7 +197,10 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         // add vertices
         FrameworkElement next = null;
         while ((next = ci.next()) != null) {
-            result.add(createVertexInstance(next));
+            V vertex = createVertexInstance(next);
+            if (vertex != null) {
+                result.add(vertex);
+            }
         }
 
         // mark special vertices
