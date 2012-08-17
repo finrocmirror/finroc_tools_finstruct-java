@@ -309,6 +309,13 @@ public class FinstructWindow extends JFrame implements ActionListener {
     }
 
     /**
+     * @return the toolBar
+     */
+    public MToolBar getToolBar() {
+        return toolBar;
+    }
+
+    /**
      * Menu Item that selects a different view
      */
     class ViewSelector extends JRadioButtonMenuItem implements ActionListener {

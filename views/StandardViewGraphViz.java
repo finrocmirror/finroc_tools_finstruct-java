@@ -69,6 +69,7 @@ import org.finroc.core.port.net.NetPort;
 import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.core.util.Files;
 import org.finroc.tools.finstruct.Finstruct;
+import org.finroc.tools.finstruct.Finstruct.Mode;
 import org.finroc.tools.finstruct.dialogs.CreateInterfacesDialog;
 import org.finroc.tools.finstruct.dialogs.CreateModuleDialog;
 import org.finroc.tools.finstruct.dialogs.ParameterEditDialog;
@@ -803,35 +804,37 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
         @Override
         public void mouseReleased(MouseEvent event, MouseHandler over) {
-            if (inConnectionMode()) {
+            if (!inConnectionMode()) {
+                toolBar.setSelected(Finstruct.Mode.connect);
+                connectionPanel.setRightTree(connectionPanel.getLeftTree());
+            }
 
-                final ArrayList<FrameworkElement> srcPorts = new ArrayList<FrameworkElement>();
-                final HashSet<FrameworkElement> destPorts = new HashSet<FrameworkElement>();
+            final ArrayList<FrameworkElement> srcPorts = new ArrayList<FrameworkElement>();
+            final HashSet<FrameworkElement> destPorts = new HashSet<FrameworkElement>();
 
-                FrameworkElementTreeFilter.Callback<Boolean> cb = new FrameworkElementTreeFilter.Callback<Boolean>() {
-                    @Override
-                    public void treeFilterCallback(FrameworkElement fe, Boolean unused) {
-                        NetPort np = ((AbstractPort)fe).asNetPort();
-                        if (np != null) {
-                            boolean added = false;
-                            List<AbstractPort> dests = np.getRemoteEdgeDestinations();
-                            for (AbstractPort port : dests) {
-                                if (port.isChildOf(getDestination().getFinrocElement())) {
-                                    destPorts.add(port);
-                                    if (!added) {
-                                        srcPorts.add(fe);
-                                    }
+            FrameworkElementTreeFilter.Callback<Boolean> cb = new FrameworkElementTreeFilter.Callback<Boolean>() {
+                @Override
+                public void treeFilterCallback(FrameworkElement fe, Boolean unused) {
+                    NetPort np = ((AbstractPort)fe).asNetPort();
+                    if (np != null) {
+                        boolean added = false;
+                        List<AbstractPort> dests = np.getRemoteEdgeDestinations();
+                        for (AbstractPort port : dests) {
+                            if (port.isChildOf(getDestination().getFinrocElement())) {
+                                destPorts.add(port);
+                                if (!added) {
+                                    srcPorts.add(fe);
                                 }
                             }
                         }
                     }
-                };
-                FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
-                filter.traverseElementTree(getSource().getFinrocElement(), cb, false);
-                if (connectionPanel != null) {
-                    connectionPanel.expandOnly(true, srcPorts);
-                    connectionPanel.expandOnly(false, destPorts);
                 }
+            };
+            FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
+            filter.traverseElementTree(getSource().getFinrocElement(), cb, false);
+            if (connectionPanel != null) {
+                connectionPanel.expandOnly(true, srcPorts);
+                connectionPanel.expandOnly(false, destPorts);
             }
         }
     }

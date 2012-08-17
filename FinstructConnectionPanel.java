@@ -32,7 +32,9 @@ import javax.swing.JMenuItem;
 import javax.swing.Timer;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreeNode;
+import javax.swing.tree.TreePath;
 
+import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.FrameworkElementTreeFilter;
 import org.finroc.core.admin.AdminClient;
@@ -140,7 +142,11 @@ public class FinstructConnectionPanel extends ConnectionPanel {
 
     @Override
     protected List<PortWrapper> getConnectionPartners(TreePortWrapper port) {
-        List<PortWrapper> result = new ArrayList<PortWrapper>();
+        return getConnectionPartners(port, false);
+    }
+
+    protected List<PortWrapper> getConnectionPartners(final TreePortWrapper port, boolean includeSourcePorts) {
+        final List<PortWrapper> result = new ArrayList<PortWrapper>();
         if (getRightTree() instanceof ConfigFileModel) {
             ParameterInfo pi = (ParameterInfo)port.getPort().getAnnotation(ParameterInfo.TYPE);
             if (pi != null && pi.getConfigEntry() != null && pi.getConfigEntry().length() > 0) {
@@ -157,6 +163,25 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                     result.add((PortWrapper)finstruct.ioInterface.getInterfaceNode(fe));
                 }
             }
+
+            if (includeSourcePorts) { // computationally expensive
+                FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
+                filter.traverseElementTree(finstruct.getIoInterface().getRootFrameworkElement(), new FrameworkElementTreeFilter.Callback<Object>() {
+                    @Override
+                    public void treeFilterCallback(FrameworkElement fe, Object customParam) {
+                        AbstractPort scannedPort = (AbstractPort)fe;
+                        NetPort netPort = scannedPort.asNetPort();
+                        if (netPort != null) {
+                            for (AbstractPort destPort : netPort.getRemoteEdgeDestinations()) {
+                                if (destPort == port.getPort()) {
+                                    result.add((PortWrapper)finstruct.getIoInterface().getInterfaceNode(scannedPort));
+                                }
+                            }
+                        }
+                    }
+                }, null);
+            }
+
             return result;
         }
     }
@@ -271,6 +296,17 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             fw.showElement(((InterfaceNode)tnp).getFrameworkElement());
             fw.pack();
             fw.setVisible(true);
+        } else if (e.getSource() == miShowPartner) {
+            MJTree<TreePortWrapper> ptree = popupOnRight ? rightTree : leftTree;
+            MJTree<TreePortWrapper> otherTree = popupOnRight ? leftTree : rightTree;
+            TreePortWrapper portWrapper = getTreePortWrapperFromPos(ptree);
+            List<PortWrapper> partners = getConnectionPartners(portWrapper, true);
+
+            for (PortWrapper partner : partners) {
+                TreePath tp = otherTree.getTreePathFor((TreePortWrapper)partner);
+                otherTree.scrollPathToVisible(tp);
+            }
+            return;
         }
         super.actionPerformed(e);
     }
@@ -348,5 +384,13 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         boolean rpc = FinrocTypeInfo.isMethodType(port.getPort().getDataType(), true);
         iconType.set(port.isInputPort(), port.getPort().getFlag(PortFlags.PROXY), rpc, rightTree, brighter, color, rightTree ? rightBackgroundColor : leftBackgroundColor);
         return ConnectorIcon.getIcon(iconType, HEIGHT);
+    }
+
+    @Override
+    protected void updatePopupMenu(TreeNode treeNode, TreePortWrapper wrapper) {
+        super.updatePopupMenu(treeNode, wrapper);
+        miOpenInNewWindow.setEnabled(treeNode != null);
+
+        miShowPartner.setEnabled(wrapper != null && finstruct.getToolBar().isSelected(Finstruct.Mode.connect));
     }
 }
