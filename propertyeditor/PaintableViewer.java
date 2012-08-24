@@ -24,13 +24,18 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
 import java.awt.geom.Rectangle2D;
 
 import javax.naming.OperationNotSupportedException;
 
 import org.finroc.tools.gui.WidgetUI;
+import org.finroc.tools.gui.util.gui.MAction;
+import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.widgets.GeometryRenderer;
+import org.finroc.plugins.data_types.Blittable;
+import org.finroc.plugins.data_types.HasBlittable;
 import org.finroc.plugins.data_types.PaintablePortData;
 
 public class PaintableViewer extends PropertyEditComponent<PaintablePortData> {
@@ -38,69 +43,105 @@ public class PaintableViewer extends PropertyEditComponent<PaintablePortData> {
     /** UID */
     private static final long serialVersionUID = 7615759489323538266L;
 
+    private enum ExtraAction { ZoomToFit }
+
     class Viewer extends GeometryRenderer {
 
         /** UID */
         private static final long serialVersionUID = 4258877685901525064L;
 
-        /** Object currently viewed */
-        private PaintablePortData currentlyViewed;
-
-        public void show(PaintablePortData p) {
-            currentlyViewed = p;
-
-            // set scaling factor so that things fit
-            if (p != null) {
-                Rectangle2D b = p.getBounds();
-                if (b != null) {
-                    double zoomX = (viewer.getBounds().getWidth() - 60) / b.getWidth();
-                    double zoomY = (viewer.getBounds().getHeight() - 30) / b.getHeight();
-                    zoom = Math.min(zoomX, zoomY);
-                    translationX = -b.getCenterX();
-                    translationY = -b.getCenterY();
-                    repaint();
-                }
-            }
+        @Override
+        protected WidgetUI createWidgetUI() {
+            return new ViewerUI();
         }
 
-        @Override
-        public void drawGeometries(Graphics2D g2d) {
-            if (currentlyViewed != null) {
-                currentlyViewed.paint(g2d);
+        class ViewerUI extends GeometryRendererUI {
+
+            /** UID */
+            private static final long serialVersionUID = -207863307631544369L;
+
+            /** Object currently viewed */
+            private PaintablePortData currentlyViewed;
+
+            public void show(PaintablePortData p) {
+                currentlyViewed = p;
+
+                // set scaling factor so that things fit
+                if (p != null) {
+                    Viewer.this.invertYAxis = (p instanceof Blittable) || (p instanceof HasBlittable);
+                    if (toolbar.isSelected(ExtraAction.ZoomToFit)) {
+                        Rectangle2D b = p.getBounds();
+                        if (b != null) {
+                            double zoomX = (getBounds().getWidth() - 60) / b.getWidth();
+                            double zoomY = (getBounds().getHeight() - 30) / b.getHeight();
+                            zoom = Math.min(zoomX, zoomY);
+                            translationX = -b.getCenterX();
+                            translationY = -b.getCenterY();
+                            repaint();
+                        }
+                    } else {
+                        repaint();
+                    }
+                }
             }
+
+            ViewerUI() {
+                toolbar.addToggleButton(new MAction(ExtraAction.ZoomToFit, "zoom-page_oo.png", "Zoom to fit", this), true);
+                toolbar.setSelected(ExtraAction.ZoomToFit);
+            }
+
+            @Override
+            public void drawGeometries(Graphics2D g2d) {
+                if (currentlyViewed != null) {
+                    currentlyViewed.paint(g2d);
+                }
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                Enum<?> e = ((MActionEvent)ae).getEnumID();
+                if (e instanceof ExtraAction) {
+                    show(currentlyViewed);
+                    return;
+                }
+                super.actionPerformed(ae);
+            }
+
+
+
         }
     }
 
-    private Viewer viewer;
+    private Viewer.ViewerUI viewerUI;
 
     @Override
     protected void createAndShow() throws Exception {
-        viewer = new Viewer();
+        Viewer viewer = new Viewer();
         viewer.setBounds(new Rectangle(0, 0, 640, 400));
-        WidgetUI wui = viewer.createUI();
-        wui.setPreferredSize(new Dimension(640, 400));
+        viewerUI = (Viewer.ViewerUI)viewer.createUI();
+        viewerUI.setPreferredSize(new Dimension(640, 400));
         valueUpdated(getCurWidgetValue());
-        add(wui, BorderLayout.WEST);
+        add(viewerUI, BorderLayout.WEST);
     }
 
     @Override
     public void createAndShowMinimal(PaintablePortData b) throws OperationNotSupportedException {
-        viewer = new Viewer();
+        Viewer viewer = new Viewer();
         viewer.setBounds(new Rectangle(0, 0, 320, 200));
-        WidgetUI wui = viewer.createUI();
-        wui.setPreferredSize(new Dimension(320, 200));
+        viewerUI = (Viewer.ViewerUI)viewer.createUI();
+        viewerUI.setPreferredSize(new Dimension(320, 200));
         valueUpdated(b);
-        add(wui);
+        add(viewerUI);
     }
 
     @Override
     public PaintablePortData getCurEditorValue() {
-        return viewer.currentlyViewed;
+        return viewerUI.currentlyViewed;
     }
 
     @Override
     protected void valueUpdated(PaintablePortData p) {
-        viewer.show(p);
+        viewerUI.show(p);
     }
 
 }
