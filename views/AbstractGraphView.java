@@ -277,8 +277,6 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
                         GetParentResult dest = getParentInGraph(lookup, feDest);
                         if (src.parent != null && dest.parent != null && src.parent != dest.parent) {
                             E eNew = createEdgeInstance(src.parent, dest.parent);
-                            eNew.source = src.parent;
-                            eNew.destination = dest.parent;
                             E e = result.get(eNew);
                             if (e == null) {
                                 e = eNew;
@@ -347,6 +345,11 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         private Vertex source, destination;
 
         public Edge() {}
+
+        public Edge(Vertex s, Vertex d) {
+            source = s;
+            destination = d;
+        }
 
         @SuppressWarnings("unchecked")
         @Override
@@ -556,7 +559,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      */
     @SuppressWarnings("unchecked")
     protected E createEdgeInstance(V source, V dest) {
-        return (E)new Edge();
+        return (E)new Edge(source, dest);
     }
 
     @Override
