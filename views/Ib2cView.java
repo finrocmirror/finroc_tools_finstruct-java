@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import javax.swing.SwingUtilities;
 
 import org.finroc.core.FrameworkElement;
+import org.finroc.core.FrameworkElementTags;
 import org.finroc.core.datatype.CoreNumber;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
@@ -46,9 +47,9 @@ public class Ib2cView extends StandardViewGraphViz {
 
     /** Names of behaviour ports to display in behaviour vertex */
     private final static String[] SIGNALS = new String[] {
-        "Sensor Output/Activation",
-        "Sensor Output/Activity",
-        "Sensor Output/Target Rating",
+        "Activation",
+        "Activity",
+        "Target Rating",
     };
 
     /** List of currently active/used port accessors to retrieve behaviour data */
@@ -79,12 +80,7 @@ public class Ib2cView extends StandardViewGraphViz {
      * @return True if framework element is a behaviour
      */
     private static boolean isBehaviour(FrameworkElement fe) {
-        for (int i = 0; i < SIGNALS.length; i++) {
-            if (fe.getChildElement(SIGNALS[i], false) == null) {
-                return false;
-            }
-        }
-        return true;
+        return FrameworkElementTags.isTagged(fe, "behavior");
     }
 
     /**
@@ -98,34 +94,34 @@ public class Ib2cView extends StandardViewGraphViz {
         @SuppressWarnings("unchecked")
         private ConnectingPortAccessor<CoreNumber>[] ports = new ConnectingPortAccessor[SIGNALS.length];
 
-        /** True if something as gone wrong creating ports => display normally */
-        private boolean incomplete = false;
-
         public BehaviourVertex(FrameworkElement fe) {
             super(fe);
 
             // Create ports for behaviour data access */
-            for (int i = 0; i < SIGNALS.length; i++) {
-                AbstractPort ap = (AbstractPort)fe.getChildElement(SIGNALS[i], false);
-                if (ap == null) {
-                    incomplete = true;
-                    return;
+            FrameworkElement portGroup = fe.getChild("iB2C Output");
+            if (portGroup == null) {
+                portGroup = fe.getChild("Sensor Output");
+            }
+            if (portGroup != null) {
+                for (int i = 0; i < SIGNALS.length; i++) {
+                    AbstractPort ap = (AbstractPort)portGroup.getChild(SIGNALS[i]);
+                    if (ap == null) {
+                        continue;
+                    }
+                    ports[i] = new ConnectingPortAccessor<CoreNumber>(ap, "");
+                    ports4BehaviourAccess.add(ports[i]);
+                    ((PortBase)ports[i].getPort()).addPortListenerRaw(this);
+                    ports[i].init();
+                    ports[i].setAutoUpdate(true);
                 }
-                ports[i] = new ConnectingPortAccessor<CoreNumber>(ap, "");
-                ports4BehaviourAccess.add(ports[i]);
-                ((PortBase)ports[i].getPort()).addPortListenerRaw(this);
-                ports[i].init();
-                ports[i].setAutoUpdate(true);
             }
         }
 
         public void reset() {
             super.reset();
 
-            if (!incomplete) {
-                // increase height, so that we have space for upper and lower bar
-                gvVertex.setSize(gvVertex.getWidth(), gvVertex.getHeight() + 6);
-            }
+            // increase height, so that we have space for upper and lower bar
+            gvVertex.setSize(gvVertex.getWidth(), gvVertex.getHeight() + 6);
         }
 
         /**
@@ -134,15 +130,11 @@ public class Ib2cView extends StandardViewGraphViz {
          * @param g2d Graphics object
          */
         public void paint(Graphics2D g2d) {
-            if (incomplete) {
-                super.paint(g2d);
-                return;
-            }
             double v1, v2, v3;
             try {
-                v1 = ports[0].get().doubleValue();
-                v2 = ports[1].get().doubleValue();
-                v3 = ports[2].get().doubleValue();
+                v1 = ports[0] == null ? 0 : ports[0].get().doubleValue();
+                v2 = ports[1] == null ? 0 : ports[1].get().doubleValue();
+                v3 = ports[2] == null ? 0 : ports[2].get().doubleValue();
             } catch (Exception e) {
                 super.paint(g2d);
                 return;

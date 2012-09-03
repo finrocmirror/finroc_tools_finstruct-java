@@ -348,10 +348,10 @@ public class CreateInterfacesDialog extends MDialog {
                     @Override
                     public void run() {
 
-                        System.out.println("Started thread for " + element.getQualifiedName());
+                        //System.out.println("Started thread for " + element.getQualifiedName());
                         synchronized (PortsDialog.this) {
 
-                            System.out.println("Started2 thread for " + element.getQualifiedName());
+                            //System.out.println("Started2 thread for " + element.getQualifiedName());
 
                             for (final CreationTask task : creation.tasks) {
                                 if (element.getName().equals(task.name) && task.portCreationList.getSize() > 0) {

@@ -34,6 +34,7 @@ import org.finroc.core.Annotatable;
 import org.finroc.core.FrameworkElement.ChildIterator;
 import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
+import org.finroc.core.FrameworkElementTags;
 import org.finroc.core.FrameworkElementTreeFilter;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.EdgeAggregator;
@@ -229,23 +230,11 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
 
         // mark groups
         for (final V v : result) {
-            final FrameworkElement fe = v.frameworkElement;
-            if ((!fe.isPort()) && (!isInterface(fe))) {
-
-                // we have a group, if there's an interface more than one level below
-
-                FrameworkElementTreeFilter f = new FrameworkElementTreeFilter();
-                f.traverseElementTree(fe, new FrameworkElementTreeFilter.Callback<Integer>() {
-                    @Override
-                    public void treeFilterCallback(FrameworkElement child, Integer customParam) {
-                        if (child.getParent() != fe && child.getFlag(CoreFlags.EDGE_AGGREGATOR) && child.getFlag(EdgeAggregator.IS_INTERFACE)) {
-                            v.setGroup(true);
-                        }
-                    }
-                }, null);
+            // we have a group, if framework element is tagged as such
+            if (FrameworkElementTags.isTagged(v.frameworkElement, "group")) {
+                v.setGroup(true);
             }
         }
-
 
         return result;
     }
