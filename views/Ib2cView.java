@@ -80,7 +80,7 @@ public class Ib2cView extends StandardViewGraphViz {
      * @return True if framework element is a behaviour
      */
     private static boolean isBehaviour(FrameworkElement fe) {
-        return FrameworkElementTags.isTagged(fe, "behavior");
+        return FrameworkElementTags.isTagged(fe, "ib2c_module");
     }
 
     /**
