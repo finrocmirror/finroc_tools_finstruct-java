@@ -69,7 +69,6 @@ import org.finroc.core.port.net.NetPort;
 import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.core.util.Files;
 import org.finroc.tools.finstruct.Finstruct;
-import org.finroc.tools.finstruct.Finstruct.Mode;
 import org.finroc.tools.finstruct.dialogs.CreateInterfacesDialog;
 import org.finroc.tools.finstruct.dialogs.CreateModuleDialog;
 import org.finroc.tools.finstruct.dialogs.ParameterEditDialog;
@@ -309,6 +308,17 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         } catch (Exception e) {
             logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
         }
+    }
+
+    /**
+     * Determines whether edge should be drawn upwards or downwards
+     * (May be overridden by subclass)
+     *
+     * @param edge Edge to check
+     * @return True, if edge should be drawn downwards
+     */
+    protected boolean drawEdgeDownwards(Edge edge) {
+        return edge.isControllerData();
     }
 
     /**

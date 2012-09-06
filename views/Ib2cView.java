@@ -32,11 +32,12 @@ import org.finroc.core.FrameworkElementTags;
 import org.finroc.core.datatype.CoreNumber;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
+import org.finroc.core.port.net.NetPort;
 import org.finroc.core.port.std.PortBase;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * IB2C View based on GraphViz Standard View
  */
@@ -81,6 +82,29 @@ public class Ib2cView extends StandardViewGraphViz {
      */
     private static boolean isBehaviour(FrameworkElement fe) {
         return FrameworkElementTags.isTagged(fe, "ib2c_module");
+    }
+
+    @Override
+    protected boolean drawEdgeDownwards(Edge edge) {
+        String sourceName = edge.getSource().getFinrocElement().getName();
+        if (isBehaviour(edge.getSource().getFinrocElement().getParent()) && (sourceName.equals("Output") || sourceName.equals("iB2C Output"))) {
+            // draw edge downwards if it is not connected to inhibition port
+            FrameworkElement.ChildIterator ci = new FrameworkElement.ChildIterator(edge.getSource().getFinrocElement());
+            AbstractPort ap = null;
+            while ((ap = ci.nextPort()) != null) {
+                NetPort np = ap.asNetPort();
+                if (np != null) {
+                    for (FrameworkElement destPort : np.getRemoteEdgeDestinations()) {
+                        if (destPort.isChildOf(edge.getDestination().getFinrocElement()) && destPort.getName().startsWith("Inhibition ")) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        } else {
+            return super.drawEdgeDownwards(edge);
+        }
     }
 
     /**
