@@ -121,6 +121,7 @@ public class CreateInterfacesDialog extends MDialog {
      */
     public void show(FrameworkElement element) {
         this.element = element;
+        setTitle("Create Interfaces");
         if (RemoteRuntime.find(element) == null || (!element.getFlag(CoreFlags.FINSTRUCTED)) && (!element.getFlag(CoreFlags.FINSTRUCTABLE_GROUP))) {
             Finstruct.showErrorMessage("Not a remote finstructed element", false, false);
             return;

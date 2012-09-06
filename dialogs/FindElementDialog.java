@@ -63,6 +63,7 @@ public class FindElementDialog extends MGridBagDialog implements FilteredList.Fi
      * Show dialog to find element
      */
     public void show(Finstruct fs) {
+        setTitle("Find Element");
         this.finstruct = fs;
         JPanel main = new JPanel();
         main.setLayout(new GridBagLayout());

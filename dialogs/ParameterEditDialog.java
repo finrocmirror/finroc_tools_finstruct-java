@@ -42,9 +42,9 @@ import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
- * Dialog to edit (structure) parameters of framework elements
+ * Dialog to edit (static) parameters of framework elements
  */
 public class ParameterEditDialog extends MDialog implements ActionListener {
 
@@ -79,6 +79,7 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
      * @param warnIfNoParameters Warn if no parameters could be retrieved?
      */
     public void show(FrameworkElement element, boolean warnIfNoParameters) {
+        setTitle("Edit Static Parameters");
         this.element = element;
         RemoteRuntime rr = RemoteRuntime.find(element);
         elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(rr.getRemoteHandle(element), StaticParameterList.TYPE);
@@ -107,8 +108,8 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
         // Create buttons
         JPanel buttons = new JPanel();
         getContentPane().add(buttons, BorderLayout.SOUTH);
-        cancelBack = createButton(element == null ? "Back" : "Cancel", buttons);
-        if (element != null) {
+        cancelBack = createButton(element == null ? "Back" : "Do not change", buttons);
+        if (element != null && !(getOwner() instanceof CreateModuleDialog)) {
             apply = createButton("Apply", buttons);
         }
         okCreate = createButton(element == null ? "Create" : "Apply & Close", buttons);
