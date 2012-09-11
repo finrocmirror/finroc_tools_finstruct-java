@@ -64,6 +64,7 @@ import org.finroc.core.FrameworkElementTreeFilter;
 import org.finroc.core.RuntimeEnvironment;
 import org.finroc.core.admin.AdminServer;
 import org.finroc.core.port.AbstractPort;
+import org.finroc.core.port.EdgeAggregator;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
 import org.finroc.core.port.net.RemoteRuntime;
@@ -288,11 +289,24 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 for (Edge e : edges) {
                     graph.add(e.gvEdge);
                     mouseHandlers.add(e, false);
-                    if (e.isControllerData()) {
-                        e.gvEdge.setReversedInDotLayout(true);
+                    e.processFlags();
+                }
+
+                // flood unknown edges in graph
+                final ArrayList<Edge> visitedList = new ArrayList<Edge>();
+                for (Edge e : edges) {
+                    if (e.isClassified()) {
+                        visitedList.clear();
+                        floodEdges(e, true, visitedList, edges); // forwards
+                        visitedList.clear();
+                        floodEdges(e, false, visitedList, edges); // backwards
                     }
                 }
 
+                // See whether we can classify more edges with flooding information
+                for (Edge e : edges) {
+                    e.classify();
+                }
             }
 
             // Layout
@@ -311,6 +325,27 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     }
 
     /**
+     * Floods unknown edges in graph until already classified edges are reached
+     *
+     * @param e Edge to flood from
+     * @param forwards Flood edges in forward direction?
+     * @param visited Visited edges
+     * @param edges List of edges
+     */
+    private void floodEdges(Edge e, boolean forwards, ArrayList<Edge> visited, Collection<Edge> edges) {
+        visited.add(e);
+        AbstractGraphView.Vertex nextVertex = forwards ? e.destination : e.source;
+        for (Edge nextEdge : edges) {
+            if (!nextEdge.isClassified() && (!visited.contains(nextEdge))) {
+                if ((forwards && nextEdge.source == nextVertex) || ((!forwards) && nextEdge.destination == nextVertex)) {
+                    nextEdge.floodedFlags = e.flags | e.floodedFlags;
+                    floodEdges(nextEdge, forwards, visited, edges);
+                }
+            }
+        }
+    }
+
+    /**
      * Determines whether edge should be drawn upwards or downwards
      * (May be overridden by subclass)
      *
@@ -318,7 +353,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
      * @return True, if edge should be drawn downwards
      */
     protected boolean drawEdgeDownwards(Edge edge) {
-        return edge.isControllerData();
+        return (edge.flags & (Edge.DRAW_DOWNWARDS | Edge.DRAW_UPWARDS)) == Edge.DRAW_DOWNWARDS;
     }
 
     /**
@@ -671,7 +706,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     /**
      * Combined (Finstruct/GraphViz edge)
      */
-    class Edge extends AbstractGraphView.Edge implements MouseHandler {
+    protected class Edge extends AbstractGraphView.Edge implements MouseHandler {
 
         /** UID */
         private static final long serialVersionUID = -1804606674849562189L;
@@ -679,8 +714,63 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         /** graphviz edge */
         private org.finroc.tools.finstruct.graphviz.Edge gvEdge;
 
+        /** Flags determining in which direction to draw edges and how to classify them */
+        public static final int SENSOR_DATA = 1, CONTROLLER_DATA = 2, DRAW_UPWARDS = 4, DRAW_DOWNWARDS = 8;
+
+        /** Flags for edge */
+        protected int flags;
+
+        /** Flags from flooding all unknown edges in graph */
+        protected int floodedFlags;
+
         private Edge(Vertex src, Vertex dest) {
             gvEdge = new org.finroc.tools.finstruct.graphviz.Edge(src.gvVertex, dest.gvVertex);
+        }
+
+        /**
+         * Inizializes flags variable
+         */
+        protected void processFlags() {
+            if ((dataTypeFlags & EdgeAggregator.CONTROLLER_DATA) != 0) {
+                flags |= CONTROLLER_DATA | DRAW_DOWNWARDS;
+            }
+            if ((dataTypeFlags & EdgeAggregator.SENSOR_DATA) != 0) {
+                flags |= SENSOR_DATA | DRAW_UPWARDS;
+            }
+        }
+
+        /**
+         * Classify edge after flooding graph
+         */
+        public void classify() {
+            assert(flags == 0 || floodedFlags == 0);
+            if (flags == 0) {
+                flags = floodedFlags;
+            }
+            if (drawEdgeDownwards(this)) {
+                gvEdge.setReversedInDotLayout(true);
+            }
+        }
+
+        /**
+         * \return Does edge have fixed classification as sensor and/or controller data?
+         */
+        public boolean isClassified() {
+            return flags != 0;
+        }
+
+        /**
+         * @return Does edge transport controller data (only)?
+         */
+        public boolean isControllerData() {
+            return (flags & (SENSOR_DATA | CONTROLLER_DATA)) == CONTROLLER_DATA;
+        }
+
+        /**
+         * @return Does edge transport sensor data (only)?
+         */
+        public boolean isSensorData() {
+            return (flags & (SENSOR_DATA | CONTROLLER_DATA)) == SENSOR_DATA;
         }
 
         /**

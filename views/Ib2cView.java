@@ -32,7 +32,6 @@ import org.finroc.core.FrameworkElementTags;
 import org.finroc.core.datatype.CoreNumber;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
-import org.finroc.core.port.net.NetPort;
 import org.finroc.core.port.std.PortBase;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 
@@ -84,28 +83,38 @@ public class Ib2cView extends StandardViewGraphViz {
         return FrameworkElementTags.isTagged(fe, "ib2c_module");
     }
 
+    // we may add this heuristic again, if it turns out to be necessary
+    /*
     @Override
-    protected boolean drawEdgeDownwards(Edge edge) {
-        String sourceName = edge.getSource().getFinrocElement().getName();
-        if (isBehaviour(edge.getSource().getFinrocElement().getParent()) && (sourceName.equals("Output") || sourceName.equals("iB2C Output"))) {
+    protected boolean drawEdgeDownwards(final Edge edge) {
+        if (isBehaviour(edge.getSource().getFinrocElement()) || isBehaviour(edge.getSource().getFinrocElement().getParent())) {
             // draw edge downwards if it is not connected to inhibition port
-            FrameworkElement.ChildIterator ci = new FrameworkElement.ChildIterator(edge.getSource().getFinrocElement());
-            AbstractPort ap = null;
-            while ((ap = ci.nextPort()) != null) {
-                NetPort np = ap.asNetPort();
-                if (np != null) {
-                    for (FrameworkElement destPort : np.getRemoteEdgeDestinations()) {
-                        if (destPort.isChildOf(edge.getDestination().getFinrocElement()) && destPort.getName().startsWith("Inhibition ")) {
-                            return false;
+            FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter();
+            final boolean[] result = new boolean[]{ true };
+            filter.traverseElementTree(edge.getSource().getFinrocElement(), new FrameworkElementTreeFilter.Callback<Integer>() {
+                @Override
+                public void treeFilterCallback(FrameworkElement fe, Integer customParam) {
+                    String sourceName = fe.getParent().getName();
+                    if (fe.isPort() && fe.isReady() && (sourceName.equals("Output") || sourceName.equals("iB2C Output"))) {
+                        AbstractPort ap = (AbstractPort)fe;
+                        NetPort np = ap.asNetPort();
+                        if (np != null) {
+                            for (FrameworkElement destPort : np.getRemoteEdgeDestinations()) {
+                                if (destPort.isChildOf(edge.getDestination().getFinrocElement()) && destPort.getName().startsWith("Inhibition ")) {
+                                    result[0] = false;
+                                    return;
+                                }
+                            }
                         }
                     }
                 }
-            }
-            return true;
+            }, Integer.MAX_VALUE);
+            return result[0];
         } else {
             return super.drawEdgeDownwards(edge);
         }
     }
+    */
 
     /**
      * Vertex that displays Behaviour module with
