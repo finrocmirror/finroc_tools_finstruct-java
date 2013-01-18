@@ -230,7 +230,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, connectionPanel, new JPanel());
         getContentPane().add(splitPane, BorderLayout.CENTER);
         splitPane.setDividerSize(5);
-        setJMenuBar(menuBar);
 
         // Change to standard view
         try {

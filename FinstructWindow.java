@@ -109,6 +109,7 @@ public class FinstructWindow extends JFrame implements ActionListener {
         for (ViewSelector view : views) {
             menuView.add(view);
         }
+        setJMenuBar(menuBar);
 
         // Toolbar
         toolBar = new MToolBar("Standard");
