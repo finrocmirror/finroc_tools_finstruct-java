@@ -215,9 +215,10 @@ public class FinstructWindow extends JFrame implements ActionListener {
      */
     public void showElement(FrameworkElement fe) {
 
-        if (miAutoView.isSelected()) {
+        boolean portViewCandidate = AbstractGraphView.hasOnlyPortChildren(fe, false) && (!fe.getFlag(CoreFlags.FINSTRUCTABLE_GROUP));
+        if (miAutoView.isSelected() || portViewCandidate) {
             // auto-select view
-            Class <? extends FinstructView > viewClass = AbstractGraphView.hasOnlyPortChildren(fe) && (!fe.getFlag(CoreFlags.FINSTRUCTABLE_GROUP)) ? PortView.class : StandardViewGraphViz.class;
+            Class <? extends FinstructView > viewClass = portViewCandidate ? PortView.class : StandardViewGraphViz.class;
             if (currentView == null || currentView.getClass() != viewClass) {
                 try {
                     changeView(viewClass.newInstance(), false);

@@ -132,24 +132,27 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      */
     public static boolean isParameters(FrameworkElement fe) {
         if (fe.getName().equalsIgnoreCase("Parameter") || fe.getName().equalsIgnoreCase("Parameters")) {
-            return hasOnlyPortChildren(fe);
+            return hasOnlyPortChildren(fe, true);
         }
         return false;
     }
 
     /**
      * @param fe Framework element
-     * @return Are all children of framework element ports? (true if it has no children)
+     * @param onNoChildrenReturn Value to return if framework element has no children
+     * @return Are all children of framework element ports?
      */
-    public static boolean hasOnlyPortChildren(FrameworkElement fe) {
+    public static boolean hasOnlyPortChildren(FrameworkElement fe, boolean onNoChildrenReturn) {
         ChildIterator ci = new ChildIterator(fe);
         FrameworkElement next = null;
+        boolean hasChildren = false;
         while ((next = ci.next()) != null) {
             if (!next.isPort()) {
                 return false;
             }
+            hasChildren = true;
         }
-        return true;
+        return hasChildren ? true : onNoChildrenReturn;
     }
 
 
