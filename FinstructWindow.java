@@ -169,14 +169,14 @@ public class FinstructWindow extends JFrame implements ActionListener {
         }
 
         // update menu
-        if (!miAutoView.isSelected()) {
+        /*if (!miAutoView.isSelected()) {
             for (ViewSelector v : views) {
                 if (v.view.equals(view.getClass())) {
                     v.setSelected(true);
                     break;
                 }
             }
-        }
+        }*/
 
         // restore root element
         if (lastRoot != null && restoreRoot) {
@@ -228,9 +228,22 @@ public class FinstructWindow extends JFrame implements ActionListener {
             }
             setViewRootElement(fe, null);
         } else {
-            if (currentView != null) {
-                setViewRootElement(fe, null);
+            Class <? extends FinstructView > selectedView = null;
+            for (ViewSelector v : views) {
+                if (v.isSelected()) {
+                    selectedView = v.view;
+                    break;
+                }
             }
+
+            if (currentView == null || (!currentView.getClass().equals(selectedView))) {
+                try {
+                    changeView(selectedView.newInstance(), false);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+            setViewRootElement(fe, null);
         }
 
         // create history element for this view
