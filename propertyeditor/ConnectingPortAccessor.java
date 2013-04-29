@@ -20,11 +20,12 @@
  */
 package org.finroc.tools.finstruct.propertyeditor;
 
+import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortCreationInfo;
-import org.finroc.core.port.PortFlags;
 import org.finroc.core.port.cc.CCPortBase;
 import org.finroc.core.port.std.PortBase;
+import org.finroc.core.remote.RemotePort;
 import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
 
 /**
@@ -38,10 +39,10 @@ public class ConnectingPortAccessor<T extends RRLibSerializable> extends PortAcc
     /** Wrapped partner (network) port */
     protected final AbstractPort partner;
 
-    public ConnectingPortAccessor(AbstractPort partner, String rootName) {
-        super((partner instanceof PortBase) ? new PortBase(createPci(partner)) : new CCPortBase(createPci(partner)), "");
-        this.partner = partner;
-        name = partner.getQualifiedLink().substring(rootName.length() + 1);
+    public ConnectingPortAccessor(RemotePort partner, String rootName) {
+        super((partner.getPort() instanceof PortBase) ? new PortBase(createPci(partner.getPort())) : new CCPortBase(createPci(partner.getPort())), "");
+        this.partner = partner.getPort();
+        name = partner.getQualifiedName('/').substring(rootName.length() + 1);
     }
 
     /**
@@ -61,9 +62,9 @@ public class ConnectingPortAccessor<T extends RRLibSerializable> extends PortAcc
         PortCreationInfo pci = new PortCreationInfo(partner.getName() + "-panel");
         pci.dataType = partner.getDataType();
         if (partner.isOutputPort()) {
-            pci.flags = PortFlags.INPUT_PORT;
+            pci.flags = FrameworkElementFlags.INPUT_PORT;
         } else {
-            pci.flags = PortFlags.ACCEPTS_REVERSE_DATA_PUSH | PortFlags.OUTPUT_PORT;
+            pci.flags = FrameworkElementFlags.OUTPUT_PORT | FrameworkElementFlags.PUSH_STRATEGY_REVERSE;
         }
         return pci;
     }

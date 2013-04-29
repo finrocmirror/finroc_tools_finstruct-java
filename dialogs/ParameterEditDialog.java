@@ -29,9 +29,9 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
 
-import org.finroc.core.FrameworkElement;
 import org.finroc.core.parameter.StaticParameterList;
-import org.finroc.core.port.net.RemoteRuntime;
+import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.propertyeditor.FinrocComponentFactory;
 import org.finroc.tools.finstruct.propertyeditor.StaticParameterAccessor;
@@ -61,7 +61,7 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
     private JButton cancelBack, apply, okCreate;
 
     /** Remote Element to edit parameters of */
-    private FrameworkElement element;
+    private RemoteFrameworkElement element;
 
     /** Remote Element property list */
     private StaticParameterList elementParamList;
@@ -78,11 +78,11 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
      * @param element Remote Element to edit parameters of
      * @param warnIfNoParameters Warn if no parameters could be retrieved?
      */
-    public void show(FrameworkElement element, boolean warnIfNoParameters) {
+    public void show(RemoteFrameworkElement element, boolean warnIfNoParameters) {
         setTitle("Edit Static Parameters");
         this.element = element;
         RemoteRuntime rr = RemoteRuntime.find(element);
-        elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(rr.getRemoteHandle(element), StaticParameterList.TYPE);
+        elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(element.getRemoteHandle(), StaticParameterList.TYPE);
         if (elementParamList != null) {
             if (elementParamList.size() > 0) {
                 show(elementParamList, element);
@@ -98,7 +98,7 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
      * @param spl StaticParameterList to edit parameters of
      * @param fe Framework element (edited - or parent)
      */
-    public void show(StaticParameterList spl, FrameworkElement fe) {
+    public void show(StaticParameterList spl, RemoteFrameworkElement fe) {
 
         // Create property panel
         propPanel = new PropertiesPanel(new FinrocComponentFactory(fe), new StandardComponentFactory());
@@ -142,7 +142,7 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
             }
             if (element != null) {
                 RemoteRuntime rr = RemoteRuntime.find(element);
-                rr.getAdminInterface().setAnnotation(rr.getRemoteHandle(element), elementParamList);
+                rr.getAdminInterface().setAnnotation(element.getRemoteHandle(), elementParamList);
             }
 
             if (e.getSource() == okCreate) {

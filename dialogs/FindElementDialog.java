@@ -32,8 +32,7 @@ import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
-import org.finroc.core.FrameworkElement;
-import org.finroc.core.FrameworkElementTreeFilter;
+import org.finroc.core.remote.ModelNode;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.util.FilteredList;
 
@@ -42,7 +41,7 @@ import org.finroc.tools.finstruct.util.FilteredList;
  *
  * Dialog to find element
  */
-public class FindElementDialog extends MGridBagDialog implements FilteredList.Filter<FindElementDialog.WrappedFrameworkElement>, FrameworkElementTreeFilter.Callback<ArrayList<FindElementDialog.WrappedFrameworkElement>> {
+public class FindElementDialog extends MGridBagDialog implements FilteredList.Filter<FindElementDialog.WrappedFrameworkElement> {
 
     /** UID */
     private static final long serialVersionUID = 9130805331511729849L;
@@ -87,8 +86,9 @@ public class FindElementDialog extends MGridBagDialog implements FilteredList.Fi
 
         // create list model
         ArrayList<WrappedFrameworkElement> elements = new ArrayList<WrappedFrameworkElement>();
-        FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter();
-        filter.traverseElementTree(finstruct.getIoInterface().getRootFrameworkElement(), this, elements);
+        for (ModelNode node : finstruct.getIoInterface().getRoot().getNodesBelow(null)) {
+            elements.add(new WrappedFrameworkElement(node));
+        }
         list.setElements(elements);
 
         // show dialog
@@ -98,14 +98,9 @@ public class FindElementDialog extends MGridBagDialog implements FilteredList.Fi
     }
 
     @Override
-    public void treeFilterCallback(FrameworkElement fe, ArrayList<WrappedFrameworkElement> elements) {
-        elements.add(new WrappedFrameworkElement(fe));
-    }
-
-    @Override
     public void actionPerformed(ActionEvent e) {
         WrappedFrameworkElement node = list.getSelectedValue();
-        if (node == null || node.fe == null || (!node.fe.isReady())) {
+        if (node == null || node.fe == null) {
             return;
         }
 
@@ -121,12 +116,12 @@ public class FindElementDialog extends MGridBagDialog implements FilteredList.Fi
     @Override
     public int accept(WrappedFrameworkElement t) {
         String f = filter.getText().toLowerCase();
-        FrameworkElement fe = t.fe;
+        ModelNode fe = t.fe;
         if (fe.getName().toLowerCase().startsWith(f)) {
             return 0;
         } else if (fe.getName().toLowerCase().contains(f)) {
             return 1;
-        } else if (fe.getQualifiedName().toLowerCase().contains(f)) {
+        } else if (fe.getQualifiedName('/').toLowerCase().contains(f)) {
             return 2;
         }
         return -1;
@@ -138,19 +133,19 @@ public class FindElementDialog extends MGridBagDialog implements FilteredList.Fi
     public class WrappedFrameworkElement implements Comparable<WrappedFrameworkElement> {
 
         /** Wrapped framework element */
-        private final FrameworkElement fe;
+        private final ModelNode fe;
 
-        private WrappedFrameworkElement(FrameworkElement fe) {
+        private WrappedFrameworkElement(ModelNode fe) {
             this.fe = fe;
         }
 
         @Override
         public int compareTo(WrappedFrameworkElement o) {
-            return fe.getQualifiedName().compareTo(o.fe.getQualifiedName());
+            return fe.getQualifiedName('/').compareTo(o.fe.getQualifiedName('/'));
         }
 
         public String toString() {
-            String qname = fe.getParent().getQualifiedName();
+            String qname = fe.getParent().getQualifiedName('/');
             if (qname.length() > 0) {
                 return fe.getName() + "    (" + qname.substring(1) + ")";
             } else {

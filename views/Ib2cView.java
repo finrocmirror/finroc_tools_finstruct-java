@@ -27,12 +27,13 @@ import java.util.ArrayList;
 
 import javax.swing.SwingUtilities;
 
-import org.finroc.core.FrameworkElement;
-import org.finroc.core.FrameworkElementTags;
 import org.finroc.core.datatype.CoreNumber;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
 import org.finroc.core.port.std.PortBase;
+import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemotePort;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 
 /**
@@ -67,9 +68,9 @@ public class Ib2cView extends StandardViewGraphViz {
     }
 
     @Override
-    protected Vertex createVertexInstance(FrameworkElement fe) {
+    protected Vertex createVertexInstance(ModelNode fe) {
         if (isBehaviour(fe)) {
-            return new BehaviourVertex(fe);
+            return new BehaviourVertex((RemoteFrameworkElement)fe);
         } else {
             return super.createVertexInstance(fe);
         }
@@ -79,8 +80,8 @@ public class Ib2cView extends StandardViewGraphViz {
      * @param fe Framework element
      * @return True if framework element is a behaviour
      */
-    private static boolean isBehaviour(FrameworkElement fe) {
-        return FrameworkElementTags.isTagged(fe, "ib2c_module");
+    private static boolean isBehaviour(ModelNode fe) {
+        return (fe instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)fe).isTagged("ib2c_module");
     }
 
     // we may add this heuristic again, if it turns out to be necessary
@@ -127,17 +128,17 @@ public class Ib2cView extends StandardViewGraphViz {
         @SuppressWarnings("unchecked")
         private ConnectingPortAccessor<CoreNumber>[] ports = new ConnectingPortAccessor[SIGNALS.length];
 
-        public BehaviourVertex(FrameworkElement fe) {
+        public BehaviourVertex(RemoteFrameworkElement fe) {
             super(fe);
 
             // Create ports for behaviour data access */
-            FrameworkElement portGroup = fe.getChild("iB2C Output");
+            RemoteFrameworkElement portGroup = (RemoteFrameworkElement)fe.getChildByName("iB2C Output");
             if (portGroup == null) {
-                portGroup = fe.getChild("Sensor Output");
+                portGroup = (RemoteFrameworkElement)fe.getChildByName("Sensor Output");
             }
             if (portGroup != null) {
                 for (int i = 0; i < SIGNALS.length; i++) {
-                    AbstractPort ap = (AbstractPort)portGroup.getChild(SIGNALS[i]);
+                    RemotePort ap = (RemotePort)portGroup.getChildByName(SIGNALS[i]);
                     if (ap == null) {
                         continue;
                     }
@@ -209,7 +210,7 @@ public class Ib2cView extends StandardViewGraphViz {
             g2d.drawRect(rect.x, rect.y, rect.width, rect.height);
             if (isGroup()) { // draw + for group
                 if (expandIcon == null) {
-                    expandIcon = new ExpandIcon(6, 6, frameworkElement);
+                    expandIcon = new ExpandIcon(6, 6, getModelElement());
                 }
                 expandIcon.paint(g2d, rect.x + rect.width - 5, rect.y - 1, true);
             }

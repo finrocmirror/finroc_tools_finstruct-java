@@ -22,20 +22,20 @@ package org.finroc.tools.finstruct.propertyeditor;
 
 import java.lang.annotation.Annotation;
 
-import org.finroc.core.CoreFlags;
-import org.finroc.core.datatype.CoreString;
+import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.cc.CCPortBase;
 import org.finroc.core.port.cc.CCPortDataManager;
 import org.finroc.core.port.cc.CCPortDataManagerTL;
-import org.finroc.core.port.net.RemoteRuntime;
-import org.finroc.core.port.rpc.MethodCallException;
-import org.finroc.core.port.rpc.method.AbstractMethod;
-import org.finroc.core.port.rpc.method.AsyncReturnHandler;
+import org.finroc.core.port.rpc.FutureStatus;
+import org.finroc.core.port.rpc.Method;
+import org.finroc.core.port.rpc.ResponseHandler;
 import org.finroc.core.port.std.PortBase;
 import org.finroc.core.port.std.PortDataManager;
+import org.finroc.core.remote.RemotePort;
+import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
@@ -125,10 +125,10 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
             throw new Exception("Port not ready");
         }
         if (ap instanceof CCPortBase) {
-            if (ap.getFlag(CoreFlags.NETWORK_ELEMENT)) {
+            if (ap.getFlag(FrameworkElementFlags.NETWORK_ELEMENT)) {
                 CCPortDataManager c = ThreadLocalCache.get().getUnusedInterThreadBuffer(DataTypeBase.findType(newValue.getClass()));
                 Serialization.deepCopy(newValue, c.getObject().<T>getData(), null);
-                RemoteRuntime.find(ap).getAdminInterface().setRemotePortValue(ap.asNetPort(), c, errorPrinter);
+                RemoteRuntime.find(RemotePort.get(ap)[0]).getAdminInterface().setRemotePortValue(ap.asNetPort(), c, errorPrinter);
             } else {
                 CCPortDataManagerTL c = ThreadLocalCache.get().getUnusedBuffer(DataTypeBase.findType(newValue.getClass()));
                 Serialization.deepCopy(newValue, c.getObject().<T>getData(), null);
@@ -137,8 +137,8 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
         } else {
             PortDataManager result = PortDataManager.create((newValue instanceof EnumValue) ? ((EnumValue)newValue).getType() : DataTypeBase.findType(newValue.getClass()));
             Serialization.deepCopy(newValue, result.getObject().<T>getData(), null);
-            if (ap.getFlag(CoreFlags.NETWORK_ELEMENT)) {
-                RemoteRuntime.find(ap).getAdminInterface().setRemotePortValue(ap.asNetPort(), result, errorPrinter);
+            if (ap.getFlag(FrameworkElementFlags.NETWORK_ELEMENT)) {
+                RemoteRuntime.find(RemotePort.get(ap)[0]).getAdminInterface().setRemotePortValue(ap.asNetPort(), result, errorPrinter);
             } else {
                 ((PortBase)wrapped).publish(result);
             }
@@ -207,21 +207,20 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
         return true;
     }
 
-    class ErrorPrinter implements AsyncReturnHandler<CoreString> {
+    class ErrorPrinter implements ResponseHandler {
 
         @Override
-        public void handleReturn(AbstractMethod method, CoreString r) {
+        public void handleResponse(Method method, Object r) {
             if (r != null) {
                 if (r.toString().length() > 0) {
                     printError(r.toString());
                 }
-                PortDataManager.getManager(r).releaseLock();
             }
         }
 
         @Override
-        public void handleMethodCallException(AbstractMethod method, MethodCallException mce) {
-            printError(mce.getMessage());
+        public void handleException(Method method, FutureStatus mce) {
+            printError(mce.toString());
         }
 
         public void printError(String s) {

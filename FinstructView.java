@@ -28,7 +28,7 @@ import javax.swing.JComponent;
 import javax.swing.JMenuBar;
 import javax.swing.JPanel;
 
-import org.finroc.core.FrameworkElement;
+import org.finroc.core.remote.ModelNode;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.rrlib.finroc_core_utils.log.LogDomain;
 
@@ -45,7 +45,7 @@ public abstract class FinstructView extends JPanel {
     private static final long serialVersionUID = -957994679491024743L;
 
     /** Root element of view */
-    private FrameworkElement rootElement;
+    private ModelNode rootElement;
 
     public static final LogDomain logDomain = Finstruct.logDomain;
 
@@ -81,13 +81,13 @@ public abstract class FinstructView extends JPanel {
      *
      * @param expandedElements Expanded element - may be null
      */
-    protected abstract void rootElementChanged(ArrayList<FrameworkElement> expandedElements);
+    protected abstract void rootElementChanged(ArrayList<ModelNode> expandedElements);
 
     /**
      * @param root Root element of view
      * @param expandedElements
      */
-    void setRootElement(FrameworkElement root, ArrayList<FrameworkElement> expandedElements) {
+    void setRootElement(ModelNode root, ArrayList<ModelNode> expandedElements) {
         if (rootElement != root) {
             rootElement = root;
             rootElementChanged(expandedElements);
@@ -97,7 +97,7 @@ public abstract class FinstructView extends JPanel {
     /**
      * @return Root element of view
      */
-    public FrameworkElement getRootElement() {
+    public ModelNode getRootElement() {
         return rootElement;
     }
 
@@ -127,5 +127,5 @@ public abstract class FinstructView extends JPanel {
     /**
      * @return Any expanded/selected elements for storing view state in history
      */
-    public abstract Collection <? extends FrameworkElement > getExpandedElementsForHistory();
+    public abstract Collection <? extends ModelNode > getExpandedElementsForHistory();
 }

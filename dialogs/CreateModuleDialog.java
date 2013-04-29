@@ -35,28 +35,30 @@ import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.Timer;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.event.TreeModelEvent;
+import javax.swing.event.TreeModelListener;
 
-import org.finroc.core.FrameworkElement;
-import org.finroc.core.RuntimeListener;
 import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.plugin.RemoteCreateModuleAction;
-import org.finroc.core.port.AbstractPort;
-import org.finroc.core.port.net.RemoteRuntime;
+import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.util.FilteredList;
+import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
 
 /**
  * @author max
  *
  * Create Module Dialog
  */
-public class CreateModuleDialog extends MGridBagDialog implements ActionListener, CaretListener, ListSelectionListener, RuntimeListener, FilteredList.Filter<RemoteCreateModuleAction>, ListDataListener {
+public class CreateModuleDialog extends MGridBagDialog implements ActionListener, CaretListener, ListSelectionListener, FilteredList.Filter<RemoteCreateModuleAction>, ListDataListener, TreeModelListener {
 
     /** UID */
     private static final long serialVersionUID = -349194234472122705L;
@@ -68,7 +70,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
     private JButton next, cancel, create, load;
 
     /** Parent framework element */
-    private FrameworkElement parent;
+    private RemoteFrameworkElement parent;
 
     /** Last auto-set name (when clicking on list) */
     private String autoSetName = "";
@@ -83,7 +85,10 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
     private String created;
 
     /** Created Module - set when changed event is received via runtime listener */
-    private FrameworkElement createdModule;
+    private RemoteFrameworkElement createdModule;
+
+    /** Tree model of remote framework elements */
+    private InterfaceTreeModel treeModel;
 
     public CreateModuleDialog(Frame owner) {
         super(owner, true);
@@ -95,8 +100,9 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
      *
      * @param parent to create module in
      */
-    public void show(FrameworkElement parent) {
+    public void show(RemoteFrameworkElement parent, InterfaceTreeModel treeModel) {
         this.parent = parent;
+        this.treeModel = treeModel;
         setTitle("Create Module");
 
         // create components
@@ -218,38 +224,32 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
 
             // wait for creation and possibly open dialog for editing parameters
             String error = "";
-            synchronized (this) {
 
-                try {
-                    parent.getRuntime().addListener(this);
-                    created = name.getText();
-                    long moduleCreatedAt = System.currentTimeMillis();
-                    error = rr.getAdminInterface().createModule(rcma, name.getText(), rr.getRemoteHandle(parent), spl);
-                    if (error.length() == 0) {
-                        while (createdModule == null && System.currentTimeMillis() < moduleCreatedAt + 2000) {
-                            try {
-                                wait(500);
-                            } catch (InterruptedException e1) {
-                            }
-                        }
+            boolean timerActive = false;
+            try {
+                treeModel.addTreeModelListener(this);
+                created = name.getText();
+                error = rr.getAdminInterface().createModule(rcma, name.getText(), parent.getRemoteHandle(), spl);
+                if (error.length() == 0) {
+                    Timer timer = new Timer(2000, this);
+                    timer.setRepeats(false);
+                    timer.start();
+                    timerActive = true;
+                }
 
-                        if (createdModule == null) {
-                            Finstruct.showErrorMessage("Couldn't find & edit created element", false, false);
-                        } else {
-
-                            // possibly show edit dialog
-                            new ParameterEditDialog(this).show(createdModule, false);
-                        }
-                    }
-
-                } finally {
-                    parent.getRuntime().removeListener(this);
+            } finally {
+                if (!timerActive) {
+                    treeModel.removeTreeModelListener(this);
                 }
             }
-            if (error.length() == 0) {
-                close();
-            } else {
+
+            if (error.length() != 0) {
                 Finstruct.showErrorMessage("Error creating module: " + error, false, false);
+            }
+        } else if (e.getSource() instanceof Timer) {
+            if (createdModule == null) {
+                Finstruct.showErrorMessage("Couldn't find & edit created element", false, false);
+                treeModel.removeTreeModelListener(this);
             }
         }
     }
@@ -278,26 +278,6 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
     }
 
     @Override
-    public void runtimeChange(byte changeType, final FrameworkElement element) {
-        if (changeType == RuntimeListener.ADD && element.getParent() == parent) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    synchronized (CreateModuleDialog.this) {
-                        if (element.getName().equals(created)) {
-                            createdModule = element;
-                            CreateModuleDialog.this.notifyAll();
-                        }
-                    }
-                }
-            }).start();
-        }
-    }
-
-    @Override
-    public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {}
-
-    @Override
     public void contentsChanged(ListDataEvent e) {
         valueChanged(null);
     }
@@ -311,4 +291,25 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
     public void intervalRemoved(ListDataEvent e) {
         valueChanged(null);
     }
+
+
+    @Override
+    public void treeNodesInserted(TreeModelEvent e) {
+        if (e.getTreePath().getLastPathComponent() == parent) {
+            for (Object o : e.getChildren()) {
+                if (o instanceof RemoteFrameworkElement && o.toString().equals(created)) {
+                    createdModule = (RemoteFrameworkElement)o;
+                    treeModel.removeTreeModelListener(this);
+
+                    // possibly show edit dialog
+                    new ParameterEditDialog(this).show(createdModule, false);
+                    close();
+                    return;
+                }
+            }
+        }
+    }
+    @Override public void treeNodesChanged(TreeModelEvent e) {}
+    @Override public void treeNodesRemoved(TreeModelEvent e) {}
+    @Override public void treeStructureChanged(TreeModelEvent e) {}
 }

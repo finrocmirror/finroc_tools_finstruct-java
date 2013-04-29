@@ -47,20 +47,20 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.UIManager.LookAndFeelInfo;
+import javax.swing.event.TreeModelEvent;
+import javax.swing.event.TreeModelListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 
-import org.finroc.core.CoreFlags;
-import org.finroc.core.FrameworkElement;
 import org.finroc.core.RuntimeEnvironment;
-import org.finroc.core.RuntimeListener;
 import org.finroc.core.RuntimeSettings;
 import org.finroc.core.plugin.ConnectionListener;
 import org.finroc.core.plugin.CreateExternalConnectionAction;
 import org.finroc.core.plugin.ExternalConnection;
 import org.finroc.core.plugin.Plugins;
-import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
+import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.PortWrapperTreeNode;
 import org.finroc.core.util.Files;
 import org.finroc.tools.finstruct.dialogs.FindElementDialog;
 import org.finroc.tools.gui.ConnectionPanel;
@@ -69,9 +69,7 @@ import org.finroc.tools.gui.StatusBar;
 import org.finroc.tools.gui.commons.EventRouter;
 import org.finroc.tools.gui.util.gui.IconManager;
 import org.finroc.tools.gui.util.gui.MActionEvent;
-import org.finroc.tools.gui.util.treemodel.InterfaceNode;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
-import org.finroc.tools.gui.util.treemodel.TreePortWrapper;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 
 /**
@@ -79,7 +77,7 @@ import org.rrlib.finroc_core_utils.log.LogLevel;
  *
  * Main Window class
  */
-public class Finstruct extends FinstructWindow implements ConnectionListener, WindowListener, ConnectionPanel.Owner, TreeSelectionListener, KeyListener, RuntimeListener {
+public class Finstruct extends FinstructWindow implements ConnectionListener, WindowListener, ConnectionPanel.Owner, TreeSelectionListener, KeyListener, TreeModelListener {
 
     /** UID */
     private static final long serialVersionUID = 5790020137768236619L;
@@ -121,6 +119,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     public static void main(String[] args) {
         RuntimeSettings.setUseCCPorts(false);
         RuntimeSettings.setMaxCoreRegisterIndexBits(19);
+        RuntimeEnvironment.getInstance().setProgramName("finstruct");
 
         String connect = null;
         boolean shiny = true;
@@ -177,6 +176,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
 
     public Finstruct() {
         super(null);
+        super.finstruct = this;
         ThreadLocalCache.get();
         this.setMinimumSize(new Dimension(640, 480));
         setTitle("finstruct");
@@ -188,7 +188,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         miConnectMenu = new JMenu("Connect");
         //miDisconnectMenu = new JMenu("Disconnect");
         //miReconnectMenu = new JMenu("Reconnect");
-        for (CreateExternalConnectionAction ioi : Plugins.getInstance().getExternalConnections().getBackend()) {
+        for (CreateExternalConnectionAction ioi : Plugins.getInstance().getExternalConnections()) {
             if ((ioi.getFlags() & CreateExternalConnectionAction.REMOTE_EDGE_INFO) != 0) {
                 ConnectAction action = new ConnectAction(ioi, false, false);
                 miConnectMenu.add(action);
@@ -256,7 +256,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         statusBarTimer.start();
 
         connectionPanel.addSelectionListener(this);
-        RuntimeEnvironment.getInstance().addListener(this);
+        ioInterface.addTreeModelListener(this);
     }
 
     /**
@@ -291,7 +291,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     }
 
     @Override
-    public void setViewRootElement(FrameworkElement root, ArrayList<FrameworkElement> expandedElements) {
+    public void setViewRootElement(ModelNode root, ArrayList<ModelNode> expandedElements) {
         super.setViewRootElement(root, expandedElements);
 
         if (toolBar.isSelected(Mode.paramconnect)) {
@@ -423,7 +423,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
                 address = JOptionPane.showInputDialog(null, ioInterface.getName() + ": Please input connection address", ec.getConnectionAddress());
             }
             if (address != null) {
-                ec.connect(address);
+                ec.connect(address, Finstruct.this.ioInterface.getNewModelHandlerInstance());
                 // parent.ioInterface.addModule(ioInterface.createModule());
                 EventRouter.fireConnectionEvent(null, ConnectionListener.INTERFACE_UPDATED);
             } else {
@@ -473,10 +473,10 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     public void valueChanged(TreeSelectionEvent e) {
         if (e.isAddedPath()) {
             Object sel = e.getPath().getLastPathComponent();
-            if (!(sel instanceof TreePortWrapper)) {
-                if (sel instanceof InterfaceNode) {
+            if (!(sel instanceof PortWrapperTreeNode)) {
+                if (sel instanceof ModelNode) {
                     logDomain.log(LogLevel.LL_DEBUG, getLogDescription(), "Setting view root to " + sel.toString());
-                    showElement(((InterfaceNode)sel).getFrameworkElement());
+                    showElement((ModelNode)sel);
                 }
             }
         }
@@ -510,27 +510,34 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         return connectionPanel;
     }
 
-    @Override
-    public void runtimeChange(byte changeType, final FrameworkElement element) {
+//    @Override TODO
+//    public void runtimeChange(byte changeType, final FrameworkElement element) {
+//
+//        // If nothing is displayed change view to any remote runtime
+//        if (changeType == RuntimeListener.ADD && getCurrentView() != null && getCurrentView().getRootElement() == null) {
+//            if (element.getParent().getFlag(FrameworkElementFlags.ALTERNATIVE_LINK_ROOT) &&
+//                    element.getParent().getFlag(FrameworkElementFlags.NETWORK_ELEMENT) &&
+//                    (element.getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP) || element.getFlag(FrameworkElementFlags.EDGE_AGGREGATOR))) {
+//                SwingUtilities.invokeLater(new Runnable() {
+//
+//                    @Override
+//                    public void run() {
+//                        connectionPanel.expandOnly(true, element);
+//                        //connectionPanel.
+//                        showElement(element);
+//                    }
+//
+//                });
+//            }
+//        }
+//    }
+//
+//    @Override
+//    public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {
+//    }
 
-        // If nothing is displayed change view to any remote runtime
-        if (changeType == RuntimeListener.ADD && getCurrentView() != null && getCurrentView().getRootElement() == null) {
-            if (element.getParent().getFlag(CoreFlags.ALTERNATE_LINK_ROOT) && element.getParent().getFlag(CoreFlags.NETWORK_ELEMENT) && (element.getFlag(CoreFlags.FINSTRUCTABLE_GROUP) || element.getFlag(CoreFlags.EDGE_AGGREGATOR))) {
-                SwingUtilities.invokeLater(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        connectionPanel.expandOnly(true, element);
-                        //connectionPanel.
-                        showElement(element);
-                    }
-
-                });
-            }
-        }
-    }
-
-    @Override
-    public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {
-    }
+    @Override public void treeNodesInserted(TreeModelEvent e) {}
+    @Override public void treeNodesChanged(TreeModelEvent e) {}
+    @Override public void treeNodesRemoved(TreeModelEvent e) {}
+    @Override public void treeStructureChanged(TreeModelEvent e) {}
 }

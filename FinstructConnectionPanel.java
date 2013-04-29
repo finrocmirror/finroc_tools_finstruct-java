@@ -34,27 +34,27 @@ import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
-import org.finroc.core.CoreFlags;
 import org.finroc.core.FrameworkElement;
+import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.FrameworkElementTreeFilter;
 import org.finroc.core.admin.AdminClient;
-import org.finroc.core.parameter.ConfigFile;
 import org.finroc.core.parameter.ParameterInfo;
 import org.finroc.core.port.AbstractPort;
-import org.finroc.core.port.PortFlags;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
-import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.core.portdatabase.FinrocTypeInfo;
+import org.finroc.core.remote.HasUid;
+import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.PortWrapperTreeNode;
+import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemotePort;
+import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.views.AbstractGraphView;
 import org.finroc.tools.gui.ConnectionPanel;
 import org.finroc.tools.gui.ConnectorIcon;
 import org.finroc.tools.gui.ConnectorIcon.IconColor;
 import org.finroc.tools.gui.ConnectorIcon.LineStart;
 import org.finroc.tools.gui.util.gui.MJTree;
-import org.finroc.tools.gui.util.treemodel.InterfaceNode;
-import org.finroc.tools.gui.util.treemodel.PortWrapper;
-import org.finroc.tools.gui.util.treemodel.TreePortWrapper;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 
 /**
@@ -91,7 +91,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    protected boolean canConnect(TreePortWrapper o1, TreePortWrapper o2) {
+    protected boolean canConnect(PortWrapperTreeNode o1, PortWrapperTreeNode o2) {
         if (o1 == null || o2 == null || o1.getPort() == o2.getPort()) {
             return false;
         }
@@ -103,23 +103,23 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    protected void connect(TreePortWrapper port, TreePortWrapper port2) {
+    protected void connect(PortWrapperTreeNode port, PortWrapperTreeNode port2) {
         ThreadLocalCache.get();
         if (port != null && port2 != null) {
             if (getRightTree() instanceof ConfigFileModel) {
                 ParameterInfo pi = (ParameterInfo)port.getPort().getAnnotation(ParameterInfo.TYPE);
-                NetPort np = port.getPort().asNetPort();
-                TreePortWrapper other = port2;
+                PortWrapperTreeNode parameter = port;
+                PortWrapperTreeNode configNode = port2;
                 if (pi == null) {
                     pi = (ParameterInfo)port2.getPort().getAnnotation(ParameterInfo.TYPE);
-                    other = port;
-                    np = port2.getPort().asNetPort();
+                    parameter = port2;
+                    configNode = port;
                 }
                 if (pi != null) {
-                    RemoteRuntime rr = RemoteRuntime.find(np);
+                    RemoteRuntime rr = RemoteRuntime.find((RemotePort)parameter);
                     AdminClient ac = rr.getAdminInterface();
-                    pi.setConfigEntry("/" + other.getUid(), true);
-                    ac.setAnnotation(rr.getRemoteHandle(np.getPort()), pi);
+                    pi.setConfigEntry("/" + ((HasUid)configNode).getUid(), true);
+                    ac.setAnnotation(((RemotePort)parameter).getRemoteHandle(), pi);
                     return;
                 }
             } else {
@@ -138,19 +138,17 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         Finstruct.logDomain.log(LogLevel.LL_DEBUG_WARNING, getLogDescription(), "Cannot connect ports: " + port  + " " + port2);
     }
 
-
-
     @Override
-    protected List<PortWrapper> getConnectionPartners(TreePortWrapper port) {
+    protected List<PortWrapperTreeNode> getConnectionPartners(PortWrapperTreeNode port) {
         return getConnectionPartners(port, false);
     }
 
-    protected List<PortWrapper> getConnectionPartners(final TreePortWrapper port, boolean includeSourcePorts) {
-        final List<PortWrapper> result = new ArrayList<PortWrapper>();
+    protected List<PortWrapperTreeNode> getConnectionPartners(final PortWrapperTreeNode port, boolean includeSourcePorts) {
+        final List<PortWrapperTreeNode> result = new ArrayList<PortWrapperTreeNode>();
         if (getRightTree() instanceof ConfigFileModel) {
             ParameterInfo pi = (ParameterInfo)port.getPort().getAnnotation(ParameterInfo.TYPE);
             if (pi != null && pi.getConfigEntry() != null && pi.getConfigEntry().length() > 0) {
-                PortWrapper pw = ((ConfigFileModel)getRightTree()).get(pi.getConfigEntry());
+                PortWrapperTreeNode pw = ((ConfigFileModel)getRightTree()).get(pi.getConfigEntry());
                 if (pw != null) {
                     result.add(pw);
                 }
@@ -160,12 +158,15 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             NetPort np = getNetPort(port);
             if (np != null) {
                 for (AbstractPort fe : np.getRemoteEdgeDestinations()) {
-                    result.add((PortWrapper)finstruct.ioInterface.getInterfaceNode(fe));
+                    for (RemotePort remotePort : RemotePort.get(fe)) {
+                        result.add(remotePort);
+                    }
                 }
             }
 
             if (includeSourcePorts) { // computationally expensive
-                FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
+                FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(FrameworkElementFlags.PORT | FrameworkElementFlags.STATUS_FLAGS,
+                        FrameworkElementFlags.PORT | FrameworkElementFlags.READY | FrameworkElementFlags.PUBLISHED);
                 filter.traverseElementTree(finstruct.getIoInterface().getRootFrameworkElement(), new FrameworkElementTreeFilter.Callback<Object>() {
                     @Override
                     public void treeFilterCallback(FrameworkElement fe, Object customParam) {
@@ -174,7 +175,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                         if (netPort != null) {
                             for (AbstractPort destPort : netPort.getRemoteEdgeDestinations()) {
                                 if (destPort == port.getPort()) {
-                                    result.add((PortWrapper)finstruct.getIoInterface().getInterfaceNode(scannedPort));
+                                    for (RemotePort remotePort : RemotePort.get(scannedPort)) {
+                                        result.add(remotePort);
+                                    }
                                 }
                             }
                         }
@@ -186,7 +189,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         }
     }
 
-    private NetPort getNetPort(TreePortWrapper port) {
+    private NetPort getNetPort(PortWrapperTreeNode port) {
         if (port == null) {
             return null;
         }
@@ -194,36 +197,30 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    protected void removeConnections(TreePortWrapper port) {
+    protected void removeConnections(PortWrapperTreeNode port) {
         ThreadLocalCache.get();
         if (port != null) {
             if (getRightTree() instanceof ConfigFileModel) {
                 if (port instanceof ConfigFileModel.ConfigEntryWrapper) {
-                    FrameworkElementTreeFilter ftf = new FrameworkElementTreeFilter();
-                    final FrameworkElement currentRoot = finstruct.getCurrentView().getRootElement();
+                    final ModelNode currentRoot = finstruct.getCurrentView().getRootElement();
                     final String uid = ((ConfigFileModel.ConfigEntryWrapper)port).getUid();
-                    ftf.traverseElementTree(currentRoot, new FrameworkElementTreeFilter.Callback<Integer>() {
-                        @Override
-                        public void treeFilterCallback(FrameworkElement fe, Integer dummy) {
-                            // remove connections
-                            ParameterInfo pi = (ParameterInfo)fe.getAnnotation(ParameterInfo.TYPE);
-                            if (fe.isPort() && pi != null && pi.getConfigEntry().equals(uid) && ConfigFile.find(fe) == ConfigFile.find(currentRoot)) {
-                                NetPort np = ((AbstractPort)fe).asNetPort();
-                                pi.setConfigEntry("");
-                                RemoteRuntime rr = RemoteRuntime.find(np);
-                                AdminClient ac = rr.getAdminInterface();
-                                pi.setConfigEntry("");
-                                ac.setAnnotation(rr.getRemoteHandle(np.getPort()), pi);
-                            }
+                    for (RemotePort remotePort : currentRoot.getPortsBelow(null)) {
+                        // remove connections
+                        ParameterInfo pi = (ParameterInfo)remotePort.getAnnotation(ParameterInfo.TYPE);
+                        if (pi != null && pi.getConfigEntry().equals(uid) && ConfigFileModel.findConfigFile(remotePort) == ConfigFileModel.findConfigFile(currentRoot)) {
+                            pi.setConfigEntry("");
+                            RemoteRuntime rr = RemoteRuntime.find(remotePort);
+                            AdminClient ac = rr.getAdminInterface();
+                            pi.setConfigEntry("");
+                            ac.setAnnotation(remotePort.getRemoteHandle(), pi);
                         }
-                    }, null);
+                    }
                 } else {
-                    NetPort np = port.getPort().asNetPort();
-                    RemoteRuntime rr = RemoteRuntime.find(np);
+                    RemoteRuntime rr = RemoteRuntime.find((RemotePort)port);
                     AdminClient ac = rr.getAdminInterface();
-                    ParameterInfo pi = (ParameterInfo)np.getPort().getAnnotation(ParameterInfo.TYPE);
+                    ParameterInfo pi = (ParameterInfo)((RemotePort)port).getAnnotation(ParameterInfo.TYPE);
                     pi.setConfigEntry("");
-                    ac.setAnnotation(rr.getRemoteHandle(np.getPort()), pi);
+                    ac.setAnnotation(((RemotePort)port).getRemoteHandle(), pi);
                 }
                 return;
             } else {
@@ -240,7 +237,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    protected void setToolTipText(MJTree<TreePortWrapper> tree, TreePortWrapper element) {
+    protected void setToolTipText(MJTree<PortWrapperTreeNode> tree, PortWrapperTreeNode element) {
         //tree.setToolTipText("");
     }
 
@@ -258,8 +255,8 @@ public class FinstructConnectionPanel extends ConnectionPanel {
      * @param leftTree Left tree (or rather right one?)
      * @param node Node to expand
      */
-    public void expandOnly(boolean leftTree, FrameworkElement node) {
-        ArrayList<FrameworkElement> tmp = new ArrayList<FrameworkElement>();
+    public void expandOnly(boolean leftTree, ModelNode node) {
+        ArrayList<ModelNode> tmp = new ArrayList<ModelNode>();
         tmp.add(node);
         expandOnly(leftTree, tmp);
     }
@@ -270,16 +267,15 @@ public class FinstructConnectionPanel extends ConnectionPanel {
      * @param leftTree Left tree (or rather right one?)
      * @param nodes Nodes to expand
      */
-    public void expandOnly(boolean leftTree, Collection<FrameworkElement> nodes) {
+    public void expandOnly(boolean leftTree, Collection<ModelNode> nodes) {
         if (nodes.size() == 0) {
             return;
         }
-        MJTree<TreePortWrapper> tree = leftTree ? super.leftTree : rightTree;
+        MJTree<PortWrapperTreeNode> tree = leftTree ? super.leftTree : rightTree;
         tree.collapseAll();
-        for (FrameworkElement node : nodes) {
-            InterfaceNode node2 = finstruct.ioInterface.getInterfaceNode(node);
-            tree.expandToElement(node2);
-            tree.scrollPathToVisible(tree.getTreePathFor(node2));
+        for (ModelNode node : nodes) {
+            tree.expandToElement(node);
+            tree.scrollPathToVisible(tree.getTreePathFor(node));
         }
     }
 
@@ -290,20 +286,20 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             finstruct.refreshView();
             return;
         } else if (e.getSource() == miOpenInNewWindow) {
-            MJTree<TreePortWrapper> ptree = popupOnRight ? rightTree : leftTree;
+            MJTree<PortWrapperTreeNode> ptree = popupOnRight ? rightTree : leftTree;
             TreeNode tnp = getTreeNodeFromPos(ptree);
             FinstructWindow fw = new FinstructWindow(finstruct);
-            fw.showElement(((InterfaceNode)tnp).getFrameworkElement());
+            fw.showElement((ModelNode)tnp);
             fw.pack();
             fw.setVisible(true);
         } else if (e.getSource() == miShowPartner) {
-            MJTree<TreePortWrapper> ptree = popupOnRight ? rightTree : leftTree;
-            MJTree<TreePortWrapper> otherTree = popupOnRight ? leftTree : rightTree;
-            TreePortWrapper portWrapper = getTreePortWrapperFromPos(ptree);
-            List<PortWrapper> partners = getConnectionPartners(portWrapper, true);
+            MJTree<PortWrapperTreeNode> ptree = popupOnRight ? rightTree : leftTree;
+            MJTree<PortWrapperTreeNode> otherTree = popupOnRight ? leftTree : rightTree;
+            PortWrapperTreeNode portWrapper = getPortWrapperTreeNodeFromPos(ptree);
+            List<PortWrapperTreeNode> partners = getConnectionPartners(portWrapper, true);
 
-            for (PortWrapper partner : partners) {
-                TreePath tp = otherTree.getTreePathFor((TreePortWrapper)partner);
+            for (PortWrapperTreeNode partner : partners) {
+                TreePath tp = otherTree.getTreePathFor((PortWrapperTreeNode)partner);
                 otherTree.scrollPathToVisible(tp);
             }
             return;
@@ -313,8 +309,8 @@ public class FinstructConnectionPanel extends ConnectionPanel {
 
     @Override
     protected Color getBranchBackgroundColor(Object value) {
-        if (value instanceof InterfaceNode) {
-            FrameworkElement fe = ((InterfaceNode)value).getFrameworkElement();
+        if (value instanceof RemoteFrameworkElement) {
+            RemoteFrameworkElement fe = (RemoteFrameworkElement)value;
             if (finstruct.getCurrentView() != null && fe == finstruct.getCurrentView().getRootElement()) {
                 return new Color(222, 222, 222);
                 /*} else if (finstruct.getCurrentView() != null && fe.isChildOf(finstruct.getCurrentView().getRootElement())) {
@@ -336,9 +332,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
      * @return Color - null, if default color
      */
     protected Color getBranchTextColor(Object value) {
-        if (value instanceof InterfaceNode) {
-            FrameworkElement fe = ((InterfaceNode)value).getFrameworkElement();
-            if (finstruct.getCurrentView() != null && !fe.isChildOf(finstruct.getCurrentView().getRootElement()) && fe != finstruct.getCurrentView().getRootElement()) {
+        if (value instanceof RemoteFrameworkElement) {
+            RemoteFrameworkElement fe = (RemoteFrameworkElement)value;
+            if (finstruct.getCurrentView() != null && !fe.isNodeAncestor(finstruct.getCurrentView().getRootElement()) && fe != finstruct.getCurrentView().getRootElement()) {
                 return new Color(160, 160, 160);
             }
         }
@@ -354,21 +350,21 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    public boolean drawPortConnected(TreePortWrapper port) {
+    public boolean drawPortConnected(PortWrapperTreeNode port) {
         return false;
     }
 
     @Override
-    protected LineStart getLineStartPosition(PortWrapper port, PortWrapper partner) {
+    protected LineStart getLineStartPosition(PortWrapperTreeNode port, PortWrapperTreeNode partner) {
         if (getRightTree() instanceof ConfigFileModel) {
             return ConnectorIcon.LineStart.Default;
         }
-        NetPort np = getNetPort((TreePortWrapper)port);
+        NetPort np = getNetPort((PortWrapperTreeNode)port);
         if (np != null) {
             if (np.getRemoteEdgeDestinations().contains(partner.getPort())) {
                 return ConnectorIcon.LineStart.Outgoing;
             } else {
-                NetPort npPartner = getNetPort((TreePortWrapper)partner);
+                NetPort npPartner = getNetPort((PortWrapperTreeNode)partner);
                 if (npPartner.getRemoteEdgeDestinations().contains(port.getPort())) {
                     return ConnectorIcon.LineStart.Incoming;
                 }
@@ -379,15 +375,15 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    public ConnectorIcon getConnectorIcon(TreePortWrapper port, boolean rightTree, IconColor color, boolean brighter) {
+    public ConnectorIcon getConnectorIcon(PortWrapperTreeNode port, boolean rightTree, IconColor color, boolean brighter) {
         final ConnectorIcon.Type iconType = new ConnectorIcon.Type();
         boolean rpc = FinrocTypeInfo.isMethodType(port.getPort().getDataType(), true);
-        iconType.set(port.isInputPort(), port.getPort().getFlag(PortFlags.PROXY), rpc, rightTree, brighter, color, rightTree ? rightBackgroundColor : leftBackgroundColor);
+        iconType.set(port.isInputPort(), port.getPort().getFlag(FrameworkElementFlags.PROXY), rpc, rightTree, brighter, color, rightTree ? rightBackgroundColor : leftBackgroundColor);
         return ConnectorIcon.getIcon(iconType, HEIGHT);
     }
 
     @Override
-    protected void updatePopupMenu(TreeNode treeNode, TreePortWrapper wrapper) {
+    protected void updatePopupMenu(TreeNode treeNode, PortWrapperTreeNode wrapper) {
         super.updatePopupMenu(treeNode, wrapper);
         miOpenInNewWindow.setEnabled(treeNode != null);
 

@@ -28,10 +28,11 @@ import java.util.ArrayList;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
+import javax.swing.Timer;
+import javax.swing.event.TreeModelEvent;
+import javax.swing.event.TreeModelListener;
 
-import org.finroc.core.CoreFlags;
-import org.finroc.core.FrameworkElement;
-import org.finroc.core.RuntimeListener;
+import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.datatype.PortCreationList;
 import org.finroc.core.finstructable.GroupInterface;
 import org.finroc.core.finstructable.GroupInterface.DataClassification;
@@ -40,9 +41,9 @@ import org.finroc.core.parameter.StaticParameterBool;
 import org.finroc.core.parameter.StaticParameterEnum;
 import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.plugin.RemoteCreateModuleAction;
-import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
-import org.finroc.core.port.net.RemoteRuntime;
+import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.propertyeditor.FinrocComponentFactory;
 import org.finroc.tools.finstruct.propertyeditor.FinrocObjectAccessor;
@@ -53,6 +54,7 @@ import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
 import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.util.propertyeditor.PropertyList;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
+import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 import org.rrlib.finroc_core_utils.serialization.Serialization;
 
@@ -104,13 +106,17 @@ public class CreateInterfacesDialog extends MDialog {
     private JButton cancel, next;
 
     /** Remote Element to create interfaces for */
-    private FrameworkElement element;
+    private RemoteFrameworkElement element;
 
     /** List with creation tasks */
     private final CreationTasksContainer creation = new CreationTasksContainer();
 
     /** Remote action for creating interfaces */
     private RemoteCreateModuleAction createInterfaceAction;
+
+    /** Tree model of remote framework elements */
+    private InterfaceTreeModel treeModel;
+
 
     public CreateInterfacesDialog(Frame owner) {
         super(owner, true);
@@ -119,10 +125,11 @@ public class CreateInterfacesDialog extends MDialog {
     /**
      * @param element Remote Element to edit parameters of
      */
-    public void show(FrameworkElement element) {
+    public void show(RemoteFrameworkElement element, InterfaceTreeModel treeModel) {
         this.element = element;
+        this.treeModel = treeModel;
         setTitle("Create Interfaces");
-        if (RemoteRuntime.find(element) == null || (!element.getFlag(CoreFlags.FINSTRUCTED)) && (!element.getFlag(CoreFlags.FINSTRUCTABLE_GROUP))) {
+        if (RemoteRuntime.find(element) == null || (!element.getFlag(FrameworkElementFlags.FINSTRUCTED)) && (!element.getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP))) {
             Finstruct.showErrorMessage("Not a remote finstructed element", false, false);
             return;
         }
@@ -170,7 +177,7 @@ public class CreateInterfacesDialog extends MDialog {
      * @param dir Interface's port direction
      */
     private void addTask(String name, DataClassification dataClass, PortDirection dir) {
-        if (element.getChild(name) != null) {
+        if (element.getChildByName(name) != null) {
             return;
         }
         CreationTask task = new CreationTask();
@@ -206,7 +213,7 @@ public class CreateInterfacesDialog extends MDialog {
     /**
      * Dialog to edit ports of created interfaces
      */
-    public class PortsDialog extends MDialog implements RuntimeListener {
+    public class PortsDialog extends MDialog implements TreeModelListener {
 
         /** UID */
         private static final long serialVersionUID = -7549055844293711845L;
@@ -240,13 +247,14 @@ public class CreateInterfacesDialog extends MDialog {
             for (CreationTask task : creation.tasks) {
                 if (task.create) {
                     for (CreationTask task2 : creation.tasks) {
-                        if ((task2 != task && task.name.equals(task2.name)) || element.getChild(task.name) != null) {
+                        if ((task2 != task && task.name.equals(task2.name)) || element.getChildByName(task.name) != null) {
                             Finstruct.showErrorMessage("Please select unique names for new interfaces", false, false);
                             return false;
                         }
                     }
                     if (task.portCreationList == null) {
                         task.portCreationList = new PortCreationList();
+                        task.portCreationList.setShowOutputPortSelection(task.portDirection == PortDirection.BOTH);
                     }
                     accessors.add(new FinrocObjectAccessor(task.name + " ports", task.portCreationList));
                 }
@@ -276,6 +284,7 @@ public class CreateInterfacesDialog extends MDialog {
         public void actionPerformed(ActionEvent e) {
             if (e.getSource() == cancel) {
                 closeInitial = true;
+                close();
             } else if (e.getSource() == create) {
 
                 // apply changes
@@ -291,96 +300,84 @@ public class CreateInterfacesDialog extends MDialog {
                 RemoteRuntime rr = RemoteRuntime.find(element);
 
                 // Create interfaces (create & wait to apply port list changes)
-                synchronized (this) {
+                boolean timerActive = false;
+                try {
+                    treeModel.addTreeModelListener(this);
 
-                    try {
-                        element.getRuntime().addListener(this);
-
-                        // Create modules
-                        for (CreationTask task : creation.tasks) {
-                            if (task.create) {
-                                StaticParameterList spl = new StaticParameterList();
-                                spl.add(new StaticParameterEnum<GroupInterface.DataClassification>("", task.dataClassification));
-                                spl.add(new StaticParameterEnum<GroupInterface.PortDirection>("", task.portDirection));
-                                spl.add(new StaticParameterBool("", task.shared));
-                                spl.add(new StaticParameterBool("", task.globallyUniqueLinks));
-                                String error = rr.getAdminInterface().createModule(createInterfaceAction, task.name, rr.getRemoteHandle(element), spl);
-                                if (error.length() == 0 && task.portCreationList.getSize() > 0) {
-                                    setPortListCount++;
-                                } else if (error.length() > 0) {
-                                    Finstruct.showErrorMessage("Error creating interfaces: " + error, false, false);
-                                }
+                    // Create modules
+                    for (CreationTask task : creation.tasks) {
+                        if (task.create) {
+                            StaticParameterList spl = new StaticParameterList();
+                            spl.add(new StaticParameterEnum<GroupInterface.DataClassification>("", task.dataClassification));
+                            spl.add(new StaticParameterEnum<GroupInterface.PortDirection>("", task.portDirection));
+                            spl.add(new StaticParameterBool("", task.shared));
+                            spl.add(new StaticParameterBool("", task.globallyUniqueLinks));
+                            String error = rr.getAdminInterface().createModule(createInterfaceAction, task.name, element.getRemoteHandle(), spl);
+                            if (error.length() == 0 && task.portCreationList.getSize() > 0) {
+                                setPortListCount++;
+                            } else if (error.length() > 0) {
+                                Finstruct.showErrorMessage("Error creating interfaces: " + error, false, false);
                             }
                         }
-
-                        if (setPortListCount > 0) {
-
-                            // wait for all port lists to be set
-
-                            long start = System.currentTimeMillis();
-                            while (System.currentTimeMillis() < (start + 2000) && setPortListCount > 0) {
-                                try {
-                                    this.wait(500);
-                                } catch (InterruptedException e1) {
-                                }
-                            }
-
-                            if (setPortListCount > 0) {
-                                Finstruct.showErrorMessage("Could not set ports list of " + setPortListCount + " interfaces", false, false);
-                            }
-                        }
-                    } finally {
-                        element.getRuntime().removeListener(this);
                     }
 
+                    if (setPortListCount > 0) {
+
+                        // wait for all port lists to be set
+                        Timer timer = new Timer(1000, this);
+                        timer.setRepeats(false);
+                        timer.start();
+                        timerActive = true;
+
+                    }
+                } finally {
+                    if (!timerActive) {
+                        treeModel.removeTreeModelListener(this);
+                        closeInitial = true;
+                        close();
+                    }
                 }
-
+            } else if (e.getSource() instanceof Timer) {
+                if (setPortListCount > 0) {
+                    Finstruct.showErrorMessage("Could not set ports list of " + setPortListCount + " interfaces", false, false);
+                }
+                treeModel.removeTreeModelListener(this);
                 closeInitial = true;
+                close();
             }
-            close();
         }
 
         @Override
-        public void runtimeChange(byte changeType, final FrameworkElement element) {
-            if (changeType == RuntimeListener.ADD && element.getParent() == CreateInterfacesDialog.this.element) {
+        public void treeNodesInserted(TreeModelEvent event) {
+            if (event.getTreePath().getLastPathComponent() == CreateInterfacesDialog.this.element) {
+                for (Object o : event.getChildren()) {
+                    if (o instanceof RemoteFrameworkElement) {
+                        RemoteFrameworkElement element = (RemoteFrameworkElement)o;
+                        for (final CreationTask task : creation.tasks) {
+                            if (element.getName().equals(task.name) && task.portCreationList.getSize() > 0) {
 
-                new Thread(new Runnable() {
+                                ThreadLocalCache.get();
+                                // okay, the port list of this element needs to be set
+                                try {
+                                    RemoteRuntime rr = RemoteRuntime.find(element);
+                                    int handle = element.getRemoteHandle();
+                                    StaticParameterList elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(handle, StaticParameterList.TYPE);
+                                    elementParamList.get(0).set(Serialization.serialize(task.portCreationList));
+                                    rr.getAdminInterface().setAnnotation(handle, elementParamList);
 
-                    @Override
-                    public void run() {
-
-                        //System.out.println("Started thread for " + element.getQualifiedName());
-                        synchronized (PortsDialog.this) {
-
-                            //System.out.println("Started2 thread for " + element.getQualifiedName());
-
-                            for (final CreationTask task : creation.tasks) {
-                                if (element.getName().equals(task.name) && task.portCreationList.getSize() > 0) {
-
-                                    ThreadLocalCache.get();
-                                    // okay, the port list of this element needs to be set
-                                    try {
-                                        RemoteRuntime rr = RemoteRuntime.find(element);
-                                        int handle = rr.getRemoteHandle(element);
-                                        StaticParameterList elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(handle, StaticParameterList.TYPE);
-                                        elementParamList.get(0).set(Serialization.serialize(task.portCreationList));
-                                        rr.getAdminInterface().setAnnotation(handle, elementParamList);
-
-                                        setPortListCount--;
-                                        PortsDialog.this.notifyAll();
-                                    } catch (Exception e) {
-                                        Finstruct.showErrorMessage("Failed to set annotation list", true, true);
-                                    }
+                                    setPortListCount--;
+                                } catch (Exception e) {
+                                    Finstruct.showErrorMessage("Failed to set annotation list", true, true);
                                 }
                             }
-                            return;
                         }
+                        return;
                     }
-                }).start();
+                }
             }
         }
-
-        @Override
-        public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {}
+        @Override public void treeNodesChanged(TreeModelEvent e) {}
+        @Override public void treeNodesRemoved(TreeModelEvent e) {}
+        @Override public void treeStructureChanged(TreeModelEvent e) {}
     }
 }

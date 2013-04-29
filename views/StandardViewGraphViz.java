@@ -54,20 +54,20 @@ import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import org.finroc.core.FrameworkElement.ChildIterator;
-import org.finroc.core.CoreFlags;
-import org.finroc.core.FrameworkElement;
-import org.finroc.core.FrameworkElementTreeFilter;
+import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.RuntimeEnvironment;
-import org.finroc.core.admin.AdminServer;
+import org.finroc.core.admin.AdministrationService;
 import org.finroc.core.port.AbstractPort;
-import org.finroc.core.port.EdgeAggregator;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
-import org.finroc.core.port.net.RemoteRuntime;
+import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemotePort;
+import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.core.util.Files;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.dialogs.CreateInterfacesDialog;
@@ -82,7 +82,7 @@ import org.finroc.tools.gui.util.gui.MAction;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Standard View - similar to standard view in MCABrowser
  */
@@ -119,7 +119,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     private MouseHandlerManager mouseHandlers;
 
     /** Expanded groups */
-    private ArrayList<FrameworkElement> expandedGroups = new ArrayList<FrameworkElement>();
+    private ArrayList<ModelNode> expandedGroups = new ArrayList<ModelNode>();
 
     /** Expanded groups */
     private ArrayList<Subgraph> subgraphs = new ArrayList<Subgraph>();
@@ -149,7 +149,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     private JMenuItem miCreateModule, miSaveChanges, miEditModule, miDeleteModule, miCreateInterfaces;
 
     /** Framework element that right-click-menu was opened upon */
-    private FrameworkElement rightClickedOn;
+    private ModelNode rightClickedOn;
 
     static {
         boolean ok = false;
@@ -204,14 +204,14 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     }
 
     @Override
-    protected Vertex createVertexInstance(FrameworkElement fe) {
+    protected Vertex createVertexInstance(ModelNode fe) {
         return new Vertex(fe);
     }
 
     @Override
-    protected synchronized void rootElementChanged(ArrayList<FrameworkElement> expandedElements) {
+    protected synchronized void rootElementChanged(ArrayList<ModelNode> expandedElements) {
         expandedGroups.clear();
-        expandedGroups.addAll(expandedElements != null ? expandedElements : new ArrayList<FrameworkElement>(0));
+        expandedGroups.addAll(expandedElements != null ? expandedElements : new ArrayList<ModelNode>(0));
         relayout();
 
         // get Admin interface
@@ -240,7 +240,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
      */
     protected void relayout() {
         try {
-            final FrameworkElement root = getRootElement();
+            final ModelNode root = getRootElement();
 
             int width = getWidth();
             int height = getHeight();
@@ -250,7 +250,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             vertices.clear();
             subgraphs.clear();
             synchronized (RuntimeEnvironment.getInstance().getRegistryLock()) {
-                if (root == null || (!root.isReady())) {
+                if (root == null) {
                     repaint();
                     return;
                 }
@@ -264,8 +264,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
                 // add vertices and create subgraphs
                 for (Vertex v : rootVertices) {
-                    if (expandedGroups.contains(v.frameworkElement)) {
-                        createSubGraph(graph, v.frameworkElement);
+                    if (expandedGroups.contains(v.getModelElement())) {
+                        createSubGraph(graph, v.getModelElement());
                     } else {
                         graph.add(v.gvVertex);
                         vertices.add(v);
@@ -360,21 +360,19 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
      * Update whether start and pause buttons are enabled
      */
     private void updateStartPauseEnabled() {
-        if (Finstruct.BETA_FEATURES) {
-            RemoteRuntime rr = RemoteRuntime.find(getRootElement());
-            if (rr == null) {
-                start.setEnabled(false);
-                pause.setEnabled(false);
-                return;
-            }
-            try {
-                int executing = rr.getAdminInterface().isExecuting(rr.getRemoteHandle(getRootElement()));
-                start.setEnabled(executing == AdminServer.STOPPED || executing == AdminServer.BOTH);
-                pause.setEnabled(executing == AdminServer.STARTED || executing == AdminServer.BOTH);
-            } catch (Exception e) {
-                start.setEnabled(false);
-                pause.setEnabled(false);
-            }
+        RemoteRuntime rr = RemoteRuntime.find(getRootElement());
+        if (rr == null) {
+            start.setEnabled(false);
+            pause.setEnabled(false);
+            return;
+        }
+        try {
+            AdministrationService.ExecutionStatus executing = rr.getAdminInterface().isExecuting(((RemoteFrameworkElement)getRootElement()).getRemoteHandle());
+            start.setEnabled(executing == AdministrationService.ExecutionStatus.PAUSED || executing == AdministrationService.ExecutionStatus.BOTH);
+            pause.setEnabled(executing == AdministrationService.ExecutionStatus.RUNNING || executing == AdministrationService.ExecutionStatus.BOTH);
+        } catch (Exception e) {
+            start.setEnabled(false);
+            pause.setEnabled(false);
         }
     }
 
@@ -384,13 +382,13 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
      * @param parent Parent Graph
      * @param group Group to create subgraph for
      */
-    private void createSubGraph(Graph parent, FrameworkElement group) {
+    private void createSubGraph(Graph parent, ModelNode group) {
         Subgraph graph = new Subgraph(parent, group);
         subgraphs.add(graph);
         List<Vertex> subVertices = getVertices(group);
         for (Vertex v : subVertices) {
-            if (expandedGroups.contains(v.frameworkElement)) {
-                createSubGraph(graph, v.frameworkElement);
+            if (expandedGroups.contains(v.getModelElement())) {
+                createSubGraph(graph, v.getModelElement());
             } else {
                 graph.add(v.gvVertex);
                 vertices.add(v);
@@ -478,7 +476,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         /** Timestamp when user last clicked on this element (for double-click) */
         private long lastClick;
 
-        public Vertex(FrameworkElement fe) {
+        public Vertex(ModelNode fe) {
             super(fe);
             reset();
             gvVertex.setAttributeQuoted("description", fe.getName());
@@ -490,7 +488,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
             // find optimal line breaks
             boolean lineBreaks = toolBar.isSelected(DiverseSwitches.lineBreaks);
-            String[] words = frameworkElement.getName().split("\\s");
+            String[] words = getModelElement().getName().split("\\s");
             assert(words.length < 20);
             double bestScore = Integer.MAX_VALUE;
             ArrayList<String> bestText = new ArrayList<String>();
@@ -579,7 +577,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             g2d.drawRect(rect.x, rect.y, rect.width, rect.height);
             if (isGroup()) { // draw + for group
                 if (expandIcon == null) {
-                    expandIcon = new ExpandIcon(6, 6, frameworkElement);
+                    expandIcon = new ExpandIcon(6, 6, getModelElement());
                 }
                 expandIcon.paint(g2d, rect.x + rect.width - 5, rect.y - 1, true);
             }
@@ -652,19 +650,20 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             if (inConnectionMode()) {
                 if (over != null && over != this && (over instanceof Vertex)) {
                     Vertex v = (Vertex)over;
-                    expandInTree(true, frameworkElement);
-                    expandInTree(false, v.frameworkElement);
+                    expandInTree(true, getModelElement());
+                    expandInTree(false, v.getModelElement());
                 }
                 StandardViewGraphViz.this.repaint();
             }
             if (over == this) {
                 long time = System.currentTimeMillis();
                 if (time - lastClick < Finstruct.DOUBLE_CLICK_DELAY) {
-                    if (frameworkElement.childCount() > 0 || frameworkElement.getFlag(CoreFlags.FINSTRUCTABLE_GROUP)) {
-                        getFinstructWindow().showElement(frameworkElement);
+                    if (getModelElement().getChildCount() > 0 ||
+                            (getFinrocElement() != null && getFinrocElement().getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP))) {
+                        getFinstructWindow().showElement(getModelElement());
                     }
                 } else {
-                    expandInTree(true, frameworkElement);
+                    expandInTree(true, getModelElement());
                     lastClick = System.currentTimeMillis();
                 }
             }
@@ -676,14 +675,13 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
          * @param leftTree in Left tree?
          * @param frameworkElement Framework element
          */
-        private void expandInTree(boolean leftTree, FrameworkElement frameworkElement) {
-            ArrayList<FrameworkElement> expand = new ArrayList<FrameworkElement>();
+        private void expandInTree(boolean leftTree, ModelNode frameworkElement) {
+            ArrayList<ModelNode> expand = new ArrayList<ModelNode>();
             expand.add(frameworkElement);
-            ChildIterator ci = new ChildIterator(frameworkElement);
-            FrameworkElement next = null;
-            while ((next = ci.next()) != null) {
-                if (isInterface(next)) {
-                    expand.add(next);
+            for (int i = 0; i < frameworkElement.getChildCount(); i++) {
+                ModelNode child = (ModelNode)frameworkElement.getChildAt(i);
+                if ((child instanceof RemoteFrameworkElement) && isInterface((RemoteFrameworkElement)child)) {
+                    expand.add(child);
                 }
             }
             if (connectionPanel != null) {
@@ -731,10 +729,10 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
          * Inizializes flags variable
          */
         protected void processFlags() {
-            if ((dataTypeFlags & EdgeAggregator.CONTROLLER_DATA) != 0) {
+            if ((dataTypeFlags & FrameworkElementFlags.CONTROLLER_DATA) != 0) {
                 flags |= CONTROLLER_DATA | DRAW_DOWNWARDS;
             }
-            if ((dataTypeFlags & EdgeAggregator.SENSOR_DATA) != 0) {
+            if ((dataTypeFlags & FrameworkElementFlags.SENSOR_DATA) != 0) {
                 flags |= SENSOR_DATA | DRAW_UPWARDS;
             }
         }
@@ -909,29 +907,27 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 connectionPanel.setRightTree(connectionPanel.getLeftTree());
             }
 
-            final ArrayList<FrameworkElement> srcPorts = new ArrayList<FrameworkElement>();
-            final HashSet<FrameworkElement> destPorts = new HashSet<FrameworkElement>();
+            final ArrayList<ModelNode> srcPorts = new ArrayList<ModelNode>();
+            final HashSet<ModelNode> destPorts = new HashSet<ModelNode>();
 
-            FrameworkElementTreeFilter.Callback<Boolean> cb = new FrameworkElementTreeFilter.Callback<Boolean>() {
-                @Override
-                public void treeFilterCallback(FrameworkElement fe, Boolean unused) {
-                    NetPort np = ((AbstractPort)fe).asNetPort();
-                    if (np != null) {
-                        boolean added = false;
-                        List<AbstractPort> dests = np.getRemoteEdgeDestinations();
-                        for (AbstractPort port : dests) {
-                            if (port.isChildOf(getDestination().getFinrocElement())) {
-                                destPorts.add(port);
+            ArrayList<RemotePort> remotePorts = getSource().getModelElement().getPortsBelow(null);
+            for (RemotePort remotePort : remotePorts) {
+                NetPort np = remotePort.getPort().asNetPort();
+                if (np != null) {
+                    boolean added = false;
+                    for (AbstractPort port : np.getRemoteEdgeDestinations()) {
+                        for (RemotePort remoteDestPort : RemotePort.get(port)) {
+                            if (remoteDestPort.isNodeAncestor(getDestination().getModelElement())) {
+                                destPorts.add(remoteDestPort);
                                 if (!added) {
-                                    srcPorts.add(fe);
+                                    srcPorts.add(remotePort);
                                 }
                             }
                         }
                     }
                 }
-            };
-            FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
-            filter.traverseElementTree(getSource().getFinrocElement(), cb, false);
+            }
+
             if (connectionPanel != null) {
                 connectionPanel.expandOnly(true, srcPorts);
                 connectionPanel.expandOnly(false, destPorts);
@@ -981,9 +977,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         private Rectangle bounds = new Rectangle();
 
         /** Group that can be expanded/collapsed pressing this icon */
-        private FrameworkElement group;
+        private ModelNode group;
 
-        public ExpandIcon(int width, int height, FrameworkElement group) {
+        public ExpandIcon(int width, int height, ModelNode group) {
             bounds.width = width;
             bounds.height = height;
             this.group = group;
@@ -1058,7 +1054,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     private class Subgraph extends Graph {
 
         /** Wrapped framework element */
-        private final FrameworkElement frameworkElement;
+        private final ModelNode modelNode;
 
         /** Collapse icon */
         private ExpandIcon expandIcon;
@@ -1066,10 +1062,10 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         /** label bounds */
         private Rectangle labelBounds = null;
 
-        private Subgraph(Graph parent, FrameworkElement fe) {
+        private Subgraph(Graph parent, ModelNode fe) {
             super(parent);
-            frameworkElement = fe;
-            expandIcon = new ExpandIcon(6, 6, frameworkElement);
+            modelNode = fe;
+            expandIcon = new ExpandIcon(6, 6, modelNode);
         }
 
         /**
@@ -1079,7 +1075,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
          */
         public void paint(Graphics2D g2d) {
             if (labelBounds == null) {
-                testLabel.setText(frameworkElement.getName());
+                testLabel.setText(modelNode.getName());
                 labelBounds = new Rectangle(testLabel.getPreferredSize());
 
                 // find label location without collision with other objects
@@ -1130,7 +1126,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
             expandIcon.paint(g2d, r.x + r.width - 6, r.y, false);
 
-            g2d.drawString(frameworkElement.getName(), labelBounds.x, labelBounds.y + labelBounds.height);
+            g2d.drawString(modelNode.getName(), labelBounds.x, labelBounds.y + labelBounds.height);
         }
     }
 
@@ -1148,13 +1144,11 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             toolBar.setSelected(Graph.Layout.dot);
         }
 
-        if (Finstruct.BETA_FEATURES) {
-            start = toolBar.createButton("player_play-ubuntu.png", "Start/Resume exectution", this);
-            start.setEnabled(false);
-            pause = toolBar.createButton("player_pause-ubuntu.png", "Pause/Stop exectution", this);
-            pause.setEnabled(false);
-            toolBar.addSeparator();
-        }
+        start = toolBar.createButton("player_play-ubuntu.png", "Start/Resume exectution", this);
+        start.setEnabled(false);
+        pause = toolBar.createButton("player_pause-ubuntu.png", "Pause/Stop exectution", this);
+        pause.setEnabled(false);
+        toolBar.addSeparator();
 
         refreshButton = toolBar.createButton("reload-ubuntu.png", "Refresh graph", this);
         toolBar.addToggleButton(new MAction(DiverseSwitches.antialiasing, "antialias-wikimedia-public_domain.png", "Antialiasing", this), true);
@@ -1205,55 +1199,65 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         } else if (ae.getSource() == zoom1) {
             setZoom(1);
         } else if (ae.getSource() == miCreateModule) {
-            CreateModuleDialog cmd = new CreateModuleDialog(getFinstructWindow());
-            cmd.show(rightClickedOn);
-            relayout();
+            if (rightClickedOn instanceof RemoteFrameworkElement) {
+                CreateModuleDialog cmd = new CreateModuleDialog(getFinstructWindow());
+                cmd.show((RemoteFrameworkElement)rightClickedOn, getFinstruct().getIoInterface());
+                relayout();
+            }
         } else if (ae.getSource() == miSaveChanges) {
-            FrameworkElement fe = rightClickedOn.getFlag(CoreFlags.FINSTRUCTABLE_GROUP) ? rightClickedOn : rightClickedOn.getParentWithFlags(CoreFlags.FINSTRUCTABLE_GROUP);
+            RemoteFrameworkElement fe = RemoteFrameworkElement.getParentWithFlags(rightClickedOn, FrameworkElementFlags.FINSTRUCTABLE_GROUP, true);
             if (fe != null) {
                 RemoteRuntime rr = RemoteRuntime.find(fe);
                 if (rr == null) {
                     Finstruct.showErrorMessage("Element is not a child of a remote runtime", false, false);
                 } else {
-                    rr.getAdminInterface().saveFinstructableGroup(rr.getRemoteHandle(fe));
+                    rr.getAdminInterface().saveFinstructableGroup(fe.getRemoteHandle());
                 }
             }
         } else if (ae.getSource() == miDeleteModule) {
             RemoteRuntime rr = RemoteRuntime.find(rightClickedOn);
             if (rr == null) {
                 Finstruct.showErrorMessage("Element is not a child of a remote runtime", false, false);
-            } else {
-                rr.getAdminInterface().deleteElement(rr.getRemoteHandle(rightClickedOn));
-                try {
-                    Thread.sleep(750);
-                } catch (InterruptedException e) {}
-                relayout();
+            } else if (rightClickedOn instanceof RemoteFrameworkElement) {
+                rr.getAdminInterface().deleteElement(((RemoteFrameworkElement)rightClickedOn).getRemoteHandle());
+                refreshViewAfter(500);
             }
         } else if (ae.getSource() == miEditModule) {
-            new ParameterEditDialog(getFinstruct()).show(rightClickedOn, true);
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {}
-            relayout();
+            if (rightClickedOn instanceof RemoteFrameworkElement) {
+                new ParameterEditDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, true);
+                refreshViewAfter(500);
+            }
         } else if (ae.getSource() == miCreateInterfaces) {
-            new CreateInterfacesDialog(getFinstruct()).show(rightClickedOn);
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {}
-            relayout();
+            if (rightClickedOn instanceof RemoteFrameworkElement) {
+                new CreateInterfacesDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, getFinstruct().getIoInterface());
+                refreshViewAfter(250);
+            }
         } else if (ae.getSource() == start || ae.getSource() == pause) {
             RemoteRuntime rr = RemoteRuntime.find(getRootElement());
             if (rr == null) {
                 Finstruct.showErrorMessage("Root Element is not a child of a remote runtime", false, false);
-            } else {
+            } else if (rightClickedOn instanceof RemoteFrameworkElement) {
                 if (ae.getSource() == start) {
-                    rr.getAdminInterface().startExecution(rr.getRemoteHandle(getRootElement()));
+                    rr.getAdminInterface().startExecution(((RemoteFrameworkElement)rightClickedOn).getRemoteHandle());
                 } else {
-                    rr.getAdminInterface().pauseExecution(rr.getRemoteHandle(getRootElement()));
+                    rr.getAdminInterface().pauseExecution(((RemoteFrameworkElement)rightClickedOn).getRemoteHandle());
                 }
                 updateStartPauseEnabled();
             }
+        } else if (ae.getSource() instanceof Timer) {
+            relayout();
         }
+    }
+
+    /**
+     * Refreshes view after the specified number of milliseconds
+     *
+     * @param ms Milliseconds to wait until refreshing
+     */
+    private void refreshViewAfter(int ms) {
+        Timer timer = new Timer(ms, this);
+        timer.setRepeats(false);
+        timer.start();
     }
 
     /**
@@ -1349,20 +1353,22 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 rightClickedOn = getRootElement();
                 for (Subgraph sg : subgraphs) {
                     if (sg.getBounds().contains(p)) {
-                        rightClickedOn = sg.frameworkElement;
+                        rightClickedOn = sg.modelNode;
                     }
                 }
             } else if (mh instanceof Vertex) {
-                rightClickedOn = ((Vertex)mh).frameworkElement;
+                rightClickedOn = ((Vertex)mh).getModelElement();
             } else {
                 rightClickedOn = null;
             }
             if (rightClickedOn != null) {
-                if (rightClickedOn.getFlag(CoreFlags.FINSTRUCTED) || rightClickedOn.getFlag(CoreFlags.FINSTRUCTABLE_GROUP)) {
+                if (rightClickedOn instanceof RemoteFrameworkElement &&
+                        (((RemoteFrameworkElement)rightClickedOn).getFlag(FrameworkElementFlags.FINSTRUCTED) ||
+                         ((RemoteFrameworkElement)rightClickedOn).getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP))) {
                     boolean expanded = expandedGroups.contains(rightClickedOn) || rightClickedOn == getRootElement();
                     miCreateModule.setEnabled(expanded);
                     miDeleteModule.setEnabled(!expanded);
-                    miCreateInterfaces.setEnabled(!rightClickedOn.isPort());
+                    miCreateInterfaces.setEnabled(!(rightClickedOn instanceof RemotePort));
 
                     // show right-click-menu with create-action
                     popupMenu.show(this, e.getX(), e.getY());
@@ -1386,7 +1392,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     }
 
     @Override
-    public Collection <? extends FrameworkElement > getExpandedElementsForHistory() {
+    public Collection <? extends ModelNode > getExpandedElementsForHistory() {
         return expandedGroups;
     }
 

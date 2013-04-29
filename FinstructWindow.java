@@ -35,9 +35,9 @@ import javax.swing.JMenuBar;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 
-import org.finroc.core.CoreFlags;
-import org.finroc.core.FrameworkElement;
-import org.finroc.core.RuntimeEnvironment;
+import org.finroc.core.FrameworkElementFlags;
+import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.tools.finstruct.Finstruct.Mode;
 import org.finroc.tools.finstruct.views.AbstractGraphView;
 import org.finroc.tools.finstruct.views.Ib2cView;
@@ -59,7 +59,7 @@ public class FinstructWindow extends JFrame implements ActionListener {
     private static final long serialVersionUID = -7929615678892958956L;
 
     /** Reference to finstruct main window */
-    private final Finstruct finstruct;
+    protected Finstruct finstruct;
 
     /** History navigation buttons */
     private JButton back, next;
@@ -154,7 +154,7 @@ public class FinstructWindow extends JFrame implements ActionListener {
         toolBar.addSeparator();
         toolBar.startNextButtonGroup();
 
-        FrameworkElement lastRoot = currentView == null ? null : currentView.getRootElement();
+        ModelNode lastRoot = currentView == null ? null : currentView.getRootElement();
         currentView = view;
 
         // reinit tool and menu bar with view's entries
@@ -186,10 +186,10 @@ public class FinstructWindow extends JFrame implements ActionListener {
         updateHistoryButtonState();
     }
 
-    public void setViewRootElement(FrameworkElement root, ArrayList<FrameworkElement> expandedElements) {
+    public void setViewRootElement(ModelNode root, ArrayList<ModelNode> expandedElements) {
         currentView.setRootElement(root, expandedElements);
         if (!(this instanceof Finstruct)) {
-            setTitle(root.getQualifiedLink());
+            setTitle(root.getQualifiedName('/'));
         }
     }
 
@@ -213,9 +213,9 @@ public class FinstructWindow extends JFrame implements ActionListener {
      *
      * @param fe Framework element to show
      */
-    public void showElement(FrameworkElement fe) {
-
-        boolean portViewCandidate = AbstractGraphView.hasOnlyPortChildren(fe, false) && (!fe.getFlag(CoreFlags.FINSTRUCTABLE_GROUP));
+    public void showElement(ModelNode fe) {
+        boolean portViewCandidate = AbstractGraphView.hasOnlyPortChildren(fe, false) &&
+                                    (!((fe instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)fe).getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP)));
         if (miAutoView.isSelected() || portViewCandidate) {
             // auto-select view
             Class <? extends FinstructView > viewClass = portViewCandidate ? PortView.class : StandardViewGraphViz.class;
@@ -258,10 +258,10 @@ public class FinstructWindow extends JFrame implements ActionListener {
             return;
         }
         HistoryElement he = new HistoryElement(currentView.getClass(), currentView.getRootElement());
-        Collection <? extends FrameworkElement > expanded = currentView.getExpandedElementsForHistory();
+        Collection <? extends ModelNode > expanded = currentView.getExpandedElementsForHistory();
         if (expanded != null) {
-            for (FrameworkElement fe : expanded) {
-                he.expandedElements.add(fe.getQualifiedName());
+            for (ModelNode fe : expanded) {
+                he.expandedElements.add(fe.getQualifiedName('/'));
             }
         }
         if (history.size() == 0 || historyPos <= 0 || (!history.get(historyPos).equals(he))) {
@@ -283,13 +283,13 @@ public class FinstructWindow extends JFrame implements ActionListener {
     private void showHistoryElement(int newHistoryElement) {
         historyPos = newHistoryElement;
         HistoryElement he = history.get(historyPos);
-        FrameworkElement root = RuntimeEnvironment.getInstance().getChildElement(he.root, false);
+        ModelNode root = finstruct.ioInterface.getChildByQualifiedName(he.root, HISTORY_SEPARATOR);
         if (root == null) {
             return;
         }
-        ArrayList<FrameworkElement> expanded = new ArrayList<FrameworkElement>();
+        ArrayList<ModelNode> expanded = new ArrayList<ModelNode>();
         for (String e : he.expandedElements) {
-            FrameworkElement fe = RuntimeEnvironment.getInstance().getChildElement(e, false);
+            ModelNode fe = finstruct.ioInterface.getChildByQualifiedName(e, HISTORY_SEPARATOR);
             if (fe != null) {
                 expanded.add(fe);
             }
@@ -358,6 +358,9 @@ public class FinstructWindow extends JFrame implements ActionListener {
         }
     }
 
+    /** Separator for qualified names used in history */
+    static final char HISTORY_SEPARATOR = (char)0;
+
     /**
      * Element of view history
      */
@@ -372,9 +375,10 @@ public class FinstructWindow extends JFrame implements ActionListener {
         /** Expanded/Selected framework element entries */
         ArrayList<String> expandedElements = new ArrayList<String>();
 
-        public HistoryElement(Class <? extends FinstructView > view, FrameworkElement root) {
+
+        public HistoryElement(Class <? extends FinstructView > view, ModelNode root) {
             this.view = view;
-            this.root = root.getQualifiedName();
+            this.root = root.getQualifiedName(HISTORY_SEPARATOR);
         }
 
         public boolean equals(Object other) {

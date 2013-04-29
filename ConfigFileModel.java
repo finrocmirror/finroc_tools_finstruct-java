@@ -22,14 +22,19 @@ package org.finroc.tools.finstruct;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeNode;
 
+import org.finroc.core.FinrocAnnotation;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.parameter.ConfigFile;
 import org.finroc.core.parameter.ParameterInfo;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortCreationInfo;
-import org.finroc.core.port.net.RemoteRuntime;
-import org.finroc.tools.gui.util.treemodel.TreePortWrapper;
+import org.finroc.core.remote.HasUid;
+import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.PortWrapperTreeNode;
+import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemoteRuntime;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 import org.rrlib.finroc_core_utils.xml.XML2WrapperException;
 import org.rrlib.finroc_core_utils.xml.XMLNode;
@@ -48,15 +53,15 @@ public class ConfigFileModel extends DefaultTreeModel {
 
     private FrameworkElement nodeContainer = new FrameworkElement("Config model node container");
 
-    public ConfigFileModel(FrameworkElement root) {
+    public ConfigFileModel(ModelNode root) {
         super(new DefaultMutableTreeNode("Config File"));
         this.root = (DefaultMutableTreeNode)getRoot();
-        if (root == null || RemoteRuntime.find(root) == null) {
+        if (root == null || RemoteRuntime.find(root) == null || (!(root instanceof RemoteFrameworkElement))) {
             initFromFile(null);
         } else {
             try {
-                RemoteRuntime.find(root).getAdminInterface().getParameterInfo(root);
-                initFromFile(ConfigFile.find(root));
+                RemoteRuntime.find(root).getAdminInterface().getParameterInfo((RemoteFrameworkElement)root);
+                initFromFile(findConfigFile((RemoteFrameworkElement)root));
             } catch (Exception e) {
                 Finstruct.logDomain.log(LogLevel.LL_ERROR, "ConfigFileModel", e);
             }
@@ -156,7 +161,25 @@ public class ConfigFileModel extends DefaultTreeModel {
         return null;
     }
 
-    class ConfigEntryWrapper extends DefaultMutableTreeNode implements TreePortWrapper {
+    /**
+     * Find ConfigFile which specified element is configured from
+     *
+     * @param element Element
+     * @return ConfigFile - or null if none could be found
+     */
+    public static ConfigFile findConfigFile(ModelNode element) {
+        FinrocAnnotation ann = (element instanceof RemoteFrameworkElement) ? ((RemoteFrameworkElement)element).getAnnotation(ConfigFile.TYPE) : null;
+        if (ann != null && ((ConfigFile)ann).isActive() == true) {
+            return (ConfigFile)ann;
+        }
+        TreeNode parent = element.getParent();
+        if (parent != null && parent instanceof RemoteFrameworkElement) {
+            return findConfigFile((RemoteFrameworkElement)parent);
+        }
+        return null;
+    }
+
+    class ConfigEntryWrapper extends DefaultMutableTreeNode implements PortWrapperTreeNode, HasUid {
 
         /** UID */
         private static final long serialVersionUID = 4774894712960992454L;

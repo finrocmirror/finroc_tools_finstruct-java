@@ -31,16 +31,13 @@ import java.util.TreeMap;
 import javax.swing.JComponent;
 
 import org.finroc.core.Annotatable;
-import org.finroc.core.FrameworkElement.ChildIterator;
-import org.finroc.core.CoreFlags;
-import org.finroc.core.FrameworkElement;
-import org.finroc.core.FrameworkElementTags;
-import org.finroc.core.FrameworkElementTreeFilter;
+import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.port.AbstractPort;
-import org.finroc.core.port.EdgeAggregator;
-import org.finroc.core.port.PortFlags;
 import org.finroc.core.port.net.NetPort;
 import org.finroc.core.portdatabase.FinrocTypeInfo;
+import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemotePort;
 import org.finroc.tools.finstruct.FinstructConnectionPanel;
 import org.finroc.tools.finstruct.FinstructView;
 
@@ -64,17 +61,18 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      * @param fe Framework Element
      * @return Output interface?
      */
-    public static boolean isOutputOnlyInterface(FrameworkElement fe) {
+    public static boolean isOutputOnlyInterface(RemoteFrameworkElement fe) {
         boolean one = false;
         boolean all = true;
         if (isInterface(fe)) {
-            ChildIterator ci = new ChildIterator(fe);
-            AbstractPort next = null;
-            while ((next = ci.nextPort()) != null) {
-                if (!FinrocTypeInfo.isMethodType(next.getDataType(), true)) {
-                    boolean output = next.getFlag(PortFlags.IS_OUTPUT_PORT);
-                    one |= output;
-                    all &= output;
+            for (int i = 0; i < fe.getChildCount(); i++) {
+                if (fe.getChildAt(i) instanceof RemotePort) {
+                    RemotePort remotePort = (RemotePort)fe.getChildAt(i);
+                    if (!FinrocTypeInfo.isMethodType(remotePort.getPort().getDataType(), true)) {
+                        boolean output = remotePort.getPort().isOutputPort();
+                        one |= output;
+                        all &= output;
+                    }
                 }
             }
         }
@@ -85,17 +83,18 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      * @param fe Framework Element
      * @return Input interface?
      */
-    public static boolean isInputOnlyInterface(FrameworkElement fe) {
+    public static boolean isInputOnlyInterface(RemoteFrameworkElement fe) {
         boolean one = false;
         boolean all = true;
         if (isInterface(fe)) {
-            ChildIterator ci = new ChildIterator(fe);
-            AbstractPort next = null;
-            while ((next = ci.nextPort()) != null) {
-                if (!FinrocTypeInfo.isMethodType(next.getDataType(), true)) {
-                    boolean input = !next.getFlag(PortFlags.IS_OUTPUT_PORT);
-                    one |= input;
-                    all &= input;
+            for (int i = 0; i < fe.getChildCount(); i++) {
+                if (fe.getChildAt(i) instanceof RemotePort) {
+                    RemotePort remotePort = (RemotePort)fe.getChildAt(i);
+                    if (!FinrocTypeInfo.isMethodType(remotePort.getPort().getDataType(), true)) {
+                        boolean input = !remotePort.getPort().isOutputPort();
+                        one |= input;
+                        all &= input;
+                    }
                 }
             }
         }
@@ -106,31 +105,31 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      * @param fe Framework Element
      * @return Is framework Element a sensor interface?
      */
-    public static boolean isSensorInterface(FrameworkElement fe) {
-        return isInterface(fe) && fe.getFlag(EdgeAggregator.SENSOR_DATA) && (!fe.getFlag(EdgeAggregator.CONTROLLER_DATA));
+    public static boolean isSensorInterface(RemoteFrameworkElement fe) {
+        return isInterface(fe) && fe.getFlag(FrameworkElementFlags.SENSOR_DATA) && (!fe.getFlag(FrameworkElementFlags.CONTROLLER_DATA));
     }
 
     /**
      * @param fe Framework Element
      * @return Is framework Element a Controller interface?
      */
-    public static boolean isControllerInterface(FrameworkElement fe) {
-        return isInterface(fe) && fe.getFlag(EdgeAggregator.CONTROLLER_DATA) && (!fe.getFlag(EdgeAggregator.SENSOR_DATA));
+    public static boolean isControllerInterface(RemoteFrameworkElement fe) {
+        return isInterface(fe) && fe.getFlag(FrameworkElementFlags.CONTROLLER_DATA) && (!fe.getFlag(FrameworkElementFlags.SENSOR_DATA));
     }
 
     /**
      * @param fe Framework Element
      * @return Is framework element an interface
      */
-    public static boolean isInterface(FrameworkElement fe) {
-        return fe.getFlag(CoreFlags.EDGE_AGGREGATOR) && fe.getFlag(EdgeAggregator.IS_INTERFACE);
+    public static boolean isInterface(RemoteFrameworkElement fe) {
+        return fe.getFlag(FrameworkElementFlags.EDGE_AGGREGATOR) && fe.getFlag(FrameworkElementFlags.INTERFACE);
     }
 
     /**
      * @param fe Framework element
      * @return Is parameter node?
      */
-    public static boolean isParameters(FrameworkElement fe) {
+    public static boolean isParameters(RemoteFrameworkElement fe) {
         if (fe.getName().equalsIgnoreCase("Parameter") || fe.getName().equalsIgnoreCase("Parameters")) {
             return hasOnlyPortChildren(fe, true);
         }
@@ -142,19 +141,17 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      * @param onNoChildrenReturn Value to return if framework element has no children
      * @return Are all children of framework element ports?
      */
-    public static boolean hasOnlyPortChildren(FrameworkElement fe, boolean onNoChildrenReturn) {
-        ChildIterator ci = new ChildIterator(fe);
-        FrameworkElement next = null;
-        boolean hasChildren = false;
-        while ((next = ci.next()) != null) {
-            if (!next.isPort()) {
+    public static boolean hasOnlyPortChildren(ModelNode fe, boolean onNoChildrenReturn) {
+        if (fe.getChildCount() == 0) {
+            return onNoChildrenReturn;
+        }
+        for (int i = 0; i < fe.getChildCount(); i++) {
+            if (!(fe.getChildAt(i) instanceof RemotePort)) {
                 return false;
             }
-            hasChildren = true;
         }
-        return hasChildren ? true : onNoChildrenReturn;
+        return true;
     }
-
 
     /**
      * Returns parent of framework element that is displayed in graph
@@ -163,23 +160,21 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      * @param fe Framework element whose parent to search for
      * @return Parent
      */
-    public GetParentResult getParentInGraph(HashMap<FrameworkElement, V> lookup, FrameworkElement fe) {
+    public GetParentResult getParentInGraph(HashMap<ModelNode, V> lookup, ModelNode fe) {
         GetParentResult result = new GetParentResult();
-        for (int i = 0; i < fe.getLinkCount(); i++) {
-            FrameworkElement current = fe;
-            FrameworkElement parent = fe.getLink(i).getParent();
-            while (parent != null) {
-                if (current.getFlag(CoreFlags.EDGE_AGGREGATOR)) {
-                    result.dataTypeFlags |= current.getAllFlags();
-                }
-                V v = lookup.get(current);
-                if (v != null) {
-                    result.parent = v;
-                    return result;
-                }
-                current = parent;
-                parent = current.getParent();
+        ModelNode current = fe;
+        ModelNode parent = (ModelNode)fe.getParent();
+        while (parent != null) {
+            if ((current instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)current).getFlag(FrameworkElementFlags.EDGE_AGGREGATOR)) {
+                result.dataTypeFlags |= ((RemoteFrameworkElement)current).getAllFlags();
             }
+            V v = lookup.get(current);
+            if (v != null) {
+                result.parent = v;
+                return result;
+            }
+            current = parent;
+            parent = (ModelNode)current.getParent();
         }
         return result;
     }
@@ -191,17 +186,12 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      * @return List
      */
     @SuppressWarnings("unchecked")
-    public List<V> getVertices(FrameworkElement root) {
-        ChildIterator ci = new ChildIterator(root);
+    public List<V> getVertices(ModelNode root) {
         ArrayList<V> result = new ArrayList<V>();
-        if (!root.isReady()) {
-            return result;
-        }
 
         // add vertices
-        FrameworkElement next = null;
-        while ((next = ci.next()) != null) {
-            V vertex = createVertexInstance(next);
+        for (int i = 0; i < root.getChildCount(); i++) {
+            V vertex = createVertexInstance((ModelNode)root.getChildAt(i));
             if (vertex != null) {
                 result.add(vertex);
             }
@@ -214,8 +204,8 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
                 int foundCount = 0;
 
                 for (V v : result) {
-                    FrameworkElement next2 = v.frameworkElement;
-                    if ((controller == 1 ? isControllerInterface(next2) : isSensorInterface(next2)) && (output == 1 ? isOutputOnlyInterface(next2) : isInputOnlyInterface(next2))) {
+                    RemoteFrameworkElement next2 = v.frameworkElement;
+                    if (next2 != null && (controller == 1 ? isControllerInterface(next2) : isSensorInterface(next2)) && (output == 1 ? isOutputOnlyInterface(next2) : isInputOnlyInterface(next2))) {
                         found = v;
                         foundCount++;
                     }
@@ -234,7 +224,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         // mark groups
         for (final V v : result) {
             // we have a group, if framework element is tagged as such
-            if (FrameworkElementTags.isTagged(v.frameworkElement, "group")) {
+            if (v.frameworkElement != null && v.frameworkElement.isTagged("group")) {
                 v.setGroup(true);
             }
         }
@@ -243,47 +233,40 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
     }
 
     /**
-     * Returns all framework element below root that should be displayed
+     * Returns all edges below root that should be displayed
      *
      * @param root Root
      * @param allVertices All Vertices that could be connected in graph
      * @return List with edges (start and endpoints) are set to vertices returned by method above
      */
-    public Collection<E> getEdges(final FrameworkElement root, Collection<V> allVertices) {
-        final TreeMap<E, E> result = new TreeMap<E, E>();
-        if (!root.isReady()) {
-            return new ArrayList<E>();
-        }
-        final HashMap<FrameworkElement, V> lookup = new HashMap<FrameworkElement, V>();
+    @SuppressWarnings("unchecked")
+    public Collection<E> getEdges(final ModelNode root, Collection<V> allVertices) {
+        final HashMap<E, E> result = new HashMap<E, E>();
+        final HashMap<ModelNode, V> lookup = new HashMap<ModelNode, V>();
         for (V v : allVertices) {
-            lookup.put(v.frameworkElement, v);
+            lookup.put(v.modelElement, v);
         }
-        FrameworkElementTreeFilter.Callback<Boolean> cb = new FrameworkElementTreeFilter.Callback<Boolean>() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public void treeFilterCallback(FrameworkElement fe, Boolean unused) {
-                if (fe.isChildOf(root)) {
-                    NetPort np = ((AbstractPort)fe).asNetPort();
-                    for (FrameworkElement feDest : np.getRemoteEdgeDestinations()) {
-                        GetParentResult src = getParentInGraph(lookup, fe);
-                        GetParentResult dest = getParentInGraph(lookup, feDest);
-                        if (src.parent != null && dest.parent != null && src.parent != dest.parent) {
-                            E eNew = createEdgeInstance(src.parent, dest.parent);
-                            eNew.source = src.parent;
-                            eNew.destination = dest.parent;
-                            E e = result.get(eNew);
-                            if (e == null) {
-                                e = eNew;
-                                result.put(eNew, eNew);
-                            }
-                            e.dataTypeFlags |= src.dataTypeFlags | dest.dataTypeFlags;
+        for (RemotePort port : root.getPortsBelow(null)) {
+            NetPort np = port.getPort().asNetPort();
+            for (AbstractPort destPort : np.getRemoteEdgeDestinations()) {
+                GetParentResult src = getParentInGraph(lookup, port);
+                for (RemotePort destTemp : RemotePort.get(destPort)) {
+                    GetParentResult dest = getParentInGraph(lookup, destTemp);
+                    if (src.parent != null && dest.parent != null && src.parent != dest.parent) {
+                        E eNew = createEdgeInstance(src.parent, dest.parent);
+                        eNew.source = src.parent;
+                        eNew.destination = dest.parent;
+                        E e = result.get(eNew);
+                        if (e == null) {
+                            e = eNew;
+                            result.put(eNew, eNew);
                         }
+                        e.dataTypeFlags |= src.dataTypeFlags | dest.dataTypeFlags;
                     }
                 }
             }
-        };
-        FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.IS_PORT | CoreFlags.STATUS_FLAGS, CoreFlags.IS_PORT | CoreFlags.READY | CoreFlags.PUBLISHED);
-        filter.traverseElementTree(root, cb, null);
+        }
+
         return result.values();
     }
 
@@ -327,7 +310,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
     /**
      * Edge in View
      */
-    public class Edge extends Annotatable implements Serializable, Comparable<Edge> {
+    public class Edge extends Annotatable implements Serializable { /*, Comparable<Edge>*/
 
         /** UID */
         private static final long serialVersionUID = 7311395657703973551L;
@@ -378,14 +361,14 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
          * @return Does edge transport controller data (only)?
          */
         public boolean isControllerData() {
-            return (dataTypeFlags & (EdgeAggregator.SENSOR_DATA | EdgeAggregator.CONTROLLER_DATA)) == EdgeAggregator.CONTROLLER_DATA;
+            return (dataTypeFlags & (FrameworkElementFlags.SENSOR_DATA | FrameworkElementFlags.CONTROLLER_DATA)) == FrameworkElementFlags.CONTROLLER_DATA;
         }
 
         /**
          * @return Does edge transport sensor data (only)?
          */
         public boolean isSensorData() {
-            return (dataTypeFlags & (EdgeAggregator.SENSOR_DATA | EdgeAggregator.CONTROLLER_DATA)) == EdgeAggregator.SENSOR_DATA;
+            return (dataTypeFlags & (FrameworkElementFlags.SENSOR_DATA | FrameworkElementFlags.CONTROLLER_DATA)) == FrameworkElementFlags.SENSOR_DATA;
         }
 
         /**
@@ -395,24 +378,24 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             return getEdgeColor(this);
         }
 
-        @Override
-        public int compareTo(Edge o) {
-            int sh = source.frameworkElement.getHandle();
-            int dh = destination.frameworkElement.getHandle();
-            int osh = o.source.frameworkElement.getHandle();
-            int dsh = o.destination.frameworkElement.getHandle();
-            if (sh < osh) {
-                return -1;
-            } else if (sh > osh) {
-                return 1;
-            }
-            if (dh < dsh) {
-                return -1;
-            } else if (dh > dsh) {
-                return 1;
-            }
-            return 0;
-        }
+//        @Override
+//        public int compareTo(Edge o) {
+//            int sh = source.frameworkElement.getRemoteHandle();
+//            int dh = destination.frameworkElement.getRemoteHandle();
+//            int osh = o.source.frameworkElement.getRemoteHandle();
+//            int dsh = o.destination.frameworkElement.getRemoteHandle();
+//            if (sh < osh) {
+//                return -1;
+//            } else if (sh > osh) {
+//                return 1;
+//            }
+//            if (dh < dsh) {
+//                return -1;
+//            } else if (dh > dsh) {
+//                return 1;
+//            }
+//            return 0;
+//        }
     }
 
     /**
@@ -431,24 +414,38 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         /** Marks special interfaces */
         protected SpecialNode specialNode;
 
-        /** Finroc element that this vertex represents */
-        protected final FrameworkElement frameworkElement;
+        /** Remote model element that this vertex represents */
+        private final ModelNode modelElement;
 
         /** Is this vertex a (expandable) group? */
         private boolean isGroup;
 
         /**
-         * @param fe Finroc element that this vertex represents
+         * Remote framework element (in case model element is a remote framework element)
+         * Otherwise null
          */
-        public Vertex(FrameworkElement fe) {
-            frameworkElement = fe;
+        private final RemoteFrameworkElement frameworkElement;
+
+        /**
+         * @param fe Finroc remote model element that this vertex represents
+         */
+        public Vertex(ModelNode modelElement) {
+            this.modelElement = modelElement;
+            this.frameworkElement = modelElement instanceof RemoteFrameworkElement ? (RemoteFrameworkElement)modelElement : null;
         }
 
         /**
-         * @return Finroc element that this vertex represents
+         * @return Remote finroc element that this vertex represents (possibly null)
          */
-        public FrameworkElement getFinrocElement() {
+        public RemoteFrameworkElement getFinrocElement() {
             return frameworkElement;
+        }
+
+        /**
+         * @return Remote model element that this vertex represents
+         */
+        public ModelNode getModelElement() {
+            return modelElement;
         }
 
         /**
@@ -539,7 +536,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      * @return Instance - needs to be a subclass of VertexAnnotation
      */
     @SuppressWarnings("unchecked")
-    protected V createVertexInstance(FrameworkElement fe) {
+    protected V createVertexInstance(ModelNode fe) {
         return (V)new Vertex(fe);
     }
 

@@ -31,12 +31,10 @@ import javax.swing.JMenuBar;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
-import org.finroc.core.CoreFlags;
-import org.finroc.core.FrameworkElement;
-import org.finroc.core.FrameworkElementTreeFilter;
-import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.portdatabase.FinrocTypeInfo;
+import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemotePort;
 import org.finroc.tools.finstruct.FinstructView;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 import org.finroc.tools.finstruct.propertyeditor.FinrocComponentFactory;
@@ -54,19 +52,16 @@ import org.rrlib.finroc_core_utils.log.LogLevel;
  *
  * Displays port-values and lets user manipulate them
  */
-public class PortView extends FinstructView implements FrameworkElementTreeFilter.Callback<Boolean>, ActionListener {
+public class PortView extends FinstructView implements ActionListener {
 
     /** UID */
     private static final long serialVersionUID = 7231901570012922905L;
-
-    /** temporary list for rootElementChanged() function */
-    private final ArrayList<AbstractPort> tmpResultList = new ArrayList<AbstractPort>();
 
     /** Ports created for panel */
     private final ArrayList < ConnectingPortAccessor<? >> ports = new ArrayList < ConnectingPortAccessor<? >> ();
 
     /** Framework element that all displayed ports are child of */
-    private FrameworkElement commonParent;
+    private ModelNode commonParent;
 
     /** reference to toolBar */
     private MToolBar toolBar;
@@ -81,18 +76,14 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
     //private static final Font FONT = new JLabel().getFont().deriveFont(Font.PLAIN);
 
     @Override
-    protected synchronized void rootElementChanged(ArrayList<FrameworkElement> expandedElements) {
-        tmpResultList.clear();
-        FrameworkElementTreeFilter filter = new FrameworkElementTreeFilter(CoreFlags.STATUS_FLAGS | CoreFlags.IS_PORT, CoreFlags.READY | CoreFlags.PUBLISHED | CoreFlags.IS_PORT);
-        filter.traverseElementTree(getRootElement(), this, null);
+    protected synchronized void rootElementChanged(ArrayList<ModelNode> expandedElements) {
+        ArrayList<RemotePort> tmpResultList = new ArrayList<RemotePort>();
+        if (getRootElement() instanceof RemotePort) {
+            tmpResultList.add((RemotePort)getRootElement());
+        }
+        getRootElement().getPortsBelow(tmpResultList);
         setLayout(new BorderLayout());
         showPorts(tmpResultList);
-    }
-
-    @Override
-    public void treeFilterCallback(FrameworkElement fe, Boolean unused) {
-        assert(fe instanceof AbstractPort);
-        tmpResultList.add((AbstractPort)fe);
     }
 
     /**
@@ -100,7 +91,7 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
      *
      * @param portsToShow port to show
      */
-    public void showPorts(List<AbstractPort> portsToShow) {
+    public void showPorts(List<RemotePort> portsToShow) {
         super.removeAll();
 
         // delete panels
@@ -113,19 +104,20 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
         }
 
         // determine common parent
-        commonParent = portsToShow.get(0).getParent();
-        for (AbstractPort port : portsToShow) {
-            while (!port.isChildOf(commonParent)) {
-                commonParent = commonParent.getParent();
+        commonParent = (ModelNode)portsToShow.get(0).getParent();
+        for (RemotePort port : portsToShow) {
+            while (!port.isNodeAncestor(commonParent)) {
+                commonParent = (ModelNode)commonParent.getParent();
             }
         }
 
         // create new panel
-        for (AbstractPort port : portsToShow) {
+        for (RemotePort port : portsToShow) {
 
-            if (FinrocTypeInfo.isCCType(port.getDataType()) || FinrocTypeInfo.isStdType(port.getDataType()) || FinrocTypeInfo.isUnknownAdaptableType(port.getDataType())) {
+            if (FinrocTypeInfo.isCCType(port.getPort().getDataType()) || FinrocTypeInfo.isStdType(port.getPort().getDataType()) ||
+                    FinrocTypeInfo.isUnknownAdaptableType(port.getPort().getDataType())) {
                 @SuppressWarnings("rawtypes")
-                ConnectingPortAccessor cpa = new ConnectingPortAccessor(port, commonParent.getQualifiedLink());
+                ConnectingPortAccessor cpa = new ConnectingPortAccessor(port, commonParent.getQualifiedName('/'));
                 ports.add(cpa);
             }
         }
@@ -228,7 +220,7 @@ public class PortView extends FinstructView implements FrameworkElementTreeFilte
     }
 
     @Override
-    public Collection <? extends FrameworkElement > getExpandedElementsForHistory() {
+    public Collection <? extends ModelNode > getExpandedElementsForHistory() {
         return null;
     }
 }

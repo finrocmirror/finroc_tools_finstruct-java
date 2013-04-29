@@ -24,13 +24,13 @@ import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.finroc.core.FrameworkElement;
 import org.finroc.core.datatype.CoreBoolean;
 import org.finroc.core.datatype.DataTypeReference;
 import org.finroc.core.datatype.PortCreationList;
 import org.finroc.core.datatype.XML;
-import org.finroc.core.port.net.RemoteRuntime;
 import org.finroc.core.portdatabase.SerializationHelper;
+import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.gui.util.propertyeditor.BooleanEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComboBoxEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComponentFactory;
@@ -59,13 +59,13 @@ import org.rrlib.finroc_core_utils.serialization.StringInputStream;
 public class FinrocComponentFactory implements ComponentFactory {
 
     /** Framework element that all displayed ports are child of */
-    private final FrameworkElement commonParent;
+    private final ModelNode commonParent;
 
     static {
         TypedObjectCloner.register();
     }
 
-    public FinrocComponentFactory(FrameworkElement commonParent) {
+    public FinrocComponentFactory(ModelNode commonParent) {
         this.commonParent = commonParent;
     }
 
