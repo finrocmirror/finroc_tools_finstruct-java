@@ -204,7 +204,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
                 int foundCount = 0;
 
                 for (V v : result) {
-                    RemoteFrameworkElement next2 = v.frameworkElement;
+                    RemoteFrameworkElement next2 = v.getFinrocElement();
                     if (next2 != null && (controller == 1 ? isControllerInterface(next2) : isSensorInterface(next2)) && (output == 1 ? isOutputOnlyInterface(next2) : isInputOnlyInterface(next2))) {
                         found = v;
                         foundCount++;
@@ -224,7 +224,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         // mark groups
         for (final V v : result) {
             // we have a group, if framework element is tagged as such
-            if (v.frameworkElement != null && v.frameworkElement.isTagged("group")) {
+            if (v.getFinrocElement() != null && v.getFinrocElement().isTagged("group")) {
                 v.setGroup(true);
             }
         }
@@ -244,7 +244,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         final HashMap<E, E> result = new HashMap<E, E>();
         final HashMap<ModelNode, V> lookup = new HashMap<ModelNode, V>();
         for (V v : allVertices) {
-            lookup.put(v.modelElement, v);
+            lookup.put(v.getModelElement(), v);
         }
         for (RemotePort port : root.getPortsBelow(null)) {
             NetPort np = port.getPort().asNetPort();
