@@ -96,7 +96,8 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             return false;
         }
         if (getRightTree() instanceof ConfigFileModel) {
-            return o1.getPort().getAnnotation(ParameterInfo.TYPE) != null || o2.getPort().getAnnotation(ParameterInfo.TYPE) != null;
+            return ((o1 instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)o1).getAnnotation(ParameterInfo.TYPE) != null ||
+                    (o2 instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)o2).getAnnotation(ParameterInfo.TYPE) != null);
         } else {
             return o1.getPort().mayConnectTo(o2.getPort(), false) || o2.getPort().mayConnectTo(o1.getPort(), false);
         }
@@ -107,11 +108,11 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         ThreadLocalCache.get();
         if (port != null && port2 != null) {
             if (getRightTree() instanceof ConfigFileModel) {
-                ParameterInfo pi = (ParameterInfo)port.getPort().getAnnotation(ParameterInfo.TYPE);
+                ParameterInfo pi = (port instanceof RemotePort) ? (ParameterInfo)((RemotePort)port).getAnnotation(ParameterInfo.TYPE) : null;
                 PortWrapperTreeNode parameter = port;
                 PortWrapperTreeNode configNode = port2;
                 if (pi == null) {
-                    pi = (ParameterInfo)port2.getPort().getAnnotation(ParameterInfo.TYPE);
+                    pi = (port2 instanceof RemotePort) ? (ParameterInfo)((RemotePort)port2).getAnnotation(ParameterInfo.TYPE) : null;
                     parameter = port2;
                     configNode = port;
                 }
@@ -146,7 +147,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     protected List<PortWrapperTreeNode> getConnectionPartners(final PortWrapperTreeNode port, boolean includeSourcePorts) {
         final List<PortWrapperTreeNode> result = new ArrayList<PortWrapperTreeNode>();
         if (getRightTree() instanceof ConfigFileModel) {
-            ParameterInfo pi = (ParameterInfo)port.getPort().getAnnotation(ParameterInfo.TYPE);
+            ParameterInfo pi = (ParameterInfo)((RemotePort)port).getAnnotation(ParameterInfo.TYPE);
             if (pi != null && pi.getConfigEntry() != null && pi.getConfigEntry().length() > 0) {
                 PortWrapperTreeNode pw = ((ConfigFileModel)getRightTree()).get(pi.getConfigEntry());
                 if (pw != null) {
