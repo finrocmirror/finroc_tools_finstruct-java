@@ -25,6 +25,8 @@ import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -35,6 +37,7 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
+import javax.swing.Timer;
 
 import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.remote.ModelNode;
@@ -54,7 +57,7 @@ import org.rrlib.finroc_core_utils.log.LogDomain;
  *
  * Base Window class
  */
-public class FinstructWindow extends JFrame implements ActionListener {
+public class FinstructWindow extends JFrame implements ActionListener, WindowListener {
 
     /** UID */
     private static final long serialVersionUID = -7929615678892958956L;
@@ -89,6 +92,12 @@ public class FinstructWindow extends JFrame implements ActionListener {
     /** Menu item */
     private JRadioButtonMenuItem miAutoView;
 
+    /**
+     * Timer for periodic checking if current view is still up to date
+     * Causes FinstructView.checkViewUpToDate() to be called every 200ms
+     */
+    private final Timer periodicViewCheckTimer = new Timer(200, this);
+
     public FinstructWindow(Finstruct f) {
         finstruct = f;
 
@@ -117,6 +126,10 @@ public class FinstructWindow extends JFrame implements ActionListener {
         toolBar.setFloatable(false);
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(toolBar, BorderLayout.PAGE_START);
+
+        // Init periodic view update
+        periodicViewCheckTimer.start();
+        addWindowListener(this);
     }
 
     /**
@@ -196,6 +209,13 @@ public class FinstructWindow extends JFrame implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent ae) {
+        if (ae.getSource() == periodicViewCheckTimer) {
+            //System.out.println("ViewUpdate " + this);
+            if (currentView != null) {
+                currentView.updateView();
+            }
+            return;
+        }
         try {
             Object src = ae.getSource();
             if (src == next) {
@@ -397,5 +417,15 @@ public class FinstructWindow extends JFrame implements ActionListener {
             }
             return true;
         }
+    }
+
+    @Override public void windowActivated(WindowEvent e) {}
+    @Override public void windowClosed(WindowEvent e) {}
+    @Override public void windowDeactivated(WindowEvent e) {}
+    @Override public void windowDeiconified(WindowEvent e) {}
+    @Override public void windowIconified(WindowEvent e) {}
+    @Override public void windowOpened(WindowEvent e) {}
+    @Override public void windowClosing(WindowEvent e) {
+        periodicViewCheckTimer.stop();
     }
 }

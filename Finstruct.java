@@ -242,7 +242,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         // create and show GUI
         pack();
         setVisible(true);
-        addWindowListener(this);
         //addKeyListener(this);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
@@ -437,12 +436,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         return new JLabel().getFont().deriveFont(Font.PLAIN, 12);
     }
 
-    @Override public void windowActivated(WindowEvent e) {}
-    @Override public void windowClosed(WindowEvent e) {}
-    @Override public void windowDeactivated(WindowEvent e) {}
-    @Override public void windowDeiconified(WindowEvent e) {}
-    @Override public void windowIconified(WindowEvent e) {}
-    @Override public void windowOpened(WindowEvent e) {}
     @Override public void windowClosing(WindowEvent e) {
         exit();
     }

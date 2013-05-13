@@ -43,6 +43,7 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -151,6 +152,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
     /** Framework element that right-click-menu was opened upon */
     private ModelNode rightClickedOn;
+
+    /** Is the currently displayed graph drawn monochrome (due to disconnect)? */
+    private boolean graphDrawnMonochrome = false;
 
     static {
         boolean ok = false;
@@ -399,8 +403,19 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
     @Override
     public synchronized void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        Graphics2D g2d = (Graphics2D)g.create();
+        Graphics2D g2d = null;
+        BufferedImage imageBuffer = null;
+
+        graphDrawnMonochrome = !isConnectedToRootNode();
+        boolean monochrome = graphDrawnMonochrome;
+        if (monochrome) {
+            imageBuffer = new BufferedImage(this.getWidth(), this.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+            g2d = imageBuffer.createGraphics();
+        } else {
+            g2d = (Graphics2D)g.create();
+        }
+
+        super.paintComponent(g2d);
         g2d.scale(zoom, zoom);
         boolean antialiasing = toolBar.isSelected(DiverseSwitches.antialiasing);
 
@@ -441,6 +456,10 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             if (antialiasing) {
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
             }
+        }
+
+        if (monochrome) {
+            g.drawImage(imageBuffer, 0, 0, null);
         }
     }
 
@@ -1259,6 +1278,21 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         Timer timer = new Timer(ms, this);
         timer.setRepeats(false);
         timer.start();
+    }
+
+    @Override
+    protected void updateView() {
+        if (getRootElement() != null) {
+            boolean monochrome = !isConnectedToRootNode();
+            boolean repaint = monochrome != graphDrawnMonochrome;
+            if (monochrome) {
+                tryReconnectingToRootNode();
+                repaint |= isConnectedToRootNode();
+            }
+            if (repaint) {
+                repaint();
+            }
+        }
     }
 
     /**

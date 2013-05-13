@@ -48,6 +48,9 @@ public abstract class FinstructView extends JPanel {
     /** Root element of view */
     private ModelNode rootElement;
 
+    /** Qualified name of root element */
+    private String rootElementQualifiedName;
+
     public static final LogDomain logDomain = Finstruct.logDomain;
 
     Finstruct finstruct;
@@ -85,12 +88,19 @@ public abstract class FinstructView extends JPanel {
     protected abstract void rootElementChanged(ArrayList<ModelNode> expandedElements);
 
     /**
+     * Called every 200ms by Java Swing Thread
+     * Can be overridden to perform checks whether current view is still up to date
+     */
+    protected void updateView() {}
+
+    /**
      * @param root Root element of view
      * @param expandedElements
      */
     void setRootElement(ModelNode root, ArrayList<ModelNode> expandedElements) {
         if (rootElement != root) {
             rootElement = root;
+            rootElementQualifiedName = rootElement.getQualifiedName((char)1);
             rootElementChanged(expandedElements);
         }
     }
@@ -123,6 +133,27 @@ public abstract class FinstructView extends JPanel {
      */
     public FinstructWindow getFinstructWindow() {
         return finstructWindow;
+    }
+
+    /**
+     * @return Is there (still) an active connection to the current root node?
+     *         If the remote part is terminated, this is no longer the case.
+     */
+    public boolean isConnectedToRootNode() {
+        return rootElement != null && rootElement.isNodeAncestor(finstruct.getIoInterface().getRoot());
+    }
+
+    /**
+     * If root node is not connected, search for a new (restarted) part containing
+     * the same node - and set view root to this.
+     */
+    public void tryReconnectingToRootNode() {
+        if (rootElement != null && (!isConnectedToRootNode())) {
+            ModelNode newNode = finstruct.getIoInterface().getChildByQualifiedName(rootElementQualifiedName, (char)1);
+            if (newNode != null && newNode != rootElement) {
+                setRootElement(newNode, null);
+            }
+        }
     }
 
     /**
