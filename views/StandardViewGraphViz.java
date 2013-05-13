@@ -63,6 +63,7 @@ import javax.swing.event.ChangeListener;
 import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.RuntimeEnvironment;
 import org.finroc.core.admin.AdministrationService;
+import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.port.net.NetPort;
@@ -1397,17 +1398,42 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 rightClickedOn = null;
             }
             if (rightClickedOn != null) {
-                if (rightClickedOn instanceof RemoteFrameworkElement &&
-                        (((RemoteFrameworkElement)rightClickedOn).getFlag(FrameworkElementFlags.FINSTRUCTED) ||
-                         ((RemoteFrameworkElement)rightClickedOn).getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP))) {
-                    boolean expanded = expandedGroups.contains(rightClickedOn) || rightClickedOn == getRootElement();
-                    miCreateModule.setEnabled(expanded);
-                    miDeleteModule.setEnabled(!expanded);
-                    miCreateInterfaces.setEnabled(!(rightClickedOn instanceof RemotePort));
-
-                    // show right-click-menu with create-action
-                    popupMenu.show(this, e.getX(), e.getY());
+                boolean rootNodeConnected = isConnectedToRootNode();
+                boolean finstructedElement = rootNodeConnected && (rightClickedOn instanceof RemoteFrameworkElement &&
+                                             (((RemoteFrameworkElement)rightClickedOn).getFlag(FrameworkElementFlags.FINSTRUCTED) ||
+                                              ((RemoteFrameworkElement)rightClickedOn).getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP)));
+                boolean expanded = rightClickedOn == getRootElement() || expandedGroups.contains(rightClickedOn);
+                miCreateModule.setEnabled(finstructedElement && expanded);
+                miDeleteModule.setEnabled(finstructedElement && !expanded);
+                miCreateInterfaces.setEnabled(finstructedElement && (!(rightClickedOn instanceof RemotePort)));
+                miEditModule.setEnabled(finstructedElement);
+                miSaveChanges.setEnabled(false);
+                miSaveChanges.setText("Save Changes");
+                if (finstructedElement) {
+                    RemoteFrameworkElement finstructableGroup = RemoteFrameworkElement.getParentWithFlags(rightClickedOn, FrameworkElementFlags.FINSTRUCTABLE_GROUP, true);
+                    if (finstructableGroup != null) {
+                        RemoteRuntime rr = RemoteRuntime.find(finstructableGroup);
+                        if (rr != null) {
+                            try {
+                                StaticParameterList parameterList = (StaticParameterList)rr.getAdminInterface().getAnnotation(
+                                                                        finstructableGroup.getRemoteHandle(), StaticParameterList.TYPE);
+                                for (int i = 0; i < parameterList.size(); i++) {
+                                    if (parameterList.get(i).getName().equalsIgnoreCase("xml file")) {
+                                        miSaveChanges.setEnabled(true);
+                                        String file = parameterList.get(i).valPointer().getRawDataPtr().toString();
+                                        if (file.contains("/")) {
+                                            file = file.substring(file.lastIndexOf("/") + 1);
+                                        }
+                                        miSaveChanges.setText("Save Changes to " + file);
+                                    }
+                                }
+                            } catch (Exception exception) {}
+                        }
+                    }
                 }
+
+                // show right-click-menu with create-action
+                popupMenu.show(this, e.getX(), e.getY());
             }
         }
     }
