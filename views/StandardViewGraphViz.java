@@ -149,7 +149,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     private JPopupMenu popupMenu;
 
     /** PopUp-Menu Items */
-    private JMenuItem miCreateModule, miSaveChanges, miEditModule, miDeleteModule, miCreateInterfaces;
+    private JMenuItem miCreateModule, miSaveChanges, miEditModule, miDeleteModule, miCreateInterfaces, miSaveAllFiles;
 
     /** Framework element that right-click-menu was opened upon */
     private ModelNode rightClickedOn;
@@ -188,7 +188,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         miCreateInterfaces = createMenuEntry("Create Interfaces...");
         miEditModule = createMenuEntry("Edit Parameters");
         miDeleteModule = createMenuEntry("Delete Element");
-        miSaveChanges = createMenuEntry("Save Changes");
+        miSaveChanges = createMenuEntry("Save");
+        miSaveAllFiles = createMenuEntry("Save All Files");
     }
 
     /**
@@ -1235,6 +1236,13 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                     rr.getAdminInterface().saveFinstructableGroup(fe.getRemoteHandle());
                 }
             }
+        } else if (ae.getSource() == miSaveAllFiles) {
+            RemoteRuntime rr = RemoteRuntime.find(getRootElement());
+            if (rr == null) {
+                Finstruct.showErrorMessage("Current view root element is not a child of a remote runtime", false, false);
+            } else {
+                rr.getAdminInterface().saveAllFinstructableFiles();
+            }
         } else if (ae.getSource() == miDeleteModule) {
             RemoteRuntime rr = RemoteRuntime.find(rightClickedOn);
             if (rr == null) {
@@ -1408,12 +1416,14 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 miCreateInterfaces.setEnabled(finstructedElement && (!(rightClickedOn instanceof RemotePort)));
                 miEditModule.setEnabled(finstructedElement);
                 miSaveChanges.setEnabled(false);
-                miSaveChanges.setText("Save Changes");
-                if (finstructedElement) {
-                    RemoteFrameworkElement finstructableGroup = RemoteFrameworkElement.getParentWithFlags(rightClickedOn, FrameworkElementFlags.FINSTRUCTABLE_GROUP, true);
-                    if (finstructableGroup != null) {
-                        RemoteRuntime rr = RemoteRuntime.find(finstructableGroup);
-                        if (rr != null) {
+                miSaveChanges.setText("Save");
+                miSaveAllFiles.setEnabled(false);
+                miSaveAllFiles.setText("Save All Files");
+                RemoteRuntime rr = RemoteRuntime.find(getRootElement());
+                if (rr != null) {
+                    if (finstructedElement) {
+                        RemoteFrameworkElement finstructableGroup = RemoteFrameworkElement.getParentWithFlags(rightClickedOn, FrameworkElementFlags.FINSTRUCTABLE_GROUP, true);
+                        if (finstructableGroup != null) {
                             try {
                                 StaticParameterList parameterList = (StaticParameterList)rr.getAdminInterface().getAnnotation(
                                                                         finstructableGroup.getRemoteHandle(), StaticParameterList.TYPE);
@@ -1424,12 +1434,17 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                                         if (file.contains("/")) {
                                             file = file.substring(file.lastIndexOf("/") + 1);
                                         }
-                                        miSaveChanges.setText("Save Changes to " + file);
+                                        //miSaveChanges.setText("<html>Save <font color=#8080D0>(to " + file + ")</font></html>");
+                                        miSaveChanges.setText("Save \"" + file + "\"");
                                     }
                                 }
                             } catch (Exception exception) {}
                         }
                     }
+                    miSaveAllFiles.setEnabled(true);
+                    //miSaveAllChanges.setText("<html>Save All Files <font color=#8080D0>(in " + rr.getName() + ")</font></html>");
+                    miSaveAllFiles.setText("<html>Save All Files <font color=#8080D0>in '" + rr.getName() + "'</font></html>");
+                    //miSaveAllChanges.setText("Save All Files in \"" + rr.getName() + "\"");
                 }
 
                 // show right-click-menu with create-action
