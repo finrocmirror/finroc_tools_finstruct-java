@@ -35,6 +35,7 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.Timer;
 import javax.swing.event.CaretEvent;
@@ -126,9 +127,10 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
         library.add(load, BorderLayout.EAST);
         addComponent("Module library", library, 2, false);
         jlist.addListSelectionListener(this);
-        jlist.setPreferredSize(new Dimension(350, 400));
         jlist.setFont(filter.getFont());
-        addComponent("", jlist, 3, true);
+        JScrollPane jlistScrollPane = new JScrollPane(jlist);
+        jlistScrollPane.setPreferredSize(new Dimension(425, 400));
+        addComponent("", jlistScrollPane, 3, true);
         jlist.getModel().addListDataListener(this);
 
         // create buttons
