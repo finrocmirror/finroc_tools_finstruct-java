@@ -114,6 +114,9 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     /** TCP Connect action */
     public ConnectAction tcpConnect;
 
+    /** Finstruct singleton instance */
+    private static Finstruct finstructInstance;
+
     /** Double-click delay in ms */
     public static final long DOUBLE_CLICK_DELAY = 500;
 
@@ -178,6 +181,8 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     public Finstruct() {
         super(null);
         super.finstruct = this;
+        assert(finstructInstance == null);
+        finstructInstance = this;
         ThreadLocalCache.get();
         this.setMinimumSize(new Dimension(640, 480));
         setTitle("finstruct");
@@ -257,6 +262,14 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
 
         connectionPanel.addSelectionListener(this);
         ioInterface.addTreeModelListener(this);
+    }
+
+    /**
+     * @return Finstruct singleton instance (instance is created by main())
+     */
+    public static Finstruct getInstance() {
+        assert(finstructInstance != null);
+        return finstructInstance;
     }
 
     /**
