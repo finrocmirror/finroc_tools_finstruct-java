@@ -30,6 +30,7 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
 
+import org.finroc.core.finstructable.EditableInterfaces;
 import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemoteRuntime;
@@ -67,6 +68,12 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
     /** Remote Element property list */
     private StaticParameterList elementParamList;
 
+    /**
+     * Edit element's interfaces instead of parameters?
+     * (Implemented as simple flag here - because process of editing parameters and interfaces is almost the same)
+     */
+    private boolean editInterfaces;
+
     public ParameterEditDialog(Frame owner) {
         super(owner, true);
     }
@@ -78,12 +85,19 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
     /**
      * @param element Remote Element to edit parameters of
      * @param warnIfNoParameters Warn if no parameters could be retrieved?
+     * @param editInterfaces Edit element's interfaces instead of parameters?
      */
-    public void show(RemoteFrameworkElement element, boolean warnIfNoParameters) {
-        setTitle("Edit Static Parameters");
+    public void show(RemoteFrameworkElement element, boolean warnIfNoParameters, boolean editInterfaces) {
+        this.editInterfaces = editInterfaces;
+        setTitle((editInterfaces ? "Edit Interfaces of " : "Edit Static Parameters of ") + element.getQualifiedName('/'));
         this.element = element;
         RemoteRuntime rr = RemoteRuntime.find(element);
-        elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(element.getRemoteHandle(), StaticParameterList.TYPE);
+        if (!editInterfaces) {
+            elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(element.getRemoteHandle(), StaticParameterList.TYPE);
+        } else {
+            elementParamList = ((EditableInterfaces)rr.getAdminInterface().getAnnotation(element.getRemoteHandle(), EditableInterfaces.TYPE)).
+                               getStaticParameterList();
+        }
         if (elementParamList != null) {
             if (elementParamList.size() > 0) {
                 show(elementParamList, element);
@@ -143,7 +157,13 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
             }
             if (element != null) {
                 RemoteRuntime rr = RemoteRuntime.find(element);
-                rr.getAdminInterface().setAnnotation(element.getRemoteHandle(), elementParamList);
+                if (!editInterfaces) {
+                    rr.getAdminInterface().setAnnotation(element.getRemoteHandle(), elementParamList);
+                } else {
+                    EditableInterfaces editableInterfaces = new EditableInterfaces();
+                    editableInterfaces.setStaticParameterList(elementParamList);
+                    rr.getAdminInterface().setAnnotation(element.getRemoteHandle(), editableInterfaces);
+                }
             }
 
             if (e.getSource() == okCreate) {

@@ -305,7 +305,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
                     treeModel.removeTreeModelListener(this);
 
                     // possibly show edit dialog
-                    new ParameterEditDialog(this).show(createdModule, false);
+                    new ParameterEditDialog(this).show(createdModule, false, false);
                     close();
                     return;
                 }

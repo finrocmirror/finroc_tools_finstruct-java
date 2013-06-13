@@ -63,6 +63,7 @@ import javax.swing.event.ChangeListener;
 import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.RuntimeEnvironment;
 import org.finroc.core.admin.AdministrationService;
+import org.finroc.core.finstructable.EditableInterfaces;
 import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
@@ -149,7 +150,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     private JPopupMenu popupMenu;
 
     /** PopUp-Menu Items */
-    private JMenuItem miCreateModule, miSaveChanges, miEditModule, miDeleteModule, miCreateInterfaces, miSaveAllFiles;
+    private JMenuItem miCreateModule, miSaveChanges, miEditModule, miDeleteModule, miCreateInterfaces, miSaveAllFiles, miEditInterfaces;
 
     /** Framework element that right-click-menu was opened upon */
     private ModelNode rightClickedOn;
@@ -185,11 +186,13 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         // Create PopupMenu
         popupMenu = new JPopupMenu();
         miCreateModule = createMenuEntry("Create Element...");
-        miCreateInterfaces = createMenuEntry("Create Interfaces...");
-        miEditModule = createMenuEntry("Edit Parameters");
+        miEditInterfaces = createMenuEntry("Edit Interfaces...");
+        miEditModule = createMenuEntry("Edit Parameters...");
         miDeleteModule = createMenuEntry("Delete Element");
         miSaveChanges = createMenuEntry("Save");
         miSaveAllFiles = createMenuEntry("Save All Files");
+        //popupMenu.addSeparator();
+        miCreateInterfaces = createMenuEntry("Create Interfaces... (deprecated)");
     }
 
     /**
@@ -1253,13 +1256,18 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
         } else if (ae.getSource() == miEditModule) {
             if (rightClickedOn instanceof RemoteFrameworkElement) {
-                new ParameterEditDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, true);
+                new ParameterEditDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, true, false);
                 refreshViewAfter(500);
             }
         } else if (ae.getSource() == miCreateInterfaces) {
             if (rightClickedOn instanceof RemoteFrameworkElement) {
                 new CreateInterfacesDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, getFinstruct().getIoInterface());
                 refreshViewAfter(250);
+            }
+        } else if (ae.getSource() == miEditInterfaces) {
+            if (rightClickedOn instanceof RemoteFrameworkElement) {
+                new ParameterEditDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, true, true);
+                refreshViewAfter(500);
             }
         } else if (ae.getSource() == start || ae.getSource() == pause) {
             RemoteRuntime rr = RemoteRuntime.find(getRootElement());
@@ -1414,6 +1422,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 miCreateModule.setEnabled(finstructedElement && expanded);
                 miDeleteModule.setEnabled(finstructedElement && !expanded);
                 miCreateInterfaces.setEnabled(finstructedElement && (!(rightClickedOn instanceof RemotePort)));
+                miEditInterfaces.setEnabled(false);
                 miEditModule.setEnabled(finstructedElement);
                 miSaveChanges.setEnabled(false);
                 miSaveChanges.setText("Save");
@@ -1438,6 +1447,14 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                                         miSaveChanges.setText("Save \"" + file + "\"");
                                     }
                                 }
+                            } catch (Exception exception) {}
+                        }
+
+                        if (((RemoteFrameworkElement)rightClickedOn).getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP)) {
+                            try {
+                                EditableInterfaces editableInterfaces = (EditableInterfaces)rr.getAdminInterface().getAnnotation(
+                                        ((RemoteFrameworkElement)rightClickedOn).getRemoteHandle(), EditableInterfaces.TYPE);
+                                miEditInterfaces.setEnabled(editableInterfaces != null);
                             } catch (Exception exception) {}
                         }
                     }
