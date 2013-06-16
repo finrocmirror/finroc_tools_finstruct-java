@@ -21,9 +21,14 @@
 //----------------------------------------------------------------------
 package org.finroc.tools.finstruct.views;
 
+import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -72,6 +77,12 @@ public class PortView extends FinstructView implements ActionListener {
 
     /** Diverse toolbar switches */
     private enum DiverseSwitches { autoUpdate, singleUpdate, apply }
+
+    /** Is the currently displayed port view drawn disconnected (due to disconnect)? */
+    private boolean viewDrawnDisconnected = false;
+
+    /** Default panel background color */
+    private final Color DEFAULT_BACKGROUND_COLOR = this.getBackground();
 
     ///** Port description font */
     //private static final Font FONT = new JLabel().getFont().deriveFont(Font.PLAIN);
@@ -123,6 +134,7 @@ public class PortView extends FinstructView implements ActionListener {
             }
         }
         propPanel = new PropertiesPanel(new FinrocComponentFactory(commonParent), new StandardComponentFactory());
+        propPanel.setOpaque(false);
         propPanel.init(ports, true);
         add(propPanel, BorderLayout.CENTER);
         List < PropertyEditComponent<? >> components = propPanel.getComponentList();
@@ -172,6 +184,27 @@ public class PortView extends FinstructView implements ActionListener {
         }
     }
 
+    @Override
+    public synchronized void paint(Graphics g) {
+        viewDrawnDisconnected = !isConnectedToRootNode();
+        setBackground(viewDrawnDisconnected ? new Color(255, 200, 190) : DEFAULT_BACKGROUND_COLOR);
+        super.paint(g);
+    }
+
+    @Override
+    protected void updateView() {
+        if (getRootElement() != null) {
+            boolean disconnected = !isConnectedToRootNode();
+            boolean repaint = disconnected != viewDrawnDisconnected;
+            if (disconnected) {
+                tryReconnectingToRootNode();
+                repaint |= isConnectedToRootNode();
+            }
+            if (repaint) {
+                repaint();
+            }
+        }
+    }
 
     /**
      * Forwards port changes to property edit component
