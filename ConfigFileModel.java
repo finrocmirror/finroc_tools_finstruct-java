@@ -23,7 +23,6 @@ package org.finroc.tools.finstruct;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreeNode;
 
 import org.finroc.core.FinrocAnnotation;
 import org.finroc.core.FrameworkElement;
@@ -173,7 +172,7 @@ public class ConfigFileModel extends DefaultTreeModel {
         if (ann != null && ((ConfigFile)ann).isActive() == true) {
             return (ConfigFile)ann;
         }
-        TreeNode parent = element.getParent();
+        Object parent = element.getParent();
         if (parent != null && parent instanceof RemoteFrameworkElement) {
             return findConfigFile((RemoteFrameworkElement)parent);
         }

@@ -32,7 +32,6 @@ import java.util.List;
 import javax.swing.JMenuItem;
 import javax.swing.Timer;
 import javax.swing.tree.TreeModel;
-import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
 import org.finroc.core.FrameworkElement;
@@ -289,7 +288,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             return;
         } else if (e.getSource() == miOpenInNewWindow) {
             MJTree<PortWrapperTreeNode> ptree = popupOnRight ? rightTree : leftTree;
-            TreeNode tnp = getTreeNodeFromPos(ptree);
+            Object tnp = getTreeNodeFromPos(ptree);
             FinstructWindow fw = new FinstructWindow(finstruct);
             fw.showElement((ModelNode)tnp);
             fw.pack();
@@ -385,7 +384,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    protected void updatePopupMenu(TreeNode treeNode, PortWrapperTreeNode wrapper) {
+    protected void updatePopupMenu(Object treeNode, PortWrapperTreeNode wrapper) {
         super.updatePopupMenu(treeNode, wrapper);
         miOpenInNewWindow.setEnabled(treeNode != null);
 
