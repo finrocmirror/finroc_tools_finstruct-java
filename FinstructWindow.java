@@ -169,6 +169,9 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         toolBar.startNextButtonGroup();
 
         ModelNode lastRoot = currentView == null ? null : currentView.getRootElement();
+        if (currentView != null) {
+            currentView.destroy();
+        }
         currentView = view;
 
         // reinit tool and menu bar with view's entries
@@ -426,6 +429,9 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     @Override public void windowIconified(WindowEvent e) {}
     @Override public void windowOpened(WindowEvent e) {}
     @Override public void windowClosing(WindowEvent e) {
+        if (currentView != null) {
+            currentView.destroy();
+        }
         periodicViewCheckTimer.stop();
     }
 }

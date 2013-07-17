@@ -21,14 +21,11 @@
 //----------------------------------------------------------------------
 package org.finroc.tools.finstruct.views;
 
-import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -99,11 +96,9 @@ public class PortView extends FinstructView implements ActionListener {
     }
 
     /**
-     * Show values of selected ports
-     *
-     * @param portsToShow port to show
+     * Clears port view (both graphical user elements and finroc ports)
      */
-    public void showPorts(List<RemotePort> portsToShow) {
+    public void clear() {
         super.removeAll();
 
         // delete panels
@@ -111,6 +106,15 @@ public class PortView extends FinstructView implements ActionListener {
             panel.delete();
         }
         ports.clear();
+    }
+
+    /**
+     * Show values of selected ports
+     *
+     * @param portsToShow port to show
+     */
+    public void showPorts(List<RemotePort> portsToShow) {
+        clear();
         if (portsToShow.size() == 0) {
             return;
         }
@@ -256,6 +260,11 @@ public class PortView extends FinstructView implements ActionListener {
     @Override
     public Collection <? extends ModelNode > getExpandedElementsForHistory() {
         return null;
+    }
+
+    @Override
+    protected void destroy() {
+        clear();
     }
 }
 

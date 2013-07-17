@@ -57,14 +57,22 @@ public class Ib2cView extends StandardViewGraphViz {
     /** List of currently active/used port accessors to retrieve behaviour data */
     private final ArrayList<ConnectingPortAccessor<CoreNumber>> ports4BehaviourAccess = new ArrayList<ConnectingPortAccessor<CoreNumber>>();
 
-    @Override
-    protected void relayout() {
-
+    public void clear() {
         // Delete old ports
         for (ConnectingPortAccessor<CoreNumber> cpa : ports4BehaviourAccess) {
             cpa.delete();
         }
         ports4BehaviourAccess.clear();
+    }
+
+    @Override
+    protected void destroy() {
+        clear();
+    }
+
+    @Override
+    protected void relayout() {
+        clear();
         super.relayout();
     }
 

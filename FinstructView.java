@@ -160,4 +160,10 @@ public abstract class FinstructView extends JPanel {
      * @return Any expanded/selected elements for storing view state in history
      */
     public abstract Collection <? extends ModelNode > getExpandedElementsForHistory();
+
+    /**
+     * Called when view is no longer needed and discarded.
+     * Any ports in use by view should be deleted in order to avoid leaks.
+     */
+    protected void destroy() {}
 }
