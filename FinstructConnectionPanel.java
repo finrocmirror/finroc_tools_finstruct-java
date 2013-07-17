@@ -300,6 +300,10 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             List<PortWrapperTreeNode> partners = getConnectionPartners(portWrapper, true);
 
             for (PortWrapperTreeNode partner : partners) {
+                ModelNode parentNode = ((ModelNode)partner).getParent();
+                if (parentNode != null && parentNode.getName().equals("server ports") && parentNode.getParent() != null && parentNode.getParent().getName().startsWith("finstruct ")) {
+                    continue;
+                }
                 TreePath tp = otherTree.getTreePathFor((PortWrapperTreeNode)partner);
                 otherTree.scrollPathToVisible(tp);
             }
