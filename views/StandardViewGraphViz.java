@@ -1273,11 +1273,11 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             RemoteRuntime rr = RemoteRuntime.find(getRootElement());
             if (rr == null) {
                 Finstruct.showErrorMessage("Root Element is not a child of a remote runtime", false, false);
-            } else if (rightClickedOn instanceof RemoteFrameworkElement) {
+            } else if (getRootElement() instanceof RemoteFrameworkElement) {
                 if (ae.getSource() == start) {
-                    rr.getAdminInterface().startExecution(((RemoteFrameworkElement)rightClickedOn).getRemoteHandle());
+                    rr.getAdminInterface().startExecution(((RemoteFrameworkElement)getRootElement()).getRemoteHandle());
                 } else {
-                    rr.getAdminInterface().pauseExecution(((RemoteFrameworkElement)rightClickedOn).getRemoteHandle());
+                    rr.getAdminInterface().pauseExecution(((RemoteFrameworkElement)getRootElement()).getRemoteHandle());
                 }
                 updateStartPauseEnabled();
             }
