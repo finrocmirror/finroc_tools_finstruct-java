@@ -1423,13 +1423,21 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 miDeleteModule.setEnabled(finstructedElement && !expanded);
                 miCreateInterfaces.setEnabled(finstructedElement && (!(rightClickedOn instanceof RemotePort)));
                 miEditInterfaces.setEnabled(false);
-                miEditModule.setEnabled(finstructedElement);
+                miEditModule.setEnabled(false);
                 miSaveChanges.setEnabled(false);
                 miSaveChanges.setText("Save");
                 miSaveAllFiles.setEnabled(false);
                 miSaveAllFiles.setText("Save All Files");
                 RemoteRuntime rr = RemoteRuntime.find(getRootElement());
                 if (rr != null) {
+                    if (rightClickedOn instanceof RemoteFrameworkElement) {
+                        try {
+                            StaticParameterList parameterList = (StaticParameterList)rr.getAdminInterface().getAnnotation(
+                                                                    ((RemoteFrameworkElement)rightClickedOn).getRemoteHandle(), StaticParameterList.TYPE);
+                            miEditModule.setEnabled(parameterList != null);
+                        } catch (Exception exception) {}
+                    }
+
                     if (finstructedElement) {
                         RemoteFrameworkElement finstructableGroup = RemoteFrameworkElement.getParentWithFlags(rightClickedOn, FrameworkElementFlags.FINSTRUCTABLE_GROUP, true);
                         if (finstructableGroup != null) {
