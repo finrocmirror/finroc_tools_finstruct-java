@@ -56,7 +56,7 @@ import org.finroc.tools.finstruct.util.FilteredList;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Create Module Dialog
  */

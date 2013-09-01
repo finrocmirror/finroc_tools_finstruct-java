@@ -74,7 +74,7 @@ import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Main Window class
  */

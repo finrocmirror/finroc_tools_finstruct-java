@@ -43,7 +43,7 @@ import org.finroc.tools.finstruct.FinstructConnectionPanel;
 import org.finroc.tools.finstruct.FinstructView;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Base class for views displaying graphs.
  *
@@ -299,8 +299,6 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
     }
 
     /**
-     * @author max
-     *
      * Holds result for method above
      */
     public class GetParentResult {

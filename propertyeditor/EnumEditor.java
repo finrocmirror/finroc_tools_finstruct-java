@@ -35,7 +35,7 @@ import org.rrlib.finroc_core_utils.rtti.DataTypeBase;
 import org.rrlib.finroc_core_utils.serialization.EnumValue;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Editor with ComboBox
  */

@@ -25,7 +25,7 @@ import org.finroc.core.portdatabase.MaxStringSerializationLength;
 import org.finroc.tools.gui.util.propertyeditor.StringEditor;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Default text editor for CoreSerializable objects
  */

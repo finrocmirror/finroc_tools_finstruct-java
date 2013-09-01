@@ -32,7 +32,7 @@ import java.util.List;
 import javax.swing.JComponent;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Manages set of mouse handlers
  */

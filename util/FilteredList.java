@@ -36,7 +36,7 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * List that only displays elements currently accepted by filter.
  *

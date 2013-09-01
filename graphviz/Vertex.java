@@ -28,7 +28,7 @@ import java.awt.geom.Point2D.Double;
 import org.finroc.tools.finstruct.graphviz.Graph.Layout;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * GraphViz vertex
  */

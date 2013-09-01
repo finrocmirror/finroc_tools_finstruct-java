@@ -35,7 +35,7 @@ import org.finroc.core.util.Files;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * A graph or subgraph - that can be exported to or layout with graphviz.
  */

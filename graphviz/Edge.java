@@ -30,7 +30,7 @@ import org.finroc.plugins.data_types.util.BezierSpline;
 import org.finroc.tools.finstruct.graphviz.Graph.Layout;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Edge in graphviz graph
  */

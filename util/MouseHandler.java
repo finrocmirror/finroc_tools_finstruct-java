@@ -26,7 +26,7 @@ import java.awt.Point;
 import java.awt.event.MouseEvent;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Handles mouse events in particular area of the screen
  */

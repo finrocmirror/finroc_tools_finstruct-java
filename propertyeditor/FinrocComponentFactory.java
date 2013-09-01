@@ -53,7 +53,7 @@ import org.rrlib.finroc_core_utils.serialization.Serialization;
 import org.rrlib.finroc_core_utils.serialization.StringInputStream;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Component factory for Finroc types
  */

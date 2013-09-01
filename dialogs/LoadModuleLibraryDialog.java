@@ -41,7 +41,7 @@ import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.gui.util.gui.MDialog;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Dialog to choose a module library to load
  */

@@ -58,7 +58,7 @@ import org.finroc.tools.gui.util.gui.MJTree;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Connection panel with some modifications for finstruct
  */

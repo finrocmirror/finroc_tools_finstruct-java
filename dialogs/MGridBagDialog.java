@@ -34,7 +34,7 @@ import javax.swing.JPanel;
 import org.finroc.tools.gui.util.gui.MDialog;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * MDialog based on GridBagLayout. On the left we have labels - on the right the respective components.
  */

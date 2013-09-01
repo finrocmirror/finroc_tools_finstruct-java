@@ -26,7 +26,7 @@ import org.finroc.tools.gui.util.propertyeditor.ObjectAccessor;
 import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * ObjectAccessor for finroc objects
  */

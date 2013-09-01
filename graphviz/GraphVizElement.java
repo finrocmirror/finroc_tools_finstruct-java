@@ -30,7 +30,7 @@ import org.rrlib.finroc_core_utils.jc.log.LogDefinitions;
 import org.rrlib.finroc_core_utils.log.LogDomain;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Base class for major elements in a GraphViz graph
  */

@@ -34,7 +34,7 @@ import org.finroc.tools.gui.util.gui.MToolBar;
 import org.rrlib.finroc_core_utils.log.LogDomain;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Base class for all views in Finstruct
  *

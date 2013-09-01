@@ -38,7 +38,7 @@ import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.util.FilteredList;
 
 /**
- * @author max
+ * @author Max Reichardt
  *
  * Dialog to find element
  */
