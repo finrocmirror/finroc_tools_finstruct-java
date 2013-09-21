@@ -30,12 +30,12 @@ import org.rrlib.finroc_core_utils.xml.XMLNode;
 /**
  * @author Max Reichardt
  *
- * Finstruct's persistent settings stored as XML and accessed via Java's XML API
+ * Finstruct's persistent settings stored as XML
  */
 public class FinstructSettings {
 
     /** Settings file name */
-    private static final String SETTINGSFILE = System.getProperty("user.home") + File.separator + ".finstuct";
+    private static final String SETTINGSFILE = System.getProperty("user.home") + File.separator + ".finstruct";
 
     /** Settings XML file */
     private XMLDocument document;

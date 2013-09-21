@@ -310,9 +310,12 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
                         String rootSimpleName = name.substring(name.lastIndexOf('/') + 1);
                         String rootPath = name.substring(0, name.lastIndexOf('/'));
+                        boolean enabled = viewClass != null && root != null;
+                        String color = enabled ? "000000" : "909090";
 
-                        bookmarks.add(new BookmarkSelector(name, "<html><b>" + rootSimpleName + "</b> in <i>" + rootPath + "</i> (" + viewClass.getSimpleName() + ")</html>",
-                                                           viewClass, bookmark.get(), viewClass != null && root != null));
+                        bookmarks.add(new BookmarkSelector(name,
+                                                           "<html><font color=#" + color + "><b>" + rootSimpleName + "</b> in <i>" + rootPath + "</i> (" + viewClass.getSimpleName() + ")</font></html>",
+                                                           viewClass, bookmark.get(), enabled));
                     }
                 } catch (Exception e) {
                     Finstruct.logDomain.log(LogLevel.LL_WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
@@ -324,6 +327,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                 if (bookmark.isEnabled()) {
                     if (first) {
                         bookmarkMenu.addSeparator();
+                        first = false;
                     }
                     bookmarkMenu.add(bookmark);
                 }
@@ -333,6 +337,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                 if (!bookmark.isEnabled()) {
                     if (first) {
                         bookmarkMenu.addSeparator();
+                        first = false;
                     }
                     bookmarkMenu.add(bookmark);
                 }
@@ -562,6 +567,10 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                 e1.printStackTrace();
             }
             getCurrentView().setRootElement(root, xmlNode);
+
+            if (finstruct.getConnectionPanel() != null) {
+                finstruct.getConnectionPanel().expandOnly(true, root);
+            }
         }
     }
 

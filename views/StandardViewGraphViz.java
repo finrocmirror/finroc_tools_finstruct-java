@@ -139,6 +139,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     /** toolbar buttons */
     private JButton refreshButton, zoomIn, zoomOut, zoom1, start, pause;
 
+    private static final double NODE_SEP_DEFAULT = 0.25, RANK_SEP_DEFAULT = 0.5;
+
     /** Spinners in toolbar */
     private JSpinner nodeSep, rankSep;
 
@@ -243,6 +245,33 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 }
             }
         }
+
+        try {
+            toolBar.setSelected(DiverseSwitches.antialiasing, viewConfiguration.getBoolAttribute("antialiasing"));
+        } catch (Exception e) {
+            toolBar.setSelected(DiverseSwitches.antialiasing, true);
+        }
+        try {
+            toolBar.setSelected(DiverseSwitches.lineBreaks, viewConfiguration.getBoolAttribute("line-breaks"));
+        } catch (Exception e) {
+            toolBar.setSelected(DiverseSwitches.lineBreaks, true);
+        }
+        try {
+            zoom = (float)viewConfiguration.getDoubleAttribute("zoom");
+        } catch (Exception e) {
+            zoom = 1.0f;
+        }
+        try {
+            rankSep.setValue(viewConfiguration.getDoubleAttribute("ranksep"));
+        } catch (Exception e) {
+            rankSep.setValue(RANK_SEP_DEFAULT);
+        }
+        try {
+            nodeSep.setValue(viewConfiguration.getDoubleAttribute("nodesep"));
+        } catch (Exception e) {
+            nodeSep.setValue(NODE_SEP_DEFAULT);
+        }
+
         relayout();
 
         // get Admin interface
@@ -1204,13 +1233,13 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         zoom1 = toolBar.createButton("zoom-original-ubuntu.png", "Zoom 100%", this);
         toolBar.addSeparator();
         toolBar.add(new JLabel("nodesep"));
-        nodeSep = new JSpinner(new SpinnerNumberModel(0.25, 0.05, 2.0, 0.05));
+        nodeSep = new JSpinner(new SpinnerNumberModel(NODE_SEP_DEFAULT, 0.05, 2.0, 0.05));
         toolBar.add(nodeSep);
         nodeSep.addChangeListener(this);
         nodeSep.setPreferredSize(new Dimension(60, nodeSep.getPreferredSize().height));
         nodeSep.setMaximumSize(nodeSep.getPreferredSize());
         toolBar.add(new JLabel("ranksep"));
-        rankSep = new JSpinner(new SpinnerNumberModel(0.5, 0.05, 2.0, 0.05));
+        rankSep = new JSpinner(new SpinnerNumberModel(RANK_SEP_DEFAULT, 0.05, 2.0, 0.05));
         toolBar.add(rankSep);
         rankSep.addChangeListener(this);
         rankSep.setPreferredSize(new Dimension(60, rankSep.getPreferredSize().height));
@@ -1527,6 +1556,21 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             } catch (Exception e) {
                 Finstruct.logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
             }
+        }
+        if (!toolBar.isSelected(DiverseSwitches.antialiasing)) {
+            node.setAttribute("antialiasing", false);
+        }
+        if (!toolBar.isSelected(DiverseSwitches.lineBreaks)) {
+            node.setAttribute("line-breaks", false);
+        }
+        if (zoom != 1.0f) {
+            node.setAttribute("zoom", zoom);
+        }
+        if (((Number)rankSep.getValue()).doubleValue() != RANK_SEP_DEFAULT) {
+            node.setAttribute("ranksep", ((Number)rankSep.getValue()).doubleValue());
+        }
+        if (((Number)nodeSep.getValue()).doubleValue() != NODE_SEP_DEFAULT) {
+            node.setAttribute("nodesep", ((Number)nodeSep.getValue()).doubleValue());
         }
     }
 
