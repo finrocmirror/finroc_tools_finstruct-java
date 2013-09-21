@@ -22,7 +22,6 @@
 
 package org.finroc.tools.finstruct;
 
-import java.util.ArrayList;
 import java.util.Collection;
 
 import javax.swing.JComponent;
@@ -32,6 +31,7 @@ import javax.swing.JPanel;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.rrlib.finroc_core_utils.log.LogDomain;
+import org.rrlib.finroc_core_utils.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -83,9 +83,9 @@ public abstract class FinstructView extends JPanel {
      * Called after root element changed
      * (Typically view will display a new graph for this element)
      *
-     * @param expandedElements Expanded element - may be null
+     * @param viewConfiguration View configuration, serialized in an XML node, to restore (may be null)
      */
-    protected abstract void rootElementChanged(ArrayList<ModelNode> expandedElements);
+    protected abstract void rootElementChanged(XMLNode viewConfiguration);
 
     /**
      * Called every 200ms by Java Swing Thread
@@ -95,13 +95,13 @@ public abstract class FinstructView extends JPanel {
 
     /**
      * @param root Root element of view
-     * @param expandedElements
+     * @param viewConfiguration View configuration, serialized in an XML node, to restore (may be null)
      */
-    void setRootElement(ModelNode root, ArrayList<ModelNode> expandedElements) {
+    void setRootElement(ModelNode root, XMLNode viewConfiguration) {
         if (rootElement != root) {
             rootElement = root;
             rootElementQualifiedName = rootElement.getQualifiedName((char)1);
-            rootElementChanged(expandedElements);
+            rootElementChanged(viewConfiguration);
         }
     }
 
@@ -157,9 +157,11 @@ public abstract class FinstructView extends JPanel {
     }
 
     /**
-     * @return Any expanded/selected elements for storing view state in history
+     * Stores current view configuration to provided XML node so that it can be restored later
+     *
+     * @param node Node to store current view configuration to
      */
-    public abstract Collection <? extends ModelNode > getExpandedElementsForHistory();
+    public abstract void storeViewConfiguration(XMLNode node);
 
     /**
      * Called when view is no longer needed and discarded.

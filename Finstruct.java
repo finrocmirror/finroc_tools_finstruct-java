@@ -32,7 +32,6 @@ import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
-import java.util.ArrayList;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -72,6 +71,7 @@ import org.finroc.tools.gui.util.gui.IconManager;
 import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
 import org.rrlib.finroc_core_utils.log.LogLevel;
+import org.rrlib.finroc_core_utils.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -113,6 +113,9 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
 
     /** TCP Connect action */
     public ConnectAction tcpConnect;
+
+    /** Finstruct persistent settings instance */
+    private FinstructSettings settings = new FinstructSettings();
 
     /** Finstruct singleton instance */
     private static Finstruct finstructInstance;
@@ -273,20 +276,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     }
 
     /**
-     * Convenient method the create menu entries and add this Window as listener
-     *
-     * @param string Text of menu entry
-     * @param menuFile Menu to add menu entry to
-     * @return Create menu entry
-     */
-    private JMenuItem createMenuEntry(String string, JMenu menuFile, int mnemonic) {
-        JMenuItem item = new JMenuItem(string, mnemonic);
-        item.addActionListener(this);
-        menuFile.add(item);
-        return item;
-    }
-
-    /**
      * Changes view
      *
      * @param view View to change to
@@ -304,8 +293,8 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     }
 
     @Override
-    public void setViewRootElement(ModelNode root, ArrayList<ModelNode> expandedElements) {
-        super.setViewRootElement(root, expandedElements);
+    public void setViewRootElement(ModelNode root, XMLNode viewConfiguration) {
+        super.setViewRootElement(root, viewConfiguration);
 
         if (toolBar.isSelected(Mode.paramconnect)) {
             connectionPanel.setRightTree(new ConfigFileModel(root));
@@ -322,6 +311,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
             if (src == miDisconnectDiscard) {
                 disconnectDiscard();
             } else if (src == miExit) {
+                settings.saveSettings();
                 exit();
             } else if (src == statusBarTimer) {
                 connectionEvent(null, 0);
@@ -450,6 +440,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     }
 
     @Override public void windowClosing(WindowEvent e) {
+        settings.saveSettings();
         exit();
     }
 
@@ -515,6 +506,13 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
      */
     public FinstructConnectionPanel getConnectionPanel() {
         return connectionPanel;
+    }
+
+    /**
+     * @return Finstruct persistent settings
+     */
+    public FinstructSettings getSettings() {
+        return settings;
     }
 
 //    @Override TODO

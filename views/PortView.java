@@ -27,7 +27,6 @@ import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import javax.swing.JMenuBar;
@@ -49,6 +48,7 @@ import org.finroc.tools.gui.util.propertyeditor.PropertiesPanel;
 import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.rrlib.finroc_core_utils.log.LogLevel;
+import org.rrlib.finroc_core_utils.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -85,7 +85,7 @@ public class PortView extends FinstructView implements ActionListener {
     //private static final Font FONT = new JLabel().getFont().deriveFont(Font.PLAIN);
 
     @Override
-    protected synchronized void rootElementChanged(ArrayList<ModelNode> expandedElements) {
+    protected synchronized void rootElementChanged(XMLNode expandedElements) {
         ArrayList<RemotePort> tmpResultList = new ArrayList<RemotePort>();
         if (getRootElement() instanceof RemotePort) {
             tmpResultList.add((RemotePort)getRootElement());
@@ -258,8 +258,7 @@ public class PortView extends FinstructView implements ActionListener {
     }
 
     @Override
-    public Collection <? extends ModelNode > getExpandedElementsForHistory() {
-        return null;
+    public void storeViewConfiguration(XMLNode node) {
     }
 
     @Override

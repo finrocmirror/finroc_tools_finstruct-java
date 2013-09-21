@@ -27,17 +27,20 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.Collection;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.Timer;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 
 import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.remote.ModelNode;
@@ -51,13 +54,17 @@ import org.finroc.tools.gui.util.gui.MAction;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.rrlib.finroc_core_utils.jc.log.LogDefinitions;
 import org.rrlib.finroc_core_utils.log.LogDomain;
+import org.rrlib.finroc_core_utils.log.LogLevel;
+import org.rrlib.finroc_core_utils.xml.XMLDocument;
+import org.rrlib.finroc_core_utils.xml.XMLNode;
+import org.xml.sax.InputSource;
 
 /**
  * @author Max Reichardt
  *
  * Base Window class
  */
-public class FinstructWindow extends JFrame implements ActionListener, WindowListener {
+public class FinstructWindow extends JFrame implements ActionListener, WindowListener, MenuListener {
 
     /** UID */
     private static final long serialVersionUID = -7929615678892958956L;
@@ -83,14 +90,20 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     /** Log domain for this class */
     public static final LogDomain logDomain = LogDefinitions.finroc.getSubDomain("finstruct");
 
-    /** History of views */
-    protected ArrayList<HistoryElement> history = new ArrayList<HistoryElement>();
+    /** History of views (XML view configuration) */
+    protected ArrayList<String> history = new ArrayList<String>();
 
-    /** Current history position - if user hasn't moved backwards: history.size() - 1 */
-    protected int historyPos = -1;
+    /** Current history position - if user hasn't moved backwards: history.size() */
+    protected int historyPos = 0;
 
-    /** Menu item */
+    /** Bookmark menu */
+    private JMenu bookmarkMenu;
+
+    /** View menu item */
     private JRadioButtonMenuItem miAutoView;
+
+    /** Bookmark menu items */
+    private JMenuItem miAddBookmark, miRemoveBookmark;
 
     /**
      * Timer for periodic checking if current view is still up to date
@@ -119,6 +132,15 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         for (ViewSelector view : views) {
             menuView.add(view);
         }
+
+        // bookmark menu
+        bookmarkMenu = new JMenu("Bookmarks");
+        bookmarkMenu.setMnemonic(KeyEvent.VK_B);
+        miAddBookmark = createMenuEntry("Add Bookmark", bookmarkMenu, KeyEvent.VK_A);
+        miRemoveBookmark = createMenuEntry("Remove Bookmark", bookmarkMenu, KeyEvent.VK_R);
+        bookmarkMenu.addMenuListener(this);
+        menuBar.add(bookmarkMenu);
+
         setJMenuBar(menuBar);
 
         // Toolbar
@@ -146,7 +168,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         for (int i = menuBar.getComponentCount() - 1; i >= 0; i--) {
             if (menuBar.getComponent(i) instanceof JMenu) {
                 String name = ((JMenu)menuBar.getComponent(i)).getText();
-                if (name.equals("File") || name.equals("View") || name.equals("Edit")) {
+                if (name.equals("File") || name.equals("View") || name.equals("Edit") || name.equals("Bookmarks")) {
                     continue;
                 }
             }
@@ -203,8 +225,8 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         updateHistoryButtonState();
     }
 
-    public void setViewRootElement(ModelNode root, ArrayList<ModelNode> expandedElements) {
-        currentView.setRootElement(root, expandedElements);
+    public void setViewRootElement(ModelNode root, XMLNode viewConfiguration) {
+        currentView.setRootElement(root, viewConfiguration);
         if (!(this instanceof Finstruct)) {
             setTitle(root.getQualifiedName('/'));
         }
@@ -224,13 +246,106 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             if (src == next) {
                 showHistoryElement(historyPos + 1);
             } else if (src == back) {
-                showHistoryElement(historyPos - 1);
+                int historyPosTemp = historyPos;
+                if (historyPos == history.size()) {
+                    pushViewToHistory();
+                }
+                showHistoryElement(historyPosTemp - 1);
+            } else if (src == miAddBookmark || src == miRemoveBookmark) {
+                // Remove current view from bookmarks
+                XMLNode bookmarkNode = finstruct.getSettings().getTopLevelNode("bookmarks");
+                for (XMLNode.ConstChildIterator bookmark = bookmarkNode.getChildrenBegin(); bookmark.get() != null; bookmark.next()) {
+                    try {
+                        if (bookmark.get().getName().equals("bookmark")) {
+                            String name = bookmark.get().getStringAttribute("root");
+                            String viewName = bookmark.get().getStringAttribute("view");
+                            Class <? extends FinstructView > viewClass = getViewClassByName(viewName);
+                            if (getCurrentView().getRootElement() != null && name.equals(getCurrentView().getRootElement().getQualifiedName('/')) && viewClass.equals(getCurrentView().getClass())) {
+                                bookmarkNode.removeChildNode(bookmark.get());
+                                break;
+                            }
+                        }
+                    } catch (Exception e) {
+                        Finstruct.logDomain.log(LogLevel.LL_WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
+                    }
+                }
+
+                if (src == miAddBookmark && currentView != null && currentView.getRootElement() != null) {
+                    XMLNode bookmark = bookmarkNode.addChildNode("bookmark");
+                    storeCurrentView(bookmark);
+                    finstruct.getSettings().saveSettings();
+                }
             }
             //requestFocus();
         } catch (Exception e) {
             Finstruct.showErrorMessage(e, true);
         }
     }
+
+    @Override
+    public void menuSelected(MenuEvent event) {
+        if (event.getSource() == bookmarkMenu) {
+            // Remove everything except of add and remove bookmark entries
+            bookmarkMenu.removeAll();
+            bookmarkMenu.add(miAddBookmark);
+            bookmarkMenu.add(miRemoveBookmark);
+
+            miAddBookmark.setEnabled(getCurrentView().getRootElement() != null);
+            miRemoveBookmark.setEnabled(false);
+
+            ArrayList<BookmarkSelector> bookmarks = new ArrayList<BookmarkSelector>();
+
+            XMLNode bookmarkNode = finstruct.getSettings().getTopLevelNode("bookmarks");
+            for (XMLNode.ConstChildIterator bookmark = bookmarkNode.getChildrenBegin(); bookmark.get() != null; bookmark.next()) {
+                try {
+                    if (bookmark.get().getName().equals("bookmark")) {
+                        String name = bookmark.get().getStringAttribute("root");
+                        String viewName = bookmark.get().getStringAttribute("view");
+                        Class <? extends FinstructView > viewClass = getViewClassByName(viewName);
+                        ModelNode root = finstruct.ioInterface.getChildByQualifiedName(name, '/');
+
+                        if (getCurrentView().getRootElement() != null && name.equals(getCurrentView().getRootElement().getQualifiedName('/')) && viewClass.equals(getCurrentView().getClass())) {
+                            miRemoveBookmark.setEnabled(true);
+                        }
+
+                        String rootSimpleName = name.substring(name.lastIndexOf('/') + 1);
+                        String rootPath = name.substring(0, name.lastIndexOf('/'));
+
+                        bookmarks.add(new BookmarkSelector(name, "<html><b>" + rootSimpleName + "</b> in <i>" + rootPath + "</i> (" + viewClass.getSimpleName() + ")</html>",
+                                                           viewClass, bookmark.get(), viewClass != null && root != null));
+                    }
+                } catch (Exception e) {
+                    Finstruct.logDomain.log(LogLevel.LL_WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
+                }
+            }
+
+            boolean first = true;
+            for (BookmarkSelector bookmark : bookmarks) {
+                if (bookmark.isEnabled()) {
+                    if (first) {
+                        bookmarkMenu.addSeparator();
+                    }
+                    bookmarkMenu.add(bookmark);
+                }
+            }
+            first = true;
+            for (BookmarkSelector bookmark : bookmarks) {
+                if (!bookmark.isEnabled()) {
+                    if (first) {
+                        bookmarkMenu.addSeparator();
+                    }
+                    bookmarkMenu.add(bookmark);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void menuDeselected(MenuEvent e) {}
+
+    @Override
+    public void menuCanceled(MenuEvent e) {}
+
 
     /**
      * Shows specified framework element in main view - taking view selection into account
@@ -243,6 +358,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         if (miAutoView.isSelected() || portViewCandidate) {
             // auto-select view
             Class <? extends FinstructView > viewClass = portViewCandidate ? PortView.class : StandardViewGraphViz.class;
+            pushViewToHistory(); // create history element for current view
             if (currentView == null || currentView.getClass() != viewClass) {
                 try {
                     changeView(viewClass.newInstance(), false);
@@ -253,6 +369,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             setViewRootElement(fe, null);
         } else {
             Class <? extends FinstructView > selectedView = null;
+            pushViewToHistory(); // create history element for current view
             for (ViewSelector v : views) {
                 if (v.isSelected()) {
                     selectedView = v.view;
@@ -269,9 +386,6 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             }
             setViewRootElement(fe, null);
         }
-
-        // create history element for this view
-        pushViewToHistory();
     }
 
     /**
@@ -281,22 +395,24 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         if (currentView.getRootElement() == null) {
             return;
         }
-        HistoryElement he = new HistoryElement(currentView.getClass(), currentView.getRootElement());
-        Collection <? extends ModelNode > expanded = currentView.getExpandedElementsForHistory();
-        if (expanded != null) {
-            for (ModelNode fe : expanded) {
-                he.expandedElements.add(fe.getQualifiedName('/'));
+
+        try {
+            XMLDocument document = new XMLDocument();
+            document.addRootNode("history");
+            storeCurrentView(document.getRootNode());
+            String viewData = document.getXMLDump(false);
+            if (history.size() == 0 || historyPos <= 0 || (!history.get(historyPos - 1).equals(viewData))) {
+                // remove any "next" history elements
+                while ((historyPos) < history.size()) {
+                    history.remove(historyPos);
+                }
+                history.add(viewData);
+                historyPos = history.size();
             }
+            updateHistoryButtonState();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        if (history.size() == 0 || historyPos <= 0 || (!history.get(historyPos).equals(he))) {
-            // remove any "next" history elements
-            while ((historyPos + 1) < history.size()) {
-                history.remove(historyPos + 1);
-            }
-            history.add(he);
-            historyPos = history.size() - 1;
-        }
-        updateHistoryButtonState();
     }
 
     /**
@@ -306,29 +422,23 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
      */
     private void showHistoryElement(int newHistoryElement) {
         historyPos = newHistoryElement;
-        HistoryElement he = history.get(historyPos);
-        ModelNode root = finstruct.ioInterface.getChildByQualifiedName(he.root, HISTORY_SEPARATOR);
-        if (root == null) {
-            return;
-        }
-        ArrayList<ModelNode> expanded = new ArrayList<ModelNode>();
-        for (String e : he.expandedElements) {
-            ModelNode fe = finstruct.ioInterface.getChildByQualifiedName(e, HISTORY_SEPARATOR);
-            if (fe != null) {
-                expanded.add(fe);
+        try {
+            XMLNode viewData = new XMLDocument(new InputSource(new StringReader(history.get(historyPos))), false).getRootNode();
+            ModelNode root = finstruct.ioInterface.getChildByQualifiedName(viewData.getStringAttribute("root"), '/');
+            Class <? extends FinstructView > viewClass = getViewClassByName(viewData.getStringAttribute("view"));
+
+            if (currentView == null || currentView.getClass() != viewClass) {
+                try {
+                    changeView(viewClass.newInstance(), false);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             }
+
+            setViewRootElement(root, viewData);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        if (currentView == null || currentView.getClass() != he.view) {
-            try {
-                changeView(he.view.newInstance(), false);
-            } catch (Exception e1) {
-                e1.printStackTrace();
-            }
-        }
-
-        setViewRootElement(root, expanded);
-
         updateHistoryButtonState();
     }
 
@@ -352,6 +462,46 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
      */
     public MToolBar getToolBar() {
         return toolBar;
+    }
+
+    /**
+     * Convenient method the create menu entries and add this Window as listener
+     *
+     * @param string Text of menu entry
+     * @param menuFile Menu to add menu entry to
+     * @return Create menu entry
+     */
+    protected JMenuItem createMenuEntry(String string, JMenu menuFile, int mnemonic) {
+        JMenuItem item = new JMenuItem(string, mnemonic);
+        item.addActionListener(this);
+        menuFile.add(item);
+        return item;
+    }
+
+    /**
+     * @param viewClassName Name of view class
+     * @return View class with this name - or null if no such view exists
+     */
+    private Class <? extends FinstructView > getViewClassByName(String viewClassName) {
+        for (ViewSelector view : views) {
+            if (view.view.getSimpleName().equals(viewClassName)) {
+                return view.view;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Stores current view configuration to provided XML node so that it can be restored later
+     *
+     * @param node Node to store current view configuration to
+     */
+    private void storeCurrentView(XMLNode node) {
+        if (currentView != null) {
+            node.setAttribute("view", currentView.getClass().getSimpleName());
+            node.setAttribute("root", currentView.getRootElement().getQualifiedName('/'));
+            currentView.storeViewConfiguration(node);
+        }
     }
 
     /**
@@ -382,43 +532,36 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         }
     }
 
-    /** Separator for qualified names used in history */
-    static final char HISTORY_SEPARATOR = (char)0;
+    class BookmarkSelector extends JMenuItem implements ActionListener {
 
-    /**
-     * Element of view history
-     */
-    public class HistoryElement {
+        /** UID */
+        private static final long serialVersionUID = 8754721481877765029L;
 
-        /** View used */
-        Class <? extends FinstructView > view;
+        final String name;
+        final Class <? extends FinstructView > view;
+        final XMLNode xmlNode;
 
-        /** Root framework element */
-        String root;
-
-        /** Expanded/Selected framework element entries */
-        ArrayList<String> expandedElements = new ArrayList<String>();
-
-
-        public HistoryElement(Class <? extends FinstructView > view, ModelNode root) {
+        public BookmarkSelector(String name, String menuEntryString, Class <? extends FinstructView > view, XMLNode xmlNode, boolean enable) {
+            super(menuEntryString);
+            this.name = name;
             this.view = view;
-            this.root = root.getQualifiedName(HISTORY_SEPARATOR);
+            this.xmlNode = xmlNode;
+            this.setEnabled(enable);
+            addActionListener(this);
         }
 
-        public boolean equals(Object other) {
-            if (other == null || (!(other instanceof HistoryElement))) {
-                return false;
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            ModelNode root = finstruct.ioInterface.getChildByQualifiedName(name, '/');
+            if (root != null) {
+                pushViewToHistory();
             }
-            HistoryElement he = (HistoryElement)other;
-            if (view != he.view || (!root.equals(he.root)) || expandedElements.size() != he.expandedElements.size()) {
-                return false;
+            try {
+                changeView(view.newInstance(), false);
+            } catch (Exception e1) {
+                e1.printStackTrace();
             }
-            for (int i = 0; i < expandedElements.size(); i++) {
-                if (!expandedElements.get(i).equals(he.expandedElements.get(i))) {
-                    return false;
-                }
-            }
-            return true;
+            getCurrentView().setRootElement(root, xmlNode);
         }
     }
 

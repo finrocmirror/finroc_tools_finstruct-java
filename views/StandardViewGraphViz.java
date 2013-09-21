@@ -73,6 +73,7 @@ import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.core.util.Files;
+import org.finroc.plugins.data_types.StdStringList;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.dialogs.CreateInterfacesDialog;
 import org.finroc.tools.finstruct.dialogs.CreateModuleDialog;
@@ -84,6 +85,7 @@ import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.gui.MAction;
 import org.rrlib.finroc_core_utils.log.LogLevel;
+import org.rrlib.finroc_core_utils.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -219,9 +221,28 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     }
 
     @Override
-    protected synchronized void rootElementChanged(ArrayList<ModelNode> expandedElements) {
+    protected synchronized void rootElementChanged(XMLNode viewConfiguration) {
         expandedGroups.clear();
-        expandedGroups.addAll(expandedElements != null ? expandedElements : new ArrayList<ModelNode>(0));
+        if (viewConfiguration != null) {
+            for (XMLNode.ConstChildIterator child = viewConfiguration.getChildrenBegin(); child.get() != null; child.next()) {
+                if (child.get().getName().equals("expanded")) {
+                    String rootString = getRootElement().getQualifiedName('/') + "/";
+                    StdStringList stringList = new StdStringList();
+                    try {
+                        stringList.deserialize(child.get());
+                        for (int i = 0; i < stringList.stringCount(); i++) {
+                            ModelNode expanded = getFinstruct().getIoInterface().getChildByQualifiedName(rootString + stringList.getString(i).toString(), '/');
+                            if (expanded != null) {
+                                expandedGroups.add(expanded);
+                            }
+                        }
+                        break;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
         relayout();
 
         // get Admin interface
@@ -1493,8 +1514,20 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     }
 
     @Override
-    public Collection <? extends ModelNode > getExpandedElementsForHistory() {
-        return expandedGroups;
+    public void storeViewConfiguration(XMLNode node) {
+        if (expandedGroups.size() > 0) {
+            StdStringList serializedExpandedGroups = new StdStringList();
+            for (ModelNode expandedGroup : expandedGroups) {
+                if (expandedGroup instanceof RemoteFrameworkElement) {
+                    serializedExpandedGroups.add(expandedGroup.getQualifiedName('/').substring(getRootElement().getQualifiedName('/').length() + 1));
+                }
+            }
+            try {
+                serializedExpandedGroups.serialize(node.addChildNode("expanded"));
+            } catch (Exception e) {
+                Finstruct.logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+            }
+        }
     }
 
 //    /**
