@@ -280,7 +280,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         } else if (v.specialNode == SpecialNode.ControllerInput || v.specialNode == SpecialNode.ControllerOutput) {
             return Color.red;
         }
-        return v.isGroup() ? DARK_BLUE : Color.blue;
+        return v.isGroup() ? DARK_BLUE : Color.blue; // new Color(50, 50, 210);
     }
 
     /**

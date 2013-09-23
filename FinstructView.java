@@ -22,13 +22,14 @@
 
 package org.finroc.tools.finstruct;
 
-import java.util.Collection;
+import java.awt.BorderLayout;
 
 import javax.swing.JComponent;
 import javax.swing.JMenuBar;
 import javax.swing.JPanel;
 
 import org.finroc.core.remote.ModelNode;
+import org.finroc.tools.gui.util.gui.MPanel;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.rrlib.finroc_core_utils.log.LogDomain;
 import org.rrlib.finroc_core_utils.xml.XMLNode;
@@ -40,7 +41,7 @@ import org.rrlib.finroc_core_utils.xml.XMLNode;
  *
  * (Note that this class is a JComponent and will be displayed on the right side of the window vertical divider)
  */
-public abstract class FinstructView extends JPanel {
+public abstract class FinstructView extends MPanel {
 
     /** UID */
     private static final long serialVersionUID = -957994679491024743L;
@@ -76,7 +77,11 @@ public abstract class FinstructView extends JPanel {
      * @return Content to put on left side of window vertical divider
      */
     public JComponent initLeftPanel(FinstructConnectionPanel connectionPanel) {
-        return connectionPanel;
+        JPanel treePanel = new JPanel();
+        treePanel.setLayout(new BorderLayout());
+        treePanel.add(finstruct.treeToolBar, BorderLayout.PAGE_START);
+        treePanel.add(connectionPanel, BorderLayout.CENTER);
+        return treePanel;
     }
 
     /**
@@ -96,9 +101,10 @@ public abstract class FinstructView extends JPanel {
     /**
      * @param root Root element of view
      * @param viewConfiguration View configuration, serialized in an XML node, to restore (may be null)
+     * @param forceReload If root is the current root, typically nothing changes. Settings this to true, however, enforces that the view is reloaded
      */
-    void setRootElement(ModelNode root, XMLNode viewConfiguration) {
-        if (rootElement != root) {
+    void setRootElement(ModelNode root, XMLNode viewConfiguration, boolean forceReload) {
+        if (forceReload || rootElement != root) {
             rootElement = root;
             rootElementQualifiedName = rootElement.getQualifiedName((char)1);
             rootElementChanged(viewConfiguration);
@@ -151,7 +157,7 @@ public abstract class FinstructView extends JPanel {
         if (rootElement != null && (!isConnectedToRootNode())) {
             ModelNode newNode = finstruct.getIoInterface().getChildByQualifiedName(rootElementQualifiedName, (char)1);
             if (newNode != null && newNode != rootElement) {
-                setRootElement(newNode, null);
+                setRootElement(newNode, null, false);
             }
         }
     }

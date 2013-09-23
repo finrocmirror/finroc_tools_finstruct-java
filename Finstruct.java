@@ -22,19 +22,20 @@
 package org.finroc.tools.finstruct;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -47,6 +48,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.UIManager.LookAndFeelInfo;
+import javax.swing.border.CompoundBorder;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
 import javax.swing.event.TreeSelectionEvent;
@@ -68,7 +70,9 @@ import org.finroc.tools.gui.GUIUiBase;
 import org.finroc.tools.gui.StatusBar;
 import org.finroc.tools.gui.commons.EventRouter;
 import org.finroc.tools.gui.util.gui.IconManager;
+import org.finroc.tools.gui.util.gui.MAction;
 import org.finroc.tools.gui.util.gui.MActionEvent;
+import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
 import org.rrlib.finroc_core_utils.log.LogLevel;
 import org.rrlib.finroc_core_utils.xml.XMLNode;
@@ -78,7 +82,7 @@ import org.rrlib.finroc_core_utils.xml.XMLNode;
  *
  * Main Window class
  */
-public class Finstruct extends FinstructWindow implements ConnectionListener, WindowListener, ConnectionPanel.Owner, TreeSelectionListener, KeyListener, TreeModelListener {
+public class Finstruct extends FinstructWindow implements ConnectionListener, WindowListener, ConnectionPanel.Owner, TreeSelectionListener, TreeModelListener {
 
     /** UID */
     private static final long serialVersionUID = 5790020137768236619L;
@@ -121,7 +125,10 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     private static Finstruct finstructInstance;
 
     /** Double-click delay in ms */
-    public static final long DOUBLE_CLICK_DELAY = 500;
+    public static final long DOUBLE_CLICK_DELAY = 300;
+
+    /** Tool bar for different modes of tree */
+    final MToolBar treeToolBar = new MToolBar("Tree mode");
 
     public static void main(String[] args) {
         RuntimeSettings.setUseCCPorts(false);
@@ -191,6 +198,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         setTitle("finstruct");
 
         IconManager.getInstance().addResourceFolder(GUIUiBase.class, "icons");
+        IconManager.getInstance().addResourceFolder(GUIUiBase.class, "themes");
         IconManager.getInstance().addResourceFolder(Finstruct.class, "icon");
 
         // (dis-)connect-menu
@@ -231,9 +239,18 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         // Status bar
         statusBar = new StatusBar();
         getContentPane().add(statusBar, BorderLayout.SOUTH);
+
+        // Connection Panel
         connectionPanel = new FinstructConnectionPanel(this, getTreeFont());
         connectionPanel.setLeftTree(ioInterface);
         connectionPanel.setRightTree(null);
+        treeToolBar.addToggleButton(new MAction(Mode.navigate, null, "Navigate", this));
+        treeToolBar.addSeparator();
+        treeToolBar.addToggleButton(new MAction(Mode.connect, null, "Connect", this));
+        treeToolBar.addSeparator();
+        treeToolBar.addToggleButton(new MAction(Mode.paramconnect, null, "Parameter-Connect", this));
+        treeToolBar.setSelected(Mode.navigate);
+        treeToolBar.setBackground(Color.white);
 
         // Split pane
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, connectionPanel, new JPanel());
@@ -250,7 +267,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         // create and show GUI
         pack();
         setVisible(true);
-        //addKeyListener(this);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
         // set window to screen size
@@ -289,12 +305,19 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         splitPane.setLeftComponent(getCurrentView().initLeftPanel(connectionPanel));
 
         // fill right part of split pane
-        splitPane.setRightComponent(new JScrollPane(getCurrentView()));
+        JScrollPane scrollPane = new JScrollPane(getCurrentView());
+        //scrollPane.setBorder(BorderFactory.createLineBorder(Color.gray));
+        //scrollPane.setBorder(BorderFactory.createMatteBorder(2, 2, 2, 2, Color.gray));
+        //scrollPane.setBorder(BorderFactory.createMatteBorder(4, 4, 4, 4, getCurrentView().getBackground()));
+        //scrollPane.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
+        //scrollPane.setBorder(BorderFactory.createLoweredSoftBevelBorder());
+        scrollPane.setBorder(new CompoundBorder(BorderFactory.createEtchedBorder(), BorderFactory.createEmptyBorder(2, 2, 2, 2)));
+        splitPane.setRightComponent(scrollPane);
     }
 
     @Override
-    public void setViewRootElement(ModelNode root, XMLNode viewConfiguration) {
-        super.setViewRootElement(root, viewConfiguration);
+    public void setViewRootElement(ModelNode root, XMLNode viewConfiguration, boolean forceReload) {
+        super.setViewRootElement(root, viewConfiguration, forceReload);
 
         if (toolBar.isSelected(Mode.paramconnect)) {
             connectionPanel.setRightTree(new ConfigFileModel(root));
@@ -452,20 +475,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     public void refreshConnectionPanelModels() {
         EventRouter.fireConnectionEvent(null, ConnectionListener.INTERFACE_UPDATED);
     }
-
-    @Override public void keyPressed(KeyEvent e) {}
-    @Override public void keyReleased(KeyEvent e) {
-        int ctrlMask = KeyEvent.CTRL_DOWN_MASK;
-        int shiftAltMask = KeyEvent.ALT_DOWN_MASK | KeyEvent.SHIFT_DOWN_MASK;
-
-        // Control pressed?
-        if ((e.getModifiersEx() & (ctrlMask | shiftAltMask)) == ctrlMask) {
-            if (e.getKeyCode() == KeyEvent.VK_F) {
-                new FindElementDialog(this, false).show(this);
-            }
-        }
-    }
-    @Override public void keyTyped(KeyEvent e) {}
 
     @Override
     public void valueChanged(TreeSelectionEvent e) {

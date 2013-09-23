@@ -30,10 +30,12 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Stroke;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -44,6 +46,9 @@ import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
+import java.awt.image.FilteredImageSource;
+import java.awt.image.ImageFilter;
+import java.awt.image.RGBImageFilter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -62,7 +67,6 @@ import javax.swing.event.ChangeListener;
 
 import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.RuntimeEnvironment;
-import org.finroc.core.admin.AdministrationService;
 import org.finroc.core.finstructable.EditableInterfaces;
 import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.port.AbstractPort;
@@ -81,6 +85,7 @@ import org.finroc.tools.finstruct.dialogs.ParameterEditDialog;
 import org.finroc.tools.finstruct.graphviz.Graph;
 import org.finroc.tools.finstruct.util.MouseHandler;
 import org.finroc.tools.finstruct.util.MouseHandlerManager;
+import org.finroc.tools.gui.themes.BrushedMetalBlue;
 import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.gui.MAction;
@@ -137,7 +142,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     private Point2D lastMouseDragPoint;
 
     /** toolbar buttons */
-    private JButton refreshButton, zoomIn, zoomOut, zoom1, start, pause;
+    private JButton zoomIn, zoomOut, zoom1;
 
     private static final double NODE_SEP_DEFAULT = 0.25, RANK_SEP_DEFAULT = 0.5;
 
@@ -181,7 +186,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         testLabel.setFont(FONT);
         twoLineTestLabel.setFont(FONT);
         lineIncrementY = twoLineTestLabel.getPreferredSize().height - testLabel.getPreferredSize().height;
-        this.setBackground(Color.LIGHT_GRAY);
+        //this.setBackground(Color.LIGHT_GRAY);
+        //this.setBackground(new BrushedMetalBlue().TITANIUM);
+        this.setBackground(new BrushedMetalBlue().ALU);
         setLayout(null);
         mouseHandlers = new MouseHandlerManager(this);
         addMouseMotionListener(this);
@@ -377,7 +384,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
             // set start/pause icon state
             ThreadLocalCache.get();
-            updateStartPauseEnabled();
+            getFinstructWindow().updateStartPauseEnabled();
 
         } catch (Exception e) {
             logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
@@ -417,26 +424,6 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     }
 
     /**
-     * Update whether start and pause buttons are enabled
-     */
-    private void updateStartPauseEnabled() {
-        RemoteRuntime rr = RemoteRuntime.find(getRootElement());
-        if (rr == null) {
-            start.setEnabled(false);
-            pause.setEnabled(false);
-            return;
-        }
-        try {
-            AdministrationService.ExecutionStatus executing = rr.getAdminInterface().isExecuting(((RemoteFrameworkElement)getRootElement()).getRemoteHandle());
-            start.setEnabled(executing == AdministrationService.ExecutionStatus.PAUSED || executing == AdministrationService.ExecutionStatus.BOTH);
-            pause.setEnabled(executing == AdministrationService.ExecutionStatus.RUNNING || executing == AdministrationService.ExecutionStatus.BOTH);
-        } catch (Exception e) {
-            start.setEnabled(false);
-            pause.setEnabled(false);
-        }
-    }
-
-    /**
      * Generate subgraphs for all expanded groups (recursively)
      *
      * @param parent Parent Graph
@@ -464,57 +451,72 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         graphDrawnMonochrome = !isConnectedToRootNode();
         boolean monochrome = graphDrawnMonochrome;
         if (monochrome) {
-            imageBuffer = new BufferedImage(this.getWidth(), this.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+            imageBuffer = new BufferedImage(this.getWidth(), this.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
             g2d = imageBuffer.createGraphics();
+            g2d.setColor(new Color(0, 0, 0, 0));
+            g2d.fillRect(0, 0, 10000, 10000);
         } else {
             g2d = (Graphics2D)g.create();
         }
+        super.paintComponent(g);
 
-        super.paintComponent(g2d);
         g2d.scale(zoom, zoom);
         boolean antialiasing = toolBar.isSelected(DiverseSwitches.antialiasing);
 
-        if (edges == null || vertices == null) {
-            return;
-        }
+        if (edges != null && vertices != null) {
 
-        // draw subgraph bounds
-        for (Subgraph gr : subgraphs) {
-            gr.paint(g2d);
-        }
+            // draw subgraph bounds
+            for (Subgraph gr : subgraphs) {
+                gr.paint(g2d);
+            }
 
-        // draw edges
-        if (antialiasing) {
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        }
-        for (Edge e : edges) {
-            e.paint(g2d);
-        }
-        if (antialiasing) {
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-        }
-
-        // draw vertices
-        for (Vertex v : vertices) {
-            v.paint(g2d);
-        }
-
-        // draw connection line
-        MouseHandler mh = mouseHandlers.getActiveHandler();
-        if (mh != null && mh instanceof Vertex && inConnectionMode() && lastMouseDragPoint != null) {
-            Vertex v = (Vertex)mh;
-            g2d.setColor(Color.BLACK);
+            // draw edges
             if (antialiasing) {
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             }
-            g2d.drawLine((int)v.rect.getCenterX(), (int)v.rect.getCenterY(), (int)lastMouseDragPoint.getX(), (int)lastMouseDragPoint.getY());
+            for (Edge e : edges) {
+                e.paint(g2d);
+            }
             if (antialiasing) {
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+            }
+
+            // draw vertices
+            for (Vertex v : vertices) {
+                v.paint(g2d);
+            }
+
+            // draw connection line
+            MouseHandler mh = mouseHandlers.getActiveHandler();
+            if (mh != null && mh instanceof Vertex && inConnectionMode() && lastMouseDragPoint != null) {
+                Vertex v = (Vertex)mh;
+                g2d.setColor(Color.BLACK);
+                if (antialiasing) {
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                }
+                g2d.drawLine((int)v.rect.getCenterX(), (int)v.rect.getCenterY(), (int)lastMouseDragPoint.getX(), (int)lastMouseDragPoint.getY());
+                if (antialiasing) {
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+                }
             }
         }
 
         if (monochrome) {
-            g.drawImage(imageBuffer, 0, 0, null);
+            ImageFilter greyScaleFilter = new RGBImageFilter() {
+
+                @Override
+                public int filterRGB(int x, int y, int rgb) {
+                    int a = rgb & 0xFF000000;
+                    int b = (rgb & 0x00FF0000) >> 16;
+                    int g = (rgb & 0x0000FF00) >> 8;
+                    int r = rgb & 0x000000FF;
+                    int gray = (b + g + r) / 3;
+                    return a | (gray << 16) | (gray << 8) | gray;
+                }
+            };
+
+            Image resultImage = Toolkit.getDefaultToolkit().createImage(new FilteredImageSource(imageBuffer.getSource(), greyScaleFilter));
+            g.drawImage(resultImage, 0, 0, null);
         }
     }
 
@@ -1219,13 +1221,6 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             toolBar.setSelected(Graph.Layout.dot);
         }
 
-        start = toolBar.createButton("player_play-ubuntu.png", "Start/Resume exectution", this);
-        start.setEnabled(false);
-        pause = toolBar.createButton("player_pause-ubuntu.png", "Pause/Stop exectution", this);
-        pause.setEnabled(false);
-        toolBar.addSeparator();
-
-        refreshButton = toolBar.createButton("reload-ubuntu.png", "Refresh graph", this);
         toolBar.addToggleButton(new MAction(DiverseSwitches.antialiasing, "antialias-wikimedia-public_domain.png", "Antialiasing", this), true);
         toolBar.addToggleButton(new MAction(DiverseSwitches.lineBreaks, "line-break-max.png", "Line Breaks", this), true);
         zoomIn = toolBar.createButton("zoom-in-ubuntu.png", "Zoom in", this);
@@ -1265,8 +1260,6 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             } else if (e == DiverseSwitches.lineBreaks) {
                 relayout();
             }
-        } else if (ae.getSource() == refreshButton) {
-            refresh();
         } else if (ae.getSource() == zoomIn) {
             setZoom(zoom * 1.33);
         } else if (ae.getSource() == zoomOut) {
@@ -1318,18 +1311,6 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             if (rightClickedOn instanceof RemoteFrameworkElement) {
                 new ParameterEditDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, true, true);
                 refreshViewAfter(500);
-            }
-        } else if (ae.getSource() == start || ae.getSource() == pause) {
-            RemoteRuntime rr = RemoteRuntime.find(getRootElement());
-            if (rr == null) {
-                Finstruct.showErrorMessage("Root Element is not a child of a remote runtime", false, false);
-            } else if (getRootElement() instanceof RemoteFrameworkElement) {
-                if (ae.getSource() == start) {
-                    rr.getAdminInterface().startExecution(((RemoteFrameworkElement)getRootElement()).getRemoteHandle());
-                } else {
-                    rr.getAdminInterface().pauseExecution(((RemoteFrameworkElement)getRootElement()).getRemoteHandle());
-                }
-                updateStartPauseEnabled();
             }
         } else if (ae.getSource() instanceof Timer) {
             relayout();

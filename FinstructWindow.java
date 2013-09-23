@@ -22,14 +22,20 @@
 package org.finroc.tools.finstruct;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.StringReader;
 import java.util.ArrayList;
 
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -38,19 +44,23 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.Timer;
+import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
 
 import org.finroc.core.FrameworkElementFlags;
+import org.finroc.core.admin.AdministrationService;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
-import org.finroc.tools.finstruct.Finstruct.Mode;
+import org.finroc.core.remote.RemoteRuntime;
+import org.finroc.tools.finstruct.dialogs.FindElementDialog;
 import org.finroc.tools.finstruct.views.AbstractGraphView;
 import org.finroc.tools.finstruct.views.Ib2cView;
 import org.finroc.tools.finstruct.views.PortView;
 import org.finroc.tools.finstruct.views.StandardViewGraphViz;
-import org.finroc.tools.gui.util.gui.MAction;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.rrlib.finroc_core_utils.jc.log.LogDefinitions;
 import org.rrlib.finroc_core_utils.log.LogDomain;
@@ -64,7 +74,7 @@ import org.xml.sax.InputSource;
  *
  * Base Window class
  */
-public class FinstructWindow extends JFrame implements ActionListener, WindowListener, MenuListener {
+public class FinstructWindow extends JFrame implements ActionListener, WindowListener, MenuListener, MouseListener, CaretListener, KeyListener {
 
     /** UID */
     private static final long serialVersionUID = -7929615678892958956L;
@@ -104,6 +114,18 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
     /** Bookmark menu items */
     private JMenuItem miAddBookmark, miRemoveBookmark;
+
+    /** Text field containing address of current view */
+    private JTextField addressField;
+
+    /** Last address field text (to detect if something changed) */
+    private String lastAddressFieldText = "";
+
+    /** Last time the user clicked on the address field */
+    private long lastAddressFieldClick;
+
+    /** Toolbar buttons */
+    private JButton refreshButton, start, pause;
 
     /**
      * Timer for periodic checking if current view is still up to date
@@ -146,6 +168,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         // Toolbar
         toolBar = new MToolBar("Standard");
         toolBar.setFloatable(false);
+        toolBar.setBorder(BorderFactory.createEmptyBorder(2, 2, 1, 3));
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(toolBar, BorderLayout.PAGE_START);
 
@@ -176,19 +199,25 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         }
 
         // Clear toolbar and add default navigation buttons
-        Mode lastMode = toolBar.getSelection(Mode.values());
         toolBar.clear();
+        toolBar.setLayout(new BoxLayout(toolBar, BoxLayout.LINE_AXIS));
         back = toolBar.createButton("back-ubuntu.png", "To last view", this);
         next = toolBar.createButton("forward-ubuntu.png", "To next view", this);
-        if (this instanceof Finstruct) {
-            toolBar.addSeparator();
-            toolBar.addToggleButton(new MAction(Mode.navigate, null, "Navigate", this));
-            toolBar.addToggleButton(new MAction(Mode.connect, null, "Connect", this));
-            toolBar.addToggleButton(new MAction(Mode.paramconnect, null, "Parameter-Connect", this));
-            toolBar.setSelected(lastMode == null ? Mode.navigate : lastMode);
-        }
+        addressField = new JTextField("Search or enter address");
+        addressField.setCaretPosition(0);
+        addressField.setForeground(Color.lightGray);
+        addressField.addMouseListener(this);
+        addressField.addCaretListener(this);
+        addressField.addKeyListener(this);
+        toolBar.add(addressField);
+        refreshButton = toolBar.createButton("reload-ubuntu.png", "Refresh view", this);
+
         toolBar.addSeparator();
-        toolBar.startNextButtonGroup();
+        start = toolBar.createButton("player_play-ubuntu.png", "Start/Resume execution", this);
+        start.setEnabled(false);
+        pause = toolBar.createButton("player_pause-ubuntu.png", "Pause/Stop execution", this);
+        pause.setEnabled(false);
+        toolBar.addSeparator();
 
         ModelNode lastRoot = currentView == null ? null : currentView.getRootElement();
         if (currentView != null) {
@@ -219,17 +248,22 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
         // restore root element
         if (lastRoot != null && restoreRoot) {
-            setViewRootElement(lastRoot, null);
+            setViewRootElement(lastRoot, null, false);
         }
 
         updateHistoryButtonState();
     }
 
-    public void setViewRootElement(ModelNode root, XMLNode viewConfiguration) {
-        currentView.setRootElement(root, viewConfiguration);
+    public void setViewRootElement(ModelNode root, XMLNode viewConfiguration, boolean forceReload) {
+        currentView.setRootElement(root, viewConfiguration, forceReload);
+        String address = root.getQualifiedName('/').substring("Interfaces".length());
         if (!(this instanceof Finstruct)) {
-            setTitle(root.getQualifiedName('/'));
+            setTitle(address);
         }
+        updateStartPauseEnabled();
+        addressField.setForeground(Color.black);
+        addressField.setText(address);
+        lastAddressFieldText = address;
     }
 
     @Override
@@ -240,6 +274,25 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                 currentView.updateView();
             }
             return;
+        } else if (ae.getSource() == refreshButton) {
+            if (currentView != null) {
+                setViewRootElement(currentView.getRootElement(), null, true);
+            }
+            return;
+        } else if (ae.getSource() == start || ae.getSource() == pause) {
+            if (currentView != null && currentView.getRootElement() != null) {
+                RemoteRuntime rr = RemoteRuntime.find(currentView.getRootElement());
+                if (rr == null) {
+                    Finstruct.showErrorMessage("Root Element is not a child of a remote runtime", false, false);
+                } else if (currentView.getRootElement() instanceof RemoteFrameworkElement) {
+                    if (ae.getSource() == start) {
+                        rr.getAdminInterface().startExecution(((RemoteFrameworkElement)currentView.getRootElement()).getRemoteHandle());
+                    } else {
+                        rr.getAdminInterface().pauseExecution(((RemoteFrameworkElement)currentView.getRootElement()).getRemoteHandle());
+                    }
+                    updateStartPauseEnabled();
+                }
+            }
         }
         try {
             Object src = ae.getSource();
@@ -345,12 +398,109 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         }
     }
 
+    /**
+     * Update whether start and pause buttons are enabled
+     */
+    public void updateStartPauseEnabled() {
+        if (getCurrentView() == null || currentView.getRootElement() == null) {
+            return;
+        }
+        RemoteRuntime rr = RemoteRuntime.find(currentView.getRootElement());
+        if (rr == null) {
+            start.setEnabled(false);
+            pause.setEnabled(false);
+            return;
+        }
+        try {
+            AdministrationService.ExecutionStatus executing = rr.getAdminInterface().isExecuting(((RemoteFrameworkElement)currentView.getRootElement()).getRemoteHandle());
+            start.setEnabled(executing == AdministrationService.ExecutionStatus.PAUSED || executing == AdministrationService.ExecutionStatus.BOTH);
+            pause.setEnabled(executing == AdministrationService.ExecutionStatus.RUNNING || executing == AdministrationService.ExecutionStatus.BOTH);
+        } catch (Exception e) {
+            start.setEnabled(false);
+            pause.setEnabled(false);
+        }
+    }
+
     @Override
     public void menuDeselected(MenuEvent e) {}
 
     @Override
     public void menuCanceled(MenuEvent e) {}
 
+    @Override
+    public void mouseClicked(MouseEvent e) {}
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        if (e.getSource() == addressField) {
+            long time = System.currentTimeMillis();
+            if (time - lastAddressFieldClick < Finstruct.DOUBLE_CLICK_DELAY) {
+                addressField.selectAll();
+                lastAddressFieldClick = 0;
+            } else {
+                lastAddressFieldClick = time;
+            }
+        }
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {}
+
+    @Override
+    public void mouseExited(MouseEvent e) {}
+
+    @Override
+    public void caretUpdate(CaretEvent e) {
+        if (e.getSource() == addressField) {
+            if (!lastAddressFieldText.equals(addressField.getText())) {
+                lastAddressFieldText = addressField.getText();
+
+                // Initiate search
+                String[] words = lastAddressFieldText.split(" ");
+                //System.out.println(words.length);
+                //TODO:
+            }
+        }
+    }
+
+
+    @Override public void keyPressed(KeyEvent e) {
+    }
+    @Override public void keyReleased(KeyEvent e) {
+//        int ctrlMask = KeyEvent.CTRL_DOWN_MASK;
+//        int shiftAltMask = KeyEvent.ALT_DOWN_MASK | KeyEvent.SHIFT_DOWN_MASK;
+//
+//        // Control pressed?
+//        if ((e.getModifiersEx() & (ctrlMask | shiftAltMask)) == ctrlMask) {
+//            if (e.getKeyCode() == KeyEvent.VK_F) {
+//                new FindElementDialog(this, false).show(this);
+//            }
+//        }
+//      System.out.println("typed:3 " + addressField.getText());
+    }
+    @Override public void keyTyped(KeyEvent e) {
+        if (e.getSource() == addressField) {
+            if (addressField.getForeground() == Color.lightGray) {
+                addressField.setText("");
+                addressField.setForeground(Color.black);
+            }
+            if (e.getKeyChar() == '\n') {
+                String address = addressField.getText();
+                if (!address.startsWith("/")) {
+                    address = "/" + address;
+                }
+                ModelNode node = finstruct.getIoInterface().getChildByQualifiedName("Interfaces" + address, '/');
+                if (node != null) {
+                    pushViewToHistory();
+                    setViewRootElement(node, null, true);
+                }
+            }
+        }
+    }
 
     /**
      * Shows specified framework element in main view - taking view selection into account
@@ -371,7 +521,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                     e1.printStackTrace();
                 }
             }
-            setViewRootElement(fe, null);
+            setViewRootElement(fe, null, false);
         } else {
             Class <? extends FinstructView > selectedView = null;
             pushViewToHistory(); // create history element for current view
@@ -389,7 +539,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                     e1.printStackTrace();
                 }
             }
-            setViewRootElement(fe, null);
+            setViewRootElement(fe, null, false);
         }
     }
 
@@ -397,7 +547,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
      * Save current view as next history element
      */
     public void pushViewToHistory() {
-        if (currentView.getRootElement() == null) {
+        if (currentView == null || currentView.getRootElement() == null) {
             return;
         }
 
@@ -440,7 +590,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                 }
             }
 
-            setViewRootElement(root, viewData);
+            setViewRootElement(root, viewData, true);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -566,7 +716,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             } catch (Exception e1) {
                 e1.printStackTrace();
             }
-            getCurrentView().setRootElement(root, xmlNode);
+            setViewRootElement(root, xmlNode, true);
 
             if (finstruct.getConnectionPanel() != null) {
                 finstruct.getConnectionPanel().expandOnly(true, root);
