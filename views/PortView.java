@@ -37,6 +37,7 @@ import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemotePort;
+import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.FinstructView;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 import org.finroc.tools.finstruct.propertyeditor.FinrocComponentFactory;
@@ -81,6 +82,9 @@ public class PortView extends FinstructView implements ActionListener {
     /** Default panel background color */
     private final Color DEFAULT_BACKGROUND_COLOR = this.getBackground();
 
+    /** Maximum number of ports to display */
+    private final int MAX_PORTS = 250;
+
     ///** Port description font */
     //private static final Font FONT = new JLabel().getFont().deriveFont(Font.PLAIN);
 
@@ -92,6 +96,14 @@ public class PortView extends FinstructView implements ActionListener {
         }
         getRootElement().getPortsBelow(tmpResultList);
         setLayout(new BorderLayout());
+
+        if (tmpResultList.size() > MAX_PORTS) {
+            Finstruct.showErrorMessage(tmpResultList.size() + " ports selected. Only showing the first " + MAX_PORTS + " (to preserve usability).", false, false);
+            while (tmpResultList.size() > 250) {
+                tmpResultList.remove(tmpResultList.size() - 1);
+            }
+        }
+
         showPorts(tmpResultList);
     }
 
