@@ -59,6 +59,7 @@ import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.admin.AdministrationService;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.views.AbstractGraphView;
 import org.finroc.tools.finstruct.views.Ib2cView;
@@ -546,7 +547,11 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         ModelNode node = finstruct.getIoInterface().getChildByQualifiedName("Interfaces" + address, '/');
         if (node != null) {
             pushViewToHistory();
-            setViewRootElement(node, null, true);
+            if (currentView != null && currentView.getRootElement() == node) {
+                setViewRootElement(node, null, true);
+            } else {
+                showElement(node);
+            }
         }
     }
 
@@ -558,6 +563,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     public void showElement(ModelNode fe) {
         boolean portViewCandidate = AbstractGraphView.hasOnlyPortChildren(fe, false) &&
                                     (!((fe instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)fe).getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP)));
+        portViewCandidate |= (fe instanceof RemotePort);
         if (miAutoView.isSelected() || portViewCandidate) {
             // auto-select view
             Class <? extends FinstructView > viewClass = portViewCandidate ? PortView.class : StandardViewGraphViz.class;
