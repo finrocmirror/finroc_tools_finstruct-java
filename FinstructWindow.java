@@ -33,6 +33,7 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import javax.swing.AbstractListModel;
 import javax.swing.BorderFactory;
@@ -149,6 +150,9 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     /** List component for popup menu above */
     @SuppressWarnings( { "rawtypes", "unchecked" })
     private final JList addressList = new JList(new String[] {"r", "f", "fwsdfsd"});
+
+    /** Any view instances that were created in this window */
+    private final HashMap < Class <? extends FinstructView > , FinstructView > viewInstances = new HashMap < Class <? extends FinstructView > , FinstructView > ();
 
     public FinstructWindow(Finstruct f) {
         finstruct = f;
@@ -291,6 +295,23 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         settingAddressFieldText = true;
         addressField.setText(address);
         settingAddressFieldText = false;
+    }
+
+    /**
+     * @param viewClass Desired view class
+     * @return View instance of desired class (any view of that class already created - otherwise new instance)
+     */
+    public FinstructView getViewInstance(Class <? extends FinstructView > viewClass) {
+        FinstructView result = viewInstances.get(viewClass);
+        if (result == null) {
+            try {
+                result = viewClass.newInstance();
+                viewInstances.put(viewClass, result);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return result;
     }
 
     @Override
@@ -569,11 +590,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             Class <? extends FinstructView > viewClass = portViewCandidate ? PortView.class : StandardViewGraphViz.class;
             pushViewToHistory(); // create history element for current view
             if (currentView == null || currentView.getClass() != viewClass) {
-                try {
-                    changeView(viewClass.newInstance(), false);
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                }
+                changeView(getViewInstance(viewClass), false);
             }
             setViewRootElement(fe, null, false);
         } else {
@@ -587,11 +604,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             }
 
             if (currentView == null || (!currentView.getClass().equals(selectedView))) {
-                try {
-                    changeView(selectedView.newInstance(), false);
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                }
+                changeView(getViewInstance(selectedView), false);
             }
             setViewRootElement(fe, null, false);
         }
@@ -637,11 +650,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             Class <? extends FinstructView > viewClass = getViewClassByName(viewData.getStringAttribute("view"));
 
             if (currentView == null || currentView.getClass() != viewClass) {
-                try {
-                    changeView(viewClass.newInstance(), false);
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                }
+                changeView(getViewInstance(viewClass), false);
             }
 
             setViewRootElement(root, viewData, true);
@@ -733,11 +742,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         @Override
         public void actionPerformed(ActionEvent e) {
             pushViewToHistory();
-            try {
-                changeView(view.newInstance(), true);
-            } catch (Exception e1) {
-                e1.printStackTrace();
-            }
+            changeView(getViewInstance(view), true);
         }
     }
 
@@ -765,11 +770,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             if (root != null) {
                 pushViewToHistory();
             }
-            try {
-                changeView(view.newInstance(), false);
-            } catch (Exception e1) {
-                e1.printStackTrace();
-            }
+            changeView(getViewInstance(view), false);
             setViewRootElement(root, xmlNode, true);
 
             if (finstruct.getConnectionPanel() != null) {

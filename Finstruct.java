@@ -251,11 +251,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         splitPane.setDividerSize(5);
 
         // Change to standard view
-        try {
-            changeView(views.get(0).view.newInstance(), true);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        changeView(getViewInstance(views.get(0).view), true);
 
         // create and show GUI
         pack();

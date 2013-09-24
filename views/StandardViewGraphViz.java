@@ -61,6 +61,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
+import javax.swing.JToggleButton;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
@@ -148,7 +149,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     private static final double NODE_SEP_DEFAULT = 0.25, RANK_SEP_DEFAULT = 0.5;
 
     /** Spinners in toolbar */
-    private JSpinner nodeSep, rankSep;
+    private JSpinner nodeSep = new JSpinner(new SpinnerNumberModel(NODE_SEP_DEFAULT, 0.05, 2.0, 0.05));
+    private JSpinner rankSep = new JSpinner(new SpinnerNumberModel(RANK_SEP_DEFAULT, 0.05, 2.0, 0.05));
 
     /** Diverse toolbar switches */
     private enum DiverseSwitches { antialiasing, lineBreaks }
@@ -168,7 +170,11 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     /** Is the currently displayed graph drawn monochrome (due to disconnect)? */
     private boolean graphDrawnMonochrome = false;
 
+    /** Background image */
     private ImageIcon background = (ImageIcon)IconManager.getInstance().getIcon("brushed-alu-dark-max.png");
+
+    /** Reference to toggle buttons in toolbar */
+    private JToggleButton antialiasButton, linebreakButton;
 
     static {
         boolean ok = false;
@@ -256,32 +262,32 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                     }
                 }
             }
-        }
 
-        try {
-            toolBar.setSelected(DiverseSwitches.antialiasing, viewConfiguration.getBoolAttribute("antialiasing"));
-        } catch (Exception e) {
-            toolBar.setSelected(DiverseSwitches.antialiasing, true);
-        }
-        try {
-            toolBar.setSelected(DiverseSwitches.lineBreaks, viewConfiguration.getBoolAttribute("line-breaks"));
-        } catch (Exception e) {
-            toolBar.setSelected(DiverseSwitches.lineBreaks, true);
-        }
-        try {
-            zoom = (float)viewConfiguration.getDoubleAttribute("zoom");
-        } catch (Exception e) {
-            zoom = 1.0f;
-        }
-        try {
-            rankSep.setValue(viewConfiguration.getDoubleAttribute("ranksep"));
-        } catch (Exception e) {
-            rankSep.setValue(RANK_SEP_DEFAULT);
-        }
-        try {
-            nodeSep.setValue(viewConfiguration.getDoubleAttribute("nodesep"));
-        } catch (Exception e) {
-            nodeSep.setValue(NODE_SEP_DEFAULT);
+            try {
+                toolBar.setSelected(DiverseSwitches.antialiasing, viewConfiguration.getBoolAttribute("antialiasing"));
+            } catch (Exception e) {
+                toolBar.setSelected(DiverseSwitches.antialiasing, true);
+            }
+            try {
+                toolBar.setSelected(DiverseSwitches.lineBreaks, viewConfiguration.getBoolAttribute("line-breaks"));
+            } catch (Exception e) {
+                toolBar.setSelected(DiverseSwitches.lineBreaks, true);
+            }
+            try {
+                zoom = (float)viewConfiguration.getDoubleAttribute("zoom");
+            } catch (Exception e) {
+                zoom = 1.0f;
+            }
+            try {
+                rankSep.setValue(viewConfiguration.getDoubleAttribute("ranksep"));
+            } catch (Exception e) {
+                rankSep.setValue(RANK_SEP_DEFAULT);
+            }
+            try {
+                nodeSep.setValue(viewConfiguration.getDoubleAttribute("nodesep"));
+            } catch (Exception e) {
+                nodeSep.setValue(NODE_SEP_DEFAULT);
+            }
         }
 
         relayout();
@@ -1226,26 +1232,26 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             toolBar.setSelected(Graph.Layout.dot);
         }
 
-        toolBar.addToggleButton(new MAction(DiverseSwitches.antialiasing, "antialias-wikimedia-public_domain.png", "Antialiasing", this), true);
-        toolBar.addToggleButton(new MAction(DiverseSwitches.lineBreaks, "line-break-max.png", "Line Breaks", this), true);
+        boolean antialiasEnabled = antialiasButton != null ? antialiasButton.isSelected() : true;
+        boolean linebreakEnabled = linebreakButton != null ? linebreakButton.isSelected() : true;
+        antialiasButton = toolBar.addToggleButton(new MAction(DiverseSwitches.antialiasing, "antialias-wikimedia-public_domain.png", "Antialiasing", this), true);
+        linebreakButton = toolBar.addToggleButton(new MAction(DiverseSwitches.lineBreaks, "line-break-max.png", "Line Breaks", this), true);
         zoomIn = toolBar.createButton("zoom-in-ubuntu.png", "Zoom in", this);
         zoomOut = toolBar.createButton("zoom-out-ubuntu.png", "Zoom out", this);
         zoom1 = toolBar.createButton("zoom-original-ubuntu.png", "Zoom 100%", this);
         toolBar.addSeparator();
         toolBar.add(new JLabel("nodesep"));
-        nodeSep = new JSpinner(new SpinnerNumberModel(NODE_SEP_DEFAULT, 0.05, 2.0, 0.05));
         toolBar.add(nodeSep);
         nodeSep.addChangeListener(this);
         nodeSep.setPreferredSize(new Dimension(60, nodeSep.getPreferredSize().height));
         nodeSep.setMaximumSize(nodeSep.getPreferredSize());
         toolBar.add(new JLabel("ranksep"));
-        rankSep = new JSpinner(new SpinnerNumberModel(RANK_SEP_DEFAULT, 0.05, 2.0, 0.05));
         toolBar.add(rankSep);
         rankSep.addChangeListener(this);
         rankSep.setPreferredSize(new Dimension(60, rankSep.getPreferredSize().height));
         rankSep.setMaximumSize(rankSep.getPreferredSize());
-        toolBar.setSelected(DiverseSwitches.antialiasing, true);
-        toolBar.setSelected(DiverseSwitches.lineBreaks, true);
+        toolBar.setSelected(DiverseSwitches.antialiasing, antialiasEnabled);
+        toolBar.setSelected(DiverseSwitches.lineBreaks, linebreakEnabled);
         if (getFinstruct() != null) {
             nodeSep.getEditor().getComponent(0).addKeyListener(getFinstruct());
             rankSep.getEditor().getComponent(0).addKeyListener(getFinstruct());
