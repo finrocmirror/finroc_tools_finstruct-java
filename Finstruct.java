@@ -64,7 +64,6 @@ import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.PortWrapperTreeNode;
 import org.finroc.core.util.Files;
-import org.finroc.tools.finstruct.dialogs.FindElementDialog;
 import org.finroc.tools.gui.ConnectionPanel;
 import org.finroc.tools.gui.GUIUiBase;
 import org.finroc.tools.gui.StatusBar;
@@ -94,7 +93,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     protected InterfaceTreeModel ioInterface = new InterfaceTreeModel();
 
     /** Menu items */
-    private JMenuItem miDisconnectDiscard, miExit, miFind;
+    private JMenuItem miDisconnectDiscard, miExit;
     private JMenu miConnectMenu;
 
     /** Status bar */
@@ -128,7 +127,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     public static final long DOUBLE_CLICK_DELAY = 300;
 
     /** Tool bar for different modes of tree */
-    final MToolBar treeToolBar = new MToolBar("Tree mode");
+    public final MToolBar treeToolBar = new MToolBar("Tree mode");
 
     public static void main(String[] args) {
         RuntimeSettings.setUseCCPorts(false);
@@ -230,12 +229,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         //miTest = createMenuEntry("Test", menuFile, KeyEvent.VK_F16);
         menuBar.setVisible(true);
 
-        // Edit menu
-        JMenu menuEdit = new JMenu("Edit");
-        menuEdit.setMnemonic(KeyEvent.VK_E);
-        menuBar.add(menuEdit, 1);
-        miFind = createMenuEntry("Find Element...", menuEdit, KeyEvent.VK_F);
-
         // Status bar
         statusBar = new StatusBar();
         getContentPane().add(statusBar, BorderLayout.SOUTH);
@@ -311,7 +304,8 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         //scrollPane.setBorder(BorderFactory.createMatteBorder(4, 4, 4, 4, getCurrentView().getBackground()));
         //scrollPane.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         //scrollPane.setBorder(BorderFactory.createLoweredSoftBevelBorder());
-        scrollPane.setBorder(new CompoundBorder(BorderFactory.createEtchedBorder(), BorderFactory.createEmptyBorder(2, 2, 2, 2)));
+        scrollPane.setBorder(new CompoundBorder(BorderFactory.createEtchedBorder(), BorderFactory.createEmptyBorder(1, 1, 1, 1)));
+        //scrollPane.setBorder(BorderFactory.createEtchedBorder());
         splitPane.setRightComponent(scrollPane);
     }
 
@@ -319,7 +313,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     public void setViewRootElement(ModelNode root, XMLNode viewConfiguration, boolean forceReload) {
         super.setViewRootElement(root, viewConfiguration, forceReload);
 
-        if (toolBar.isSelected(Mode.paramconnect)) {
+        if (treeToolBar.isSelected(Mode.paramconnect)) {
             connectionPanel.setRightTree(new ConfigFileModel(root));
         }
         connectionPanel.repaint();
@@ -339,8 +333,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
             } else if (src == statusBarTimer) {
                 connectionEvent(null, 0);
                 return;
-            } else if (src == miFind) {
-                new FindElementDialog(this, false).show(this);
             } else if (ae instanceof MActionEvent) {
                 Enum e = ((MActionEvent)ae).getEnumID();
                 if (e instanceof Mode) {

@@ -34,17 +34,21 @@ import java.awt.event.WindowListener;
 import java.io.StringReader;
 import java.util.ArrayList;
 
+import javax.swing.AbstractListModel;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
@@ -56,7 +60,6 @@ import org.finroc.core.admin.AdministrationService;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemoteRuntime;
-import org.finroc.tools.finstruct.dialogs.FindElementDialog;
 import org.finroc.tools.finstruct.views.AbstractGraphView;
 import org.finroc.tools.finstruct.views.Ib2cView;
 import org.finroc.tools.finstruct.views.PortView;
@@ -116,7 +119,10 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     private JMenuItem miAddBookmark, miRemoveBookmark;
 
     /** Text field containing address of current view */
-    private JTextField addressField;
+    private AddressField addressField;
+
+    /** True while setText is called on addressField */
+    private boolean settingAddressFieldText;
 
     /** Last address field text (to detect if something changed) */
     private String lastAddressFieldText = "";
@@ -127,11 +133,21 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     /** Toolbar buttons */
     private JButton refreshButton, start, pause;
 
+    /** Search Thread (for address field) */
+    private SearchThread searchThread = new SearchThread();
+
     /**
      * Timer for periodic checking if current view is still up to date
      * Causes FinstructView.checkViewUpToDate() to be called every 200ms
      */
     private final Timer periodicViewCheckTimer = new Timer(200, this);
+
+    /** Popup menu for address field */
+    private final JPopupMenu popupMenu = new JPopupMenu();
+
+    /** List component for popup menu above */
+    @SuppressWarnings( { "rawtypes", "unchecked" })
+    private final JList addressList = new JList(new String[] {"r", "f", "fwsdfsd"});
 
     public FinstructWindow(Finstruct f) {
         finstruct = f;
@@ -172,9 +188,16 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(toolBar, BorderLayout.PAGE_START);
 
+        // popup menu
+        popupMenu.setLayout(new BorderLayout());
+        popupMenu.add(addressList, BorderLayout.CENTER);
+        this.addKeyListener(this);
+
         // Init periodic view update
         periodicViewCheckTimer.start();
+
         addWindowListener(this);
+        addressList.addMouseListener(this);
     }
 
     /**
@@ -203,7 +226,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         toolBar.setLayout(new BoxLayout(toolBar, BoxLayout.LINE_AXIS));
         back = toolBar.createButton("back-ubuntu.png", "To last view", this);
         next = toolBar.createButton("forward-ubuntu.png", "To next view", this);
-        addressField = new JTextField("Search or enter address");
+        addressField = new AddressField("Search or enter address");
         addressField.setCaretPosition(0);
         addressField.setForeground(Color.lightGray);
         addressField.addMouseListener(this);
@@ -256,14 +279,17 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
     public void setViewRootElement(ModelNode root, XMLNode viewConfiguration, boolean forceReload) {
         currentView.setRootElement(root, viewConfiguration, forceReload);
-        String address = root.getQualifiedName('/').substring("Interfaces".length());
+        String qualifiedName = root.getQualifiedName('/');
+        String address = qualifiedName.substring(Math.min(qualifiedName.length(), "Interfaces/".length()));
         if (!(this instanceof Finstruct)) {
             setTitle(address);
         }
         updateStartPauseEnabled();
         addressField.setForeground(Color.black);
-        addressField.setText(address);
         lastAddressFieldText = address;
+        settingAddressFieldText = true;
+        addressField.setText(address);
+        settingAddressFieldText = false;
     }
 
     @Override
@@ -445,6 +471,13 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (e.getSource() == addressList) {
+            try {
+                loadAddress(((SearchThread.SearchResult)(addressList.getSelectedValue())).link);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -456,21 +489,19 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     @Override
     public void caretUpdate(CaretEvent e) {
         if (e.getSource() == addressField) {
-            if (!lastAddressFieldText.equals(addressField.getText())) {
+            if ((!settingAddressFieldText) && (!lastAddressFieldText.equals(addressField.getText()))) {
                 lastAddressFieldText = addressField.getText();
-
-                // Initiate search
-                String[] words = lastAddressFieldText.split(" ");
-                //System.out.println(words.length);
-                //TODO:
+                searchThread.newSearchRequest(lastAddressFieldText, false);
             }
         }
     }
 
-
     @Override public void keyPressed(KeyEvent e) {
+        //System.out.println(e.getKeyCode());
     }
+
     @Override public void keyReleased(KeyEvent e) {
+//        System.out.println("1 " + e.getKeyCode());
 //        int ctrlMask = KeyEvent.CTRL_DOWN_MASK;
 //        int shiftAltMask = KeyEvent.ALT_DOWN_MASK | KeyEvent.SHIFT_DOWN_MASK;
 //
@@ -482,23 +513,40 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 //        }
 //      System.out.println("typed:3 " + addressField.getText());
     }
+
     @Override public void keyTyped(KeyEvent e) {
+//        System.out.println("2 " + e.getKeyCode());
         if (e.getSource() == addressField) {
             if (addressField.getForeground() == Color.lightGray) {
                 addressField.setText("");
                 addressField.setForeground(Color.black);
             }
-            if (e.getKeyChar() == '\n') {
-                String address = addressField.getText();
-                if (!address.startsWith("/")) {
-                    address = "/" + address;
-                }
-                ModelNode node = finstruct.getIoInterface().getChildByQualifiedName("Interfaces" + address, '/');
-                if (node != null) {
-                    pushViewToHistory();
-                    setViewRootElement(node, null, true);
-                }
-            }
+        }
+    }
+
+    /**
+     * Loads address originating from address field
+     *
+     * @param address Address to load (null to load current text of address field)
+     */
+    private void loadAddress(String address) {
+        if (address == null) {
+            address = addressField.getText();
+        } else {
+            settingAddressFieldText = true;
+            addressField.setText(address);
+            settingAddressFieldText = false;
+            lastAddressFieldText = addressField.getText();
+            addressField.requestFocusInWindow();
+        }
+        popupMenu.setVisible(false);
+        if (!address.startsWith("/")) {
+            address = "/" + address;
+        }
+        ModelNode node = finstruct.getIoInterface().getChildByQualifiedName("Interfaces" + address, '/');
+        if (node != null) {
+            pushViewToHistory();
+            setViewRootElement(node, null, true);
         }
     }
 
@@ -735,5 +783,366 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             currentView.destroy();
         }
         periodicViewCheckTimer.stop();
+    }
+
+    /**
+     * Address field component
+     */
+    class AddressField extends JTextField {
+
+        /** UID */
+        private static final long serialVersionUID = 5563572568684859617L;
+
+        public AddressField(String string) {
+            super(string);
+        }
+
+//      @Override
+//      protected void processComponentKeyEvent(KeyEvent e) {
+//          super.pr
+//      }
+
+        @Override
+        protected void processKeyEvent(KeyEvent e) {
+            if (e.getID() == KeyEvent.KEY_PRESSED && (e.getKeyCode() == KeyEvent.VK_KP_DOWN || e.getKeyCode() == KeyEvent.VK_DOWN)) {
+                if (!popupMenu.isVisible()) {
+                    lastAddressFieldText = addressField.getText();
+                    searchThread.newSearchRequest(lastAddressFieldText, true);
+                } else if (addressList.getSelectedIndex() < 0) {
+                    addressList.setSelectedIndex(0);
+                } else {
+                    if (addressList.getSelectedIndex() + 1 < addressList.getModel().getSize()) {
+                        addressList.setSelectedIndex(addressList.getSelectedIndex() + 1);
+                    }
+                }
+                return;
+            } else if (e.getID() == KeyEvent.KEY_PRESSED && (e.getKeyCode() == KeyEvent.VK_KP_UP || e.getKeyCode() == KeyEvent.VK_UP)) {
+                if (addressList.getSelectedIndex() > 0) {
+                    addressList.setSelectedIndex(addressList.getSelectedIndex() - 1);
+                } else {
+                    addressList.setSelectedIndices(new int[0]);
+                    //addressList.setSelectedIndex(-1);
+                }
+                return;
+            } else if (e.getID() == KeyEvent.KEY_RELEASED && e.getKeyChar() == '\n') {
+                if (popupMenu.isVisible() && addressList.getSelectedIndex() >= 0) {
+                    loadAddress(((SearchThread.SearchResult)(addressList.getSelectedValue())).link);
+                } else {
+                    loadAddress(null);
+                }
+                return;
+            }
+
+
+            super.processKeyEvent(e);
+        }
+
+    }
+
+
+    /** Maximum number of results */
+    private final int MAX_RESULTS = 20;
+
+    /**
+     * Search Thread for address field popup
+     */
+    class SearchThread extends Thread {
+
+        class SearchResult implements Comparable<SearchResult> {
+
+            /** Link to root */
+            String link;
+
+            /** Bookmark info in case this is a bookmark */
+            String bookmark;
+
+            /** Number of matches at word beginning? */
+            int wordBeginMatches;
+
+            /** String representation of result (in html) */
+            String stringRepresentation;
+
+            /** Compare with respect to ranking in result list */
+            public int compareTo(int linkLength, boolean bookmark, int wordBeginMatches) {
+                if (this.bookmark == null && bookmark) {
+                    return -1;
+                } else if (this.bookmark != null && (!bookmark)) {
+                    return 1;
+                } else if (this.wordBeginMatches < wordBeginMatches) {
+                    return -1;
+                } else if (this.wordBeginMatches > wordBeginMatches) {
+                    return 1;
+                } else if (this.link.length() > linkLength) {
+                    return -1;
+                } else if (this.link.length() < linkLength) {
+                    return 1;
+                }
+                return 0;
+            }
+
+            @Override
+            public int compareTo(SearchResult o) {
+                return compareTo(o.link.length(), o.bookmark != null, o.wordBeginMatches);
+            }
+
+            public String toString() {
+                return stringRepresentation;
+            }
+        }
+
+        /** Current search request */
+        private String searchRequest = "";
+
+        public SearchThread() {
+            super("SearchThread");
+            this.setDaemon(true);
+            start();
+        }
+
+        /**
+         * Request new search
+         * (when ready, this thread will take care of showing/hiding a list below the address field)
+         *
+         * @param newRequest New Search Request String ("" to cancel search)
+         * @param enforceRequest Enfroce Requests - even if search string has not changed?
+         */
+        public void newSearchRequest(String newRequest, boolean enforceRequest) {
+            newRequest = newRequest.trim();
+            if (enforceRequest || (!newRequest.equals(searchRequest))) {
+                synchronized (this) {
+                    searchRequest = newRequest;
+                    this.notify();
+                }
+            }
+        }
+
+        @Override
+        public void run() {
+            String currentSearchRequest = "";
+            while (true) {
+                synchronized (this) {
+                    if (currentSearchRequest.equals(searchRequest) || searchRequest.length() == 0) {
+                        try {
+                            this.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    currentSearchRequest = searchRequest;
+                }
+
+                // Ok, let's search
+                final ArrayList<SearchResult> searchResult = new ArrayList<SearchResult>(MAX_RESULTS);
+                try {
+                    if (currentSearchRequest.length() > 0) {
+
+                        // Prepare arrays containing what we're looking for
+                        String[] words = currentSearchRequest.toLowerCase().split(" ");
+                        String[] slashedWords = new String[words.length];
+                        for (int i = 0; i < words.length; i++) {
+                            slashedWords[i] = "/" + words[i];
+                        }
+
+                        // Search bookmarks first
+                        XMLNode bookmarkNode = finstruct.getSettings().getTopLevelNode("bookmarks");
+                        for (XMLNode.ConstChildIterator bookmark = bookmarkNode.getChildrenBegin(); bookmark.get() != null; bookmark.next()) {
+                            try {
+                                if (bookmark.get().getName().equals("bookmark")) {
+                                    String name = bookmark.get().getStringAttribute("root").substring("Interfaces".length());
+                                    String nameLower = name.toLowerCase();
+                                    boolean foundAll = true;
+                                    int wordBeginMatches = 0;
+                                    for (String word : words) {
+                                        foundAll &= nameLower.contains(word);
+                                        if (nameLower.contains("/" + word)) {
+                                            wordBeginMatches++;
+                                        }
+                                    }
+
+                                    if (foundAll) {
+                                        if (finstruct.ioInterface.getChildByQualifiedName("Interfaces" + name, '/') != null) {
+                                            addSearchResult(searchResult, new StringBuilder(name), bookmark.get().getXMLDump(false), wordBeginMatches);
+                                        }
+                                    }
+                                }
+                            } catch (Exception e) {
+                                Finstruct.logDomain.log(LogLevel.LL_WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
+                            }
+                        }
+
+                        if (searchResult.size() < MAX_RESULTS) {
+
+                            // ok, now search whole tree
+                            StringBuilder sb = new StringBuilder();
+                            StringBuilder sbLower = new StringBuilder();
+                            ModelNode root = finstruct.getIoInterface().getRoot();
+                            for (int i = 0; i < root.getChildCount(); i++) {
+                                search(searchResult, words, slashedWords, sb, sbLower, root.getChildAt(i));
+                            }
+                        }
+
+                        // Prepare string representation of result
+                        for (SearchResult result : searchResult) {
+
+                            // Determine parts of string to display bold
+                            boolean[] boldMask = new boolean[result.link.length()];
+                            String linkLower = result.link.toLowerCase();
+                            for (String word : words) {
+                                int startIndex = 0;
+                                while (startIndex < linkLower.length()) {
+                                    int index = linkLower.indexOf(word, startIndex);
+                                    if (index < 0) {
+                                        break;
+                                    }
+                                    for (int i = 0; i < word.length(); i++) {
+                                        boldMask[index + i] = true;
+                                    }
+                                    startIndex = index + 1;
+                                }
+                            }
+
+                            // Create Html representation
+                            boolean bold = false; // is text currently printed bold?
+                            StringBuilder html = new StringBuilder("<html>");
+                            for (int i = 1; i < result.link.length(); i++) {
+                                if ((!bold) && boldMask[i]) {
+                                    html.append("<b>");
+                                    bold = true;
+                                } else if (bold && (!boldMask[i])) {
+                                    html.append("</b>");
+                                    bold = false;
+                                }
+                                html.append(result.link.charAt(i));
+                            }
+                            if (bold) {
+                                html.append("</b>");
+                            }
+                            html.append("</html>");
+                            result.stringRepresentation = html.toString();
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    // can happen - due to concurrent modifications to the remote model
+                }
+
+                // Publish result
+                synchronized (this) {
+                    if (currentSearchRequest.equals(searchRequest)) {
+                        SwingUtilities.invokeLater(new Runnable() {
+
+                            @SuppressWarnings( { "serial", "rawtypes", "unchecked" })
+                            @Override
+                            public void run() {
+                                addressList.setModel(new AbstractListModel() {
+
+                                    @Override
+                                    public int getSize() {
+                                        return searchResult.size();
+                                    }
+
+                                    @Override
+                                    public Object getElementAt(int index) {
+                                        return searchResult.get(index);
+                                    }
+                                });
+                                boolean hasFocus = addressField.hasFocus();
+                                if (searchResult.size() == 0) {
+                                    popupMenu.setVisible(false);
+                                } else {
+                                    popupMenu.show(addressField, 2, addressField.getHeight());
+                                    //addressList.setMinimumSize(new Dimension(addressField.getWidth(), 50));
+                                    //addressList.setPreferredSize(new Dimension(addressField.getWidth(), addressList.getPreferredSize().height));
+                                    popupMenu.setPopupSize(addressField.getWidth() - 4, addressList.getPreferredSize().height + 12);
+                                }
+                                if (hasFocus) {
+                                    addressField.requestFocusInWindow();
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        /**
+         * Recursive search through the remote model tree
+         *
+         * @param searchResult List with search results
+         * @param words Words to search for
+         * @param slashedWords Words to search for with slash prepended
+         * @param sb StringBuilder containing concatenated string
+         * @param sbLower Same as 'sb', but in lower case letters
+         * @param node Current node
+         */
+        private void search(ArrayList<SearchResult> searchResult, String[] words, String[] slashedWords, StringBuilder sb, StringBuilder sbLower, ModelNode node) {
+
+            // Append node's name to sb and sbLower
+            int oldLength = sb.length();
+            sb.append('/').append(node.getName());
+            sbLower.setLength(sb.length());
+            for (int i = oldLength; i < sb.length(); i++) {
+                sbLower.setCharAt(i, Character.toLowerCase(sb.charAt(i)));
+            }
+
+            // Check whether this node is a search result
+            boolean foundAll = true;
+            int wordBeginMatches = 0;
+            for (String word : words) {
+                foundAll &= (sbLower.indexOf(word) >= 0);
+            }
+            if (foundAll) {
+                for (String word : slashedWords) {
+                    if (sbLower.indexOf(word) >= 0) {
+                        wordBeginMatches++;
+                    }
+                }
+                addSearchResult(searchResult, sb, null, wordBeginMatches);
+            }
+
+            // Check child nodes
+            for (int i = 0; i < node.getChildCount(); i++) {
+                search(searchResult, words, slashedWords, sb, sbLower, node.getChildAt(i));
+            }
+
+            // Restore StringBuilders to original state
+            sb.setLength(oldLength);
+            sbLower.setLength(oldLength);
+        }
+
+        /**
+         * Add result with the specified properties to result list
+         * (if it is among the top MAX_RESULTS results - otherwise return without modifying list)
+         *
+         * @param searchResult Result list
+         * @param name Qualified name of result
+         * @param xmlDump XML dump (if bookmark)
+         * @param wordBeginMatches Number of matches at word beginning
+         */
+        private void addSearchResult(ArrayList<SearchResult> searchResult, StringBuilder name, String xmlDump, int wordBeginMatches) {
+            //System.out.println(name);
+            SearchResult result = null;
+            if (searchResult.size() < MAX_RESULTS) {
+                result = new SearchResult();
+            } else if (searchResult.get(MAX_RESULTS - 1).compareTo(name.length(), xmlDump != null, wordBeginMatches) >= 0) {
+                return;
+            } else {
+                result = searchResult.remove(MAX_RESULTS - 1); // Reuse last object
+            }
+            result.link = name.toString();
+            result.bookmark = xmlDump;
+            result.wordBeginMatches = wordBeginMatches;
+
+            if (searchResult.size() == 0 || searchResult.get(searchResult.size() - 1).compareTo(result) >= 0) {
+                searchResult.add(result);
+            } else {
+                for (int i = 0; i < searchResult.size(); i++) {
+                    if (searchResult.get(i).compareTo(result) < 0) {
+                        searchResult.add(i, result);
+                        break;
+                    }
+                }
+            }
+        }
     }
 }

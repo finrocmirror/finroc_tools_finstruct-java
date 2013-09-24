@@ -54,6 +54,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
@@ -85,7 +86,7 @@ import org.finroc.tools.finstruct.dialogs.ParameterEditDialog;
 import org.finroc.tools.finstruct.graphviz.Graph;
 import org.finroc.tools.finstruct.util.MouseHandler;
 import org.finroc.tools.finstruct.util.MouseHandlerManager;
-import org.finroc.tools.gui.themes.BrushedMetalBlue;
+import org.finroc.tools.gui.util.gui.IconManager;
 import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.gui.MAction;
@@ -167,6 +168,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     /** Is the currently displayed graph drawn monochrome (due to disconnect)? */
     private boolean graphDrawnMonochrome = false;
 
+    private ImageIcon background = (ImageIcon)IconManager.getInstance().getIcon("brushed-alu-dark-max.png");
+
     static {
         boolean ok = false;
         try {
@@ -188,7 +191,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         lineIncrementY = twoLineTestLabel.getPreferredSize().height - testLabel.getPreferredSize().height;
         //this.setBackground(Color.LIGHT_GRAY);
         //this.setBackground(new BrushedMetalBlue().TITANIUM);
-        this.setBackground(new BrushedMetalBlue().ALU);
+        //this.setBackground(new BrushedMetalBlue().ALU);
+        this.setBackground(background);
+        //this.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         setLayout(null);
         mouseHandlers = new MouseHandlerManager(this);
         addMouseMotionListener(this);
@@ -980,7 +985,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         @Override
         public void mouseReleased(MouseEvent event, MouseHandler over) {
             if (!inConnectionMode()) {
-                toolBar.setSelected(Finstruct.Mode.connect);
+                getFinstruct().treeToolBar.setSelected(Finstruct.Mode.connect);
                 connectionPanel.setRightTree(connectionPanel.getLeftTree());
             }
 
@@ -1388,7 +1393,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
      * @return Is View in connection mode?
      */
     private boolean inConnectionMode() {
-        return toolBar.getSelection(Finstruct.Mode.values()) == Finstruct.Mode.connect;
+        return getFinstruct().treeToolBar.getSelection(Finstruct.Mode.values()) == Finstruct.Mode.connect;
     }
 
     @Override

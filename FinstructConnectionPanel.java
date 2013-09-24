@@ -392,6 +392,6 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         super.updatePopupMenu(treeNode, wrapper);
         miOpenInNewWindow.setEnabled(treeNode != null);
 
-        miShowPartner.setEnabled(wrapper != null && finstruct.getToolBar().isSelected(Finstruct.Mode.connect));
+        miShowPartner.setEnabled(wrapper != null && finstruct.treeToolBar.isSelected(Finstruct.Mode.connect));
     }
 }
