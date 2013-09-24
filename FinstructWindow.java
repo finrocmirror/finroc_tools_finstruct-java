@@ -149,7 +149,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
     /** List component for popup menu above */
     @SuppressWarnings( { "rawtypes", "unchecked" })
-    private final JList addressList = new JList(new String[] {"r", "f", "fwsdfsd"});
+    private final JList addressList = new JList();
 
     /** Any view instances that were created in this window */
     private final HashMap < Class <? extends FinstructView > , FinstructView > viewInstances = new HashMap < Class <? extends FinstructView > , FinstructView > ();

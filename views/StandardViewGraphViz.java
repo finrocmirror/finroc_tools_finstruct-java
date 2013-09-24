@@ -54,7 +54,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
@@ -87,7 +86,6 @@ import org.finroc.tools.finstruct.dialogs.ParameterEditDialog;
 import org.finroc.tools.finstruct.graphviz.Graph;
 import org.finroc.tools.finstruct.util.MouseHandler;
 import org.finroc.tools.finstruct.util.MouseHandlerManager;
-import org.finroc.tools.gui.util.gui.IconManager;
 import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.gui.MAction;
@@ -162,16 +160,13 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     private JPopupMenu popupMenu;
 
     /** PopUp-Menu Items */
-    private JMenuItem miCreateModule, miSaveChanges, miEditModule, miDeleteModule, miCreateInterfaces, miSaveAllFiles, miEditInterfaces;
+    private JMenuItem miCreateModule, miSaveChanges, miEditModule, miDeleteModule, miCreateInterfaces, miSaveAllFiles, miEditInterfaces, miHide;
 
     /** Framework element that right-click-menu was opened upon */
     private ModelNode rightClickedOn;
 
     /** Is the currently displayed graph drawn monochrome (due to disconnect)? */
     private boolean graphDrawnMonochrome = false;
-
-    /** Background image */
-    private ImageIcon background = (ImageIcon)IconManager.getInstance().getIcon("brushed-alu-dark-max.png");
 
     /** Reference to toggle buttons in toolbar */
     private JToggleButton antialiasButton, linebreakButton;
@@ -195,10 +190,6 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         testLabel.setFont(FONT);
         twoLineTestLabel.setFont(FONT);
         lineIncrementY = twoLineTestLabel.getPreferredSize().height - testLabel.getPreferredSize().height;
-        //this.setBackground(Color.LIGHT_GRAY);
-        //this.setBackground(new BrushedMetalBlue().TITANIUM);
-        //this.setBackground(new BrushedMetalBlue().ALU);
-        this.setBackground(background);
         //this.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         setLayout(null);
         mouseHandlers = new MouseHandlerManager(this);
@@ -215,6 +206,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         miSaveAllFiles = createMenuEntry("Save All Files");
         //popupMenu.addSeparator();
         miCreateInterfaces = createMenuEntry("Create Interfaces... (deprecated)");
+        miHide = createMenuEntry("Hide Element");
     }
 
     /**
@@ -242,6 +234,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
     @Override
     protected synchronized void rootElementChanged(XMLNode viewConfiguration) {
+        super.rootElementChanged(viewConfiguration);
         expandedGroups.clear();
         if (viewConfiguration != null) {
             for (XMLNode.ConstChildIterator child = viewConfiguration.getChildrenBegin(); child.get() != null; child.next()) {
@@ -1220,6 +1213,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
     @Override
     public void initMenuAndToolBar(JMenuBar menuBar, MToolBar toolBar) {
+        super.initMenuAndToolBar(menuBar, toolBar);
 
         // tool bar
         this.toolBar = toolBar;
@@ -1323,8 +1317,16 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 new ParameterEditDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, true, true);
                 refreshViewAfter(500);
             }
+        } else if (ae.getSource() == miHide) {
+            String link = rightClickedOn.getQualifiedName('/');
+            if (!hiddenElements.contains(link)) {
+                hiddenElements.add(link);
+                relayout();
+            }
         } else if (ae.getSource() instanceof Timer) {
             relayout();
+        } else {
+            super.actionPerformed(ae);
         }
     }
 
@@ -1470,6 +1472,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 miSaveChanges.setText("Save");
                 miSaveAllFiles.setEnabled(false);
                 miSaveAllFiles.setText("Save All Files");
+                miHide.setEnabled(rightClickedOn != getRootElement());
                 RemoteRuntime rr = RemoteRuntime.find(getRootElement());
                 if (rr != null) {
                     if (rightClickedOn instanceof RemoteFrameworkElement) {
@@ -1536,6 +1539,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
     @Override
     public void storeViewConfiguration(XMLNode node) {
+        super.storeViewConfiguration(node);
         if (expandedGroups.size() > 0) {
             StdStringList serializedExpandedGroups = new StdStringList();
             for (ModelNode expandedGroup : expandedGroups) {

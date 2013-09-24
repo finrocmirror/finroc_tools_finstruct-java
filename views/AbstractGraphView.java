@@ -22,13 +22,22 @@
 package org.finroc.tools.finstruct.views;
 
 import java.awt.Color;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
+import javax.swing.ImageIcon;
 import javax.swing.JComponent;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 
 import org.finroc.core.Annotatable;
 import org.finroc.core.FrameworkElementFlags;
@@ -38,8 +47,15 @@ import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
+import org.finroc.plugins.data_types.StdStringList;
+import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.FinstructConnectionPanel;
 import org.finroc.tools.finstruct.FinstructView;
+import org.finroc.tools.gui.util.gui.IconManager;
+import org.finroc.tools.gui.util.gui.MToolBar;
+import org.finroc.tools.gui.util.propertyeditor.gui.PropertiesDialog;
+import org.rrlib.finroc_core_utils.log.LogLevel;
+import org.rrlib.finroc_core_utils.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -49,13 +65,141 @@ import org.finroc.tools.finstruct.FinstructView;
  * Contains various utility functions.
  */
 @SuppressWarnings("rawtypes")
-public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E extends AbstractGraphView.Edge> extends FinstructView {
+public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E extends AbstractGraphView.Edge> extends FinstructView implements ActionListener, MenuListener {
 
     /** UID */
     private static final long serialVersionUID = 1516347489852848159L;
 
     /** Reference to connectionPanel */
     protected FinstructConnectionPanel connectionPanel;
+
+    /** List of hidden elements */
+    protected ArrayList<String> hiddenElements = new ArrayList<String>();
+
+    /** Current options for drawing graph */
+    protected GraphAppearance graphAppearance = new GraphAppearance();
+
+    /** Graph menu */
+    protected JMenu graphMenu = new JMenu("Graph");
+
+    /** Graph menu items */
+    private JMenuItem miGraphAppearance, miShowAllHidden;
+
+    /** Background image */
+    private ImageIcon background = (ImageIcon)IconManager.getInstance().getIcon("brushed-alu-dark-max.png");
+
+    /** Contains options for drawing graph */
+    public class GraphAppearance {
+        boolean metallicBackgroundImage = true;
+        Color background = Color.white, modules = Color.blue, groups = Color.blue.darker().darker(),
+              sensorData = Color.yellow, controllerData = Color.red, otherEdges = Color.black;
+    }
+
+    public AbstractGraphView() {
+        setBackground(background);
+    }
+
+    @Override
+    public void initMenuAndToolBar(JMenuBar menuBar, MToolBar toolBar) {
+        graphMenu.setMnemonic(KeyEvent.VK_G);
+        graphMenu.removeAll();
+        graphMenu.addMenuListener(this);
+
+        menuBar.add(graphMenu);
+    }
+
+    @Override
+    protected void rootElementChanged(XMLNode viewConfiguration) {
+        if (viewConfiguration != null) {
+            hiddenElements.clear();
+            for (XMLNode.ConstChildIterator child = viewConfiguration.getChildrenBegin(); child.get() != null; child.next()) {
+                if (child.get().getName().equals("hidden")) {
+                    StdStringList stringList = new StdStringList();
+                    try {
+                        stringList.deserialize(child.get());
+                        for (int i = 0; i < stringList.stringCount(); i++) {
+                            hiddenElements.add(stringList.getString(i).toString());
+                        }
+                        break;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void storeViewConfiguration(XMLNode node) {
+        if (hiddenElements.size() > 0) {
+            StdStringList serializedHiddenElements = new StdStringList();
+            for (String hiddenElement : hiddenElements) {
+                serializedHiddenElements.add(hiddenElement);
+            }
+            try {
+                serializedHiddenElements.serialize(node.addChildNode("hidden"));
+            } catch (Exception e) {
+                Finstruct.logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+            }
+        }
+    }
+
+    /**
+     * Convenient method the create menu entries and add this Window as listener
+     *
+     * @param string Text of menu entry
+     * @param menuFile Menu to add menu entry to
+     * @return Create menu entry
+     */
+    protected JMenuItem createMenuEntry(String string, JMenu menuFile, int mnemonic) {
+        JMenuItem item = new JMenuItem(string, mnemonic);
+        item.addActionListener(this);
+        menuFile.add(item);
+        return item;
+    }
+
+    @Override
+    public void menuSelected(MenuEvent e) {
+        if (e.getSource() == graphMenu) {
+            graphMenu.removeAll();
+            miGraphAppearance = createMenuEntry("Appearance...", graphMenu, KeyEvent.VK_A);
+            if (hiddenElements.size() > 0) {
+                miShowAllHidden = createMenuEntry("Show all hidden elements", graphMenu, KeyEvent.VK_S);
+                graphMenu.addSeparator();
+                for (String hiddenElement : hiddenElements) {
+                    createMenuEntry("Show " + hiddenElement, graphMenu, 0);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void menuDeselected(MenuEvent e) {
+    }
+
+    @Override
+    public void menuCanceled(MenuEvent e) {
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent ae) {
+        if (ae.getSource() == miGraphAppearance) {
+            new PropertiesDialog(getFinstructWindow(), graphAppearance, null, true);
+            if (graphAppearance.metallicBackgroundImage) {
+                setBackground(background);
+            } else {
+                setBackground((ImageIcon)null);
+                setBackground(graphAppearance.background);
+            }
+            repaint();
+        } else if (ae.getSource() == miShowAllHidden) {
+            hiddenElements.clear();
+            refresh();
+        } else if (ae.getSource() instanceof JMenuItem && ((JMenuItem)ae.getSource()).getText().startsWith("Show ")) {
+            hiddenElements.remove(((JMenuItem)ae.getSource()).getText().substring("Show ".length()));
+            refresh();
+        }
+    }
 
     /**
      * @param fe Framework Element
@@ -191,6 +335,15 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
 
         // add vertices
         for (int i = 0; i < root.getChildCount(); i++) {
+
+            // do not add hidden elements
+            if (hiddenElements.size() > 0) {
+                String qualifiedName = root.getChildAt(i).getQualifiedName('/');
+                if (hiddenElements.contains(qualifiedName)) {
+                    continue;
+                }
+            }
+
             V vertex = createVertexInstance((ModelNode)root.getChildAt(i));
             if (vertex != null) {
                 result.add(vertex);
@@ -276,11 +429,11 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      */
     public Color getVertexColor(Vertex v) {
         if (v.specialNode == SpecialNode.SensorInput || v.specialNode == SpecialNode.SensorOutput) {
-            return Color.yellow;
+            return graphAppearance.sensorData;
         } else if (v.specialNode == SpecialNode.ControllerInput || v.specialNode == SpecialNode.ControllerOutput) {
-            return Color.red;
+            return graphAppearance.controllerData;
         }
-        return v.isGroup() ? DARK_BLUE : Color.blue; // new Color(50, 50, 210);
+        return v.isGroup() ? graphAppearance.groups : graphAppearance.modules; // new Color(50, 50, 210);
     }
 
     /**
@@ -289,12 +442,12 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      */
     public Color getEdgeColor(Edge e) {
         if (e.isSensorData()) {
-            return Color.YELLOW;
+            return graphAppearance.sensorData;
         }
         if (e.isControllerData()) {
-            return Color.RED;
+            return graphAppearance.controllerData;
         }
-        return Color.BLACK;
+        return graphAppearance.otherEdges;
     }
 
     /**
@@ -401,9 +554,6 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      */
     public enum SpecialNode { SensorInput, SensorOutput, ControllerInput, ControllerOutput }
 
-    /** Dark blue color */
-    public final static Color DARK_BLUE = Color.BLUE.darker().darker();
-
     /**
      * Vertex for every Finroc FrameworkElement that is currently displayed in graph
      */
@@ -486,7 +636,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
          * @return Color for text
          */
         public Color getTextColor() {
-            return getColor() == Color.yellow || getColor() == Color.red ? Color.black : Color.white;
+            return getColor().getRed() > 200 ? Color.black : Color.white;
         }
 
         /**
