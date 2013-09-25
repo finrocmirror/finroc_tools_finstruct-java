@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.TreeMap;
 
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
@@ -394,7 +395,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      */
     @SuppressWarnings("unchecked")
     public Collection<E> getEdges(final ModelNode root, Collection<V> allVertices) {
-        final HashMap<E, E> result = new HashMap<E, E>();
+        final TreeMap<E, E> result = new TreeMap<E, E>();
         final HashMap<ModelNode, V> lookup = new HashMap<ModelNode, V>();
         for (V v : allVertices) {
             lookup.put(v.getModelElement(), v);
@@ -461,7 +462,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
     /**
      * Edge in View
      */
-    public class Edge extends Annotatable implements Serializable { /*, Comparable<Edge>*/
+    public class Edge extends Annotatable implements Serializable , Comparable<Edge> {
 
         /** UID */
         private static final long serialVersionUID = 7311395657703973551L;
@@ -529,24 +530,24 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             return getEdgeColor(this);
         }
 
-//        @Override
-//        public int compareTo(Edge o) {
-//            int sh = source.frameworkElement.getRemoteHandle();
-//            int dh = destination.frameworkElement.getRemoteHandle();
-//            int osh = o.source.frameworkElement.getRemoteHandle();
-//            int dsh = o.destination.frameworkElement.getRemoteHandle();
-//            if (sh < osh) {
-//                return -1;
-//            } else if (sh > osh) {
-//                return 1;
-//            }
-//            if (dh < dsh) {
-//                return -1;
-//            } else if (dh > dsh) {
-//                return 1;
-//            }
-//            return 0;
-//        }
+        @Override
+        public int compareTo(Edge o) {
+            int sh = source.frameworkElement != null ? source.frameworkElement.getRemoteHandle() : 0;
+            int dh = destination.frameworkElement != null ? destination.frameworkElement.getRemoteHandle() : 0;
+            int osh = o.source.frameworkElement != null ? o.source.frameworkElement.getRemoteHandle() : 0;
+            int dsh = o.destination.frameworkElement != null ? o.destination.frameworkElement.getRemoteHandle() : 0;
+            if (sh < osh) {
+                return -1;
+            } else if (sh > osh) {
+                return 1;
+            }
+            if (dh < dsh) {
+                return -1;
+            } else if (dh > dsh) {
+                return 1;
+            }
+            return 0;
+        }
     }
 
     /**
