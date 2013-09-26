@@ -48,6 +48,7 @@ import org.finroc.plugins.data_types.ContainsStrings;
 import org.finroc.plugins.data_types.PaintablePortData;
 import org.rrlib.finroc_core_utils.rtti.DataTypeBase;
 import org.rrlib.finroc_core_utils.serialization.EnumValue;
+import org.rrlib.finroc_core_utils.serialization.PortDataListImpl;
 import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
 import org.rrlib.finroc_core_utils.serialization.Serialization;
 import org.rrlib.finroc_core_utils.serialization.StringInputStream;
@@ -108,6 +109,9 @@ public class FinrocComponentFactory implements ComponentFactory {
         } else if (CoreBoolean.class.isAssignableFrom(type)) {
             wpec = new BooleanEditor();
             acc = new CoreBooleanAdapter((PropertyAccessor<CoreBoolean>)acc);
+        } else if (type.equals(PortDataListImpl.class)) {
+            wpec = new CoreSerializableDefaultEditor(type);
+            acc = new PortDataListAdapter((PropertyAccessor<PortDataListImpl>)acc);
         } else if (RRLibSerializable.class.isAssignableFrom(type) && (!ContainsStrings.class.isAssignableFrom(type))) {
             DataTypeBase dt = DataTypeBase.findType(acc.getType());
             wpec = new CoreSerializableDefaultEditor(type);
@@ -162,6 +166,51 @@ public class FinrocComponentFactory implements ComponentFactory {
             } else {
                 return Serialization.serialize(cs);
             }
+        }
+    }
+
+    /**
+     * Allows using CoreSerializables in TextEditor
+     */
+    @SuppressWarnings("rawtypes")
+    public static class PortDataListAdapter extends PropertyAccessorAdapter<PortDataListImpl, String> {
+
+        /** Data type of list elements */
+        private DataTypeBase elementType;
+
+        public PortDataListAdapter(PropertyAccessor<PortDataListImpl> wrapped) {
+            super(wrapped, String.class);
+        }
+
+        @Override
+        public void set(String s) throws Exception {
+            if (elementType == null) {
+                throw new Exception("Unknown element type");
+            }
+            PortDataListImpl list = new PortDataListImpl(elementType);
+            String[] strings = s.trim().split("\n");
+            list.resize(strings.length);
+            for (int i = 0; i < strings.length; i++) {
+                list.get(i).deserialize(new StringInputStream(strings[i]));
+            }
+            wrapped.set(list);
+        }
+
+        @Override
+        public String get() throws Exception {
+            PortDataListImpl list = wrapped.get();
+            if (list == null) {
+                return "";
+            }
+            elementType = list.getElementType();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < list.size(); i++) {
+                if (i > 0) {
+                    sb.append('\n');
+                }
+                sb.append(Serialization.serialize(list.get(i)));
+            }
+            return sb.toString();
         }
     }
 

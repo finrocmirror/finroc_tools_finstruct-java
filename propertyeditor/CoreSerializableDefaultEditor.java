@@ -23,6 +23,7 @@ package org.finroc.tools.finstruct.propertyeditor;
 
 import org.finroc.core.portdatabase.MaxStringSerializationLength;
 import org.finroc.tools.gui.util.propertyeditor.StringEditor;
+import org.rrlib.finroc_core_utils.serialization.PortDataListImpl;
 
 /**
  * @author Max Reichardt
@@ -50,6 +51,9 @@ public class CoreSerializableDefaultEditor extends StringEditor {
      * @return String length parameter (Integer.MIN_VALUE if no parameter could be found)
      */
     private static int scanForStringLength(Class<?> c, boolean initialCall) {
+        if (PortDataListImpl.class.isAssignableFrom(c)) {
+            return -1;
+        }
         MaxStringSerializationLength len = c.getAnnotation(MaxStringSerializationLength.class);
         if (len != null) {
             return len.value();
