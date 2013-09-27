@@ -171,6 +171,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     /** Reference to toggle buttons in toolbar */
     private JToggleButton antialiasButton, linebreakButton;
 
+    /** The maximum number of lines displayed in a vertex */
+    private static final int MAX_VERTEX_LABEL_LENGTH = 2000;
+
     static {
         boolean ok = false;
         try {
@@ -563,68 +566,149 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             gvVertex.setAttributeQuoted("description", fe.getName());
         }
 
+        /**
+         * @param text Text
+         * @return Vertex width (in pixel) for a vertex with the specified text
+         */
+        private int getVertexWidth(String text) {
+            testLabel.setText(text);
+            return testLabel.getPreferredSize().width + 5;
+        }
+
+        /**
+         * @param lineCount Number of lines the vertex text has
+         * @return Vertex height (in pixel) for a vertex with the specified number of lines
+         */
+        private int getVertexHeight(int lineCount) {
+            return labelBaseHeight + ((lineCount - 1) * lineIncrementY) + 6;
+        }
+
         public void reset() {
             super.reset();
             gvVertex = new org.finroc.tools.finstruct.graphviz.Vertex();
-
-            // find optimal line breaks
             boolean lineBreaks = toolBar.isSelected(DiverseSwitches.lineBreaks);
-            String[] words = getModelElement().getName().split("\\s");
-            assert(words.length < 20);
-            double bestScore = Integer.MAX_VALUE;
-            ArrayList<String> bestText = new ArrayList<String>();
-            Dimension bestDim = new Dimension(1000, 1000);
-            StringBuilder sb = new StringBuilder();
-            ArrayList<String> lines = new ArrayList<String>(30);
-            for (int i = 0; i < Math.pow(2, words.length - 1); i++) { // use i as bitmask for line breaks
-
-                // reset temp vars
-                int i2 = i;
-                double width = 0;
-                double height = labelBaseHeight;
-                if (sb.length() > 0) {
-                    sb.delete(0, sb.length());
-                }
-                lines.clear();
-
-                // create string
-                for (int j = 0; j < (words.length - 1); j++) {
-                    boolean lineChange = ((i2 & 1) == 1);
-                    i2 >>>= 1;
-                    sb.append(words[j]);
-                    if (lineChange) {
-                        testLabel.setText(sb.toString());
-                        lines.add(sb.toString());
-                        width = Math.max(width, testLabel.getPreferredSize().getWidth());
-                        sb.delete(0, sb.length());
-                        height += lineIncrementY;
-                    } else {
-                        sb.append(" ");
-                    }
-                }
-                sb.append(words[words.length - 1]);
-                testLabel.setText(sb.toString());
-                lines.add(sb.toString());
-                width = Math.max(width, testLabel.getPreferredSize().getWidth());
-
-                // compare to best combination
-                //double score = Math.pow(w, 1.1) + (h * 1.7);
-                double score = width + (height * 1.7);
-                if (score < bestScore) {
-                    bestDim.width = (int)width + 5;
-                    bestDim.height = (int)height + 6;
-                    bestText.clear();
-                    bestText.addAll(lines);
-                    bestScore = score;
-                }
-
-                if (!lineBreaks) {
-                    break;
-                }
+            String elementName = getModelElement().getName();
+            if (elementName.length() > MAX_VERTEX_LABEL_LENGTH) {
+                elementName = elementName.substring(0, MAX_VERTEX_LABEL_LENGTH) + " ...";
             }
 
-            gvVertex.setSize(bestDim.width, bestDim.height);
-            label = bestText;
+            if (!lineBreaks) {
+                label.clear();
+                label.add(elementName);
+                gvVertex.setSize(getVertexWidth(elementName), getVertexHeight(1));
+            } else {
+                String[] words = elementName.split("\\s");
+                double bestScore = Integer.MAX_VALUE;
+                Dimension bestDim = new Dimension(1000, 1000);
+                StringBuilder sb = new StringBuilder();
+                ArrayList<String> lines = new ArrayList<String>(30);
+                ArrayList<String> bestText = new ArrayList<String>();
+
+                // find optimal line breaks
+                if (words.length <= 10) {
+
+                    // try every combination of line breaks brute force
+                    for (int i = 0; i < Math.pow(2, words.length - 1); i++) { // use i as bitmask for line breaks
+
+                        // reset temp vars
+                        int i2 = i;
+                        int width = 0;
+                        sb.setLength(0);
+                        lines.clear();
+
+                        // create string
+                        for (int j = 0; j < (words.length - 1); j++) {
+                            boolean lineChange = ((i2 & 1) == 1);
+                            i2 >>>= 1;
+                            sb.append(words[j]);
+                            if (lineChange) {
+                                width = Math.max(width, getVertexWidth(sb.toString()));
+                                lines.add(sb.toString());
+                                sb.setLength(0);
+                            } else {
+                                sb.append(" ");
+                            }
+                        }
+                        sb.append(words[words.length - 1]);
+                        width = Math.max(width, getVertexWidth(sb.toString()));
+                        lines.add(sb.toString());
+
+                        // compare to best combination
+                        //double score = Math.pow(w, 1.1) + (h * 1.7);
+                        int height = getVertexHeight(lines.size());
+                        double score = width + (height * 1.7);
+                        if (score < bestScore) {
+                            bestDim.width = width;
+                            bestDim.height = height;
+                            bestText.clear();
+                            bestText.addAll(lines);
+                            bestScore = score;
+                        }
+                    }
+
+                } else {
+
+                    // Determine width of all words
+                    int[] wordWidth = new int[words.length];
+                    int spaceLength = getVertexWidth(" X") - getVertexWidth("X");
+                    int emptyLength = getVertexWidth("");
+                    int minWidth = emptyLength;
+                    for (int i = 0; i < words.length; i++) {
+                        wordWidth[i] = getVertexWidth(words[i]) - emptyLength;
+                        minWidth = Math.max(minWidth, wordWidth[i]); // try every width from 'longest word width' to 'Math.max(1000, longest word width + 200)'
+                    }
+                    int maxWidth = Math.max(1000, minWidth + 200);
+
+                    //minWidth +=
+
+                    for (int width = minWidth; width <= maxWidth; width++) {
+                        sb.setLength(0);
+                        lines.clear();
+                        int lineLength = emptyLength;
+
+                        // create string
+                        for (int i = 0; i < words.length; i++) {
+                            if (sb.length() == 0) {
+                                sb.append(words[i]);
+                                lineLength += wordWidth[i];
+                            } else {
+                                if (lineLength + spaceLength + wordWidth[i] < width) {
+                                    sb.append(" ").append(words[i]);
+                                    lineLength = lineLength + spaceLength + wordWidth[i];
+                                } else {
+                                    lines.add(sb.toString());
+                                    sb.setLength(0);
+                                    /*if (lines.size() == MAX_LINES_PER_VERTEX) {
+                                        lines.add("...");
+                                        break;
+                                    }*/
+                                    sb.append(words[i]);
+                                    lineLength = wordWidth[i];
+                                }
+                            }
+                        }
+                        if (sb.length() != 0) {
+                            lines.add(sb.toString());
+                        }
+
+                        // compare to best combination
+                        //double score = Math.pow(w, 1.1) + (h * 1.7);
+                        int height = getVertexHeight(lines.size());
+                        double score = width + (height * 1.7);
+                        if (score < bestScore) {
+                            bestDim.width = width + emptyLength;
+                            bestDim.height = height;
+                            bestText.clear();
+                            bestText.addAll(lines);
+                            bestScore = score;
+                        }
+                    }
+                }
+
+                gvVertex.setSize(bestDim.width, bestDim.height);
+                label = bestText;
+            }
+
             expandIcon = null;
         }
 
