@@ -28,13 +28,13 @@ import java.util.ArrayList;
 
 import javax.swing.SwingUtilities;
 
-import org.finroc.core.datatype.CoreNumber;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
 import org.finroc.core.port.std.PortBase;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
+import org.finroc.plugins.data_types.BehaviorStatus;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 
 /**
@@ -47,19 +47,15 @@ public class Ib2cView extends StandardViewGraphViz {
     /** UID */
     private static final long serialVersionUID = -8861192928055307809L;
 
-    /** Names of behaviour ports to display in behaviour vertex */
-    private final static String[] SIGNALS = new String[] {
-        "Activation",
-        "Activity",
-        "Target Rating",
-    };
+    /** Names of behaviour port with behaviour status */
+    private final static String STATUS_PORT_NAME = "Status";
 
     /** List of currently active/used port accessors to retrieve behaviour data */
-    private final ArrayList<ConnectingPortAccessor<CoreNumber>> ports4BehaviourAccess = new ArrayList<ConnectingPortAccessor<CoreNumber>>();
+    private final ArrayList<ConnectingPortAccessor<BehaviorStatus>> ports4BehaviourAccess = new ArrayList<ConnectingPortAccessor<BehaviorStatus>>();
 
     public void clear() {
         // Delete old ports
-        for (ConnectingPortAccessor<CoreNumber> cpa : ports4BehaviourAccess) {
+        for (ConnectingPortAccessor<BehaviorStatus> cpa : ports4BehaviourAccess) {
             cpa.delete();
         }
         ports4BehaviourAccess.clear();
@@ -134,8 +130,7 @@ public class Ib2cView extends StandardViewGraphViz {
     public class BehaviourVertex extends Vertex implements PortListener, Runnable {
 
         /** ports used to get behaviour data via push */
-        @SuppressWarnings("unchecked")
-        private ConnectingPortAccessor<CoreNumber>[] ports = new ConnectingPortAccessor[SIGNALS.length];
+        private ConnectingPortAccessor<BehaviorStatus> port;
 
         public BehaviourVertex(RemoteFrameworkElement fe) {
             super(fe);
@@ -146,16 +141,13 @@ public class Ib2cView extends StandardViewGraphViz {
                 portGroup = (RemoteFrameworkElement)fe.getChildByName("Sensor Output");
             }
             if (portGroup != null) {
-                for (int i = 0; i < SIGNALS.length; i++) {
-                    RemotePort ap = (RemotePort)portGroup.getChildByName(SIGNALS[i]);
-                    if (ap == null) {
-                        continue;
-                    }
-                    ports[i] = new ConnectingPortAccessor<CoreNumber>(ap, "");
-                    ports4BehaviourAccess.add(ports[i]);
-                    ((PortBase)ports[i].getPort()).addPortListenerRaw(this);
-                    ports[i].init();
-                    ports[i].setAutoUpdate(true);
+                RemotePort ap = (RemotePort)portGroup.getChildByName(STATUS_PORT_NAME);
+                if (ap != null) {
+                    port = new ConnectingPortAccessor<BehaviorStatus>(ap, "");
+                    ports4BehaviourAccess.add(port);
+                    ((PortBase)port.getPort()).addPortListenerRaw(this);
+                    port.init();
+                    port.setAutoUpdate(true);
                 }
             }
         }
@@ -173,12 +165,14 @@ public class Ib2cView extends StandardViewGraphViz {
          * @param g2d Graphics object
          */
         public void paint(Graphics2D g2d) {
-            double v1, v2, v3;
+            BehaviorStatus status = null;
             try {
-                v1 = ports[0] == null ? 0 : ports[0].get().doubleValue();
-                v2 = ports[1] == null ? 0 : ports[1].get().doubleValue();
-                v3 = ports[2] == null ? 0 : ports[2].get().doubleValue();
+                status = port.get();
             } catch (Exception e) {
+                super.paint(g2d);
+                return;
+            }
+            if (status == null || status.moduleHandle == 0) {
                 super.paint(g2d);
                 return;
             }
@@ -203,11 +197,11 @@ public class Ib2cView extends StandardViewGraphViz {
 
             // draw bars
             g2d.setColor(bar1);
-            g2d.fillRect(rect.x, rect.y + 1, getBarWidth(v1), 3);
+            g2d.fillRect(rect.x, rect.y + 1, getBarWidth(status.activation), 3);
             g2d.setColor(bar2);
-            g2d.fillRect(rect.x, rect.y + 4, getBarWidth(v2), rect.height - 7);
+            g2d.fillRect(rect.x, rect.y + 4, getBarWidth(status.activity), rect.height - 7);
             g2d.setColor(bar3);
-            g2d.fillRect(rect.x, (int)(rect.getMaxY() - 3), getBarWidth(v3), 3);
+            g2d.fillRect(rect.x, (int)(rect.getMaxY() - 3), getBarWidth(status.targetRating), 3);
 
             g2d.setColor(getTextColor());
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);

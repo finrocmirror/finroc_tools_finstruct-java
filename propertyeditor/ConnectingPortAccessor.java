@@ -24,7 +24,6 @@ package org.finroc.tools.finstruct.propertyeditor;
 import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortCreationInfo;
-import org.finroc.core.port.cc.CCPortBase;
 import org.finroc.core.port.std.PortBase;
 import org.finroc.core.remote.RemotePort;
 import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
@@ -41,7 +40,8 @@ public class ConnectingPortAccessor<T extends RRLibSerializable> extends PortAcc
     protected final AbstractPort partner;
 
     public ConnectingPortAccessor(RemotePort partner, String rootName) {
-        super((partner.getPort() instanceof PortBase) ? new PortBase(createPci(partner.getPort())) : new CCPortBase(createPci(partner.getPort())), "");
+        //super((partner.getPort() instanceof PortBase) ? new PortBase(createPci(partner.getPort())) : new CCPortBase(createPci(partner.getPort())), "");
+        super(new PortBase(createPci(partner.getPort()))); // we only have standard ports in finstruct
         this.partner = partner.getPort();
         name = partner.getQualifiedName('/').substring(rootName.length() + 1);
     }
