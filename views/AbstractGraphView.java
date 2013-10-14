@@ -140,7 +140,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             try {
                 serializedHiddenElements.serialize(node.addChildNode("hidden"));
             } catch (Exception e) {
-                Finstruct.logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+                Finstruct.logDomain.log(LogLevel.ERROR, getLogDescription(), e);
             }
         }
     }

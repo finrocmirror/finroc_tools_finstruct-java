@@ -195,7 +195,7 @@ public class PortView extends FinstructView implements ActionListener {
                 }
             }
         } catch (Exception e) {
-            PropertiesPanel.logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+            PropertiesPanel.logDomain.log(LogLevel.ERROR, getLogDescription(), e);
             JOptionPane.showMessageDialog(null, e.getClass().getName() + "\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -257,7 +257,7 @@ public class PortView extends FinstructView implements ActionListener {
                 try {
                     component.updateValue();
                 } catch (Exception e) {
-                    logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+                    logDomain.log(LogLevel.ERROR, getLogDescription(), e);
                 }
             }
             if (initialValueRetrieve) {

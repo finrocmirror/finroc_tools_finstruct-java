@@ -35,7 +35,7 @@ import org.rrlib.finroc_core_utils.serialization.Serialization;
 /**
  * @author Max Reichardt
  *
- * Accesor for StaticParameters
+ * Accessor for StaticParameters
  */
 @SuppressWarnings("rawtypes")
 public class StaticParameterAccessor implements PropertyAccessor {

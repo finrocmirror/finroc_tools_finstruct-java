@@ -53,7 +53,7 @@ public class EnumEditor extends PropertyEditComponent<EnumValue> {
             jcmb = new JComboBox();
             valueUpdated(getCurWidgetValue());
         } catch (Exception e) {
-            FinrocGUI.logDomain.log(LogLevel.LL_ERROR, toString(), e);
+            FinrocGUI.logDomain.log(LogLevel.ERROR, toString(), e);
         }
         jcmb.setPreferredSize(new Dimension(TEXTFIELDWIDTH, jcmb.getPreferredSize().height));
         add(jcmb, BorderLayout.WEST);
@@ -66,7 +66,7 @@ public class EnumEditor extends PropertyEditComponent<EnumValue> {
             jcmb = new JComboBox();
             valueUpdated(object);
         } catch (Exception e) {
-            FinrocGUI.logDomain.log(LogLevel.LL_ERROR, toString(), e);
+            FinrocGUI.logDomain.log(LogLevel.ERROR, toString(), e);
         }
         add(jcmb);
         jcmb.setEnabled(isModifiable());

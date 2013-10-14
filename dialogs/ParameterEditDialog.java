@@ -152,7 +152,7 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
                 try {
                     wpec.applyChanges();
                 } catch (Exception e1) {
-                    Finstruct.logDomain.log(LogLevel.LL_ERROR, "ParameterEditDialog", e1);
+                    Finstruct.logDomain.log(LogLevel.ERROR, "ParameterEditDialog", e1);
                 }
             }
             if (element != null) {

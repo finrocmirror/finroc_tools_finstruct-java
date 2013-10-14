@@ -136,7 +136,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 }
             }
         }
-        Finstruct.logDomain.log(LogLevel.LL_DEBUG_WARNING, getLogDescription(), "Cannot connect ports: " + port  + " " + port2);
+        Finstruct.logDomain.log(LogLevel.DEBUG_WARNING, getLogDescription(), "Cannot connect ports: " + port  + " " + port2);
     }
 
     @Override
@@ -234,7 +234,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 }
             }
         }
-        Finstruct.logDomain.log(LogLevel.LL_DEBUG_WARNING, getLogDescription(), "Cannot disconnect port: " + port);
+        Finstruct.logDomain.log(LogLevel.DEBUG_WARNING, getLogDescription(), "Cannot disconnect port: " + port);
     }
 
     @Override

@@ -51,7 +51,7 @@ public class FinstructSettings {
                         document = new XMLDocument(SETTINGSFILE, false);
                         return document;
                     } catch (Exception e) {
-                        Finstruct.logDomain.log(LogLevel.LL_WARNING, "FinstructSettings", "Could not parse settings file. Creating new one. ", e);
+                        Finstruct.logDomain.log(LogLevel.WARNING, "FinstructSettings", "Could not parse settings file. Creating new one. ", e);
                         document = new XMLDocument();
                         document.addRootNode("finstruct-settings");
                     }
@@ -91,7 +91,7 @@ public class FinstructSettings {
             try {
                 document.writeToFile(SETTINGSFILE, true);
             } catch (Exception e) {
-                Finstruct.logDomain.log(LogLevel.LL_ERROR, "FinstructSettings", "Could not save settings file. Reason: ", e);
+                Finstruct.logDomain.log(LogLevel.ERROR, "FinstructSettings", "Could not save settings file. Reason: ", e);
             }
         }
     }

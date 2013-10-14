@@ -63,7 +63,7 @@ public class ConfigFileModel extends DefaultTreeModel {
                 RemoteRuntime.find(root).getAdminInterface().getParameterInfo((RemoteFrameworkElement)root);
                 initFromFile(findConfigFile((RemoteFrameworkElement)root));
             } catch (Exception e) {
-                Finstruct.logDomain.log(LogLevel.LL_ERROR, "ConfigFileModel", e);
+                Finstruct.logDomain.log(LogLevel.ERROR, "ConfigFileModel", e);
             }
         }
     }

@@ -367,7 +367,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                             }
                         }
                     } catch (Exception e) {
-                        Finstruct.logDomain.log(LogLevel.LL_WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
+                        Finstruct.logDomain.log(LogLevel.WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
                     }
                 }
 
@@ -419,7 +419,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                                                            viewClass, bookmark.get(), enabled));
                     }
                 } catch (Exception e) {
-                    Finstruct.logDomain.log(LogLevel.LL_WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
+                    Finstruct.logDomain.log(LogLevel.WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
                 }
             }
 
@@ -973,7 +973,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                                     }
                                 }
                             } catch (Exception e) {
-                                Finstruct.logDomain.log(LogLevel.LL_WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
+                                Finstruct.logDomain.log(LogLevel.WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
                             }
                         }
 

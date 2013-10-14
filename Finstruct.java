@@ -362,9 +362,9 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
 
     public static void showErrorMessage(final Exception e, final boolean printStackTrace) {
         if (printStackTrace) {
-            logDomain.log(LogLevel.LL_ERROR, "Finstruct", e);
+            logDomain.log(LogLevel.ERROR, "Finstruct", e);
         } else {
-            logDomain.log(LogLevel.LL_ERROR, "Finstruct", e.getMessage());
+            logDomain.log(LogLevel.ERROR, "Finstruct", e.getMessage());
         }
         if (SwingUtilities.isEventDispatchThread()) {
             JOptionPane.showMessageDialog(null, (printStackTrace ? (e.getClass().getName() + "\n") : "") + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -470,7 +470,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
             Object sel = e.getPath().getLastPathComponent();
             if (!(sel instanceof PortWrapperTreeNode)) {
                 if (sel instanceof ModelNode) {
-                    logDomain.log(LogLevel.LL_DEBUG, getLogDescription(), "Setting view root to " + sel.toString());
+                    logDomain.log(LogLevel.DEBUG, getLogDescription(), "Setting view root to " + sel.toString());
                     showElement((ModelNode)sel);
                 }
             }

@@ -184,7 +184,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
         } catch (Exception e) {}
         if (!ok) {
-            logDomain.log(LogLevel.LL_ERROR, "Intialization", "Graphviz (dot executable) does not seem to be installed.");
+            logDomain.log(LogLevel.ERROR, "Intialization", "Graphviz (dot executable) does not seem to be installed.");
             System.exit(-1);
         }
     }
@@ -394,7 +394,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             getFinstructWindow().updateStartPauseEnabled();
 
         } catch (Exception e) {
-            logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+            logDomain.log(LogLevel.ERROR, getLogDescription(), e);
         }
     }
 
@@ -1634,7 +1634,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             try {
                 serializedExpandedGroups.serialize(node.addChildNode("expanded"));
             } catch (Exception e) {
-                Finstruct.logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
+                Finstruct.logDomain.log(LogLevel.ERROR, getLogDescription(), e);
             }
         }
         if (!toolBar.isSelected(DiverseSwitches.antialiasing)) {

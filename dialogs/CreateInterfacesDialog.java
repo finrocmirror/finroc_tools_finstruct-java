@@ -200,7 +200,7 @@ public class CreateInterfacesDialog extends MDialog {
                 try {
                     wpec.applyChanges();
                 } catch (Exception e1) {
-                    Finstruct.logDomain.log(LogLevel.LL_ERROR, "ParameterEditDialog", e1);
+                    Finstruct.logDomain.log(LogLevel.ERROR, "ParameterEditDialog", e1);
                 }
             }
 
@@ -293,7 +293,7 @@ public class CreateInterfacesDialog extends MDialog {
                     try {
                         wpec.applyChanges();
                     } catch (Exception e1) {
-                        Finstruct.logDomain.log(LogLevel.LL_ERROR, "ParameterEditDialog", e1);
+                        Finstruct.logDomain.log(LogLevel.ERROR, "ParameterEditDialog", e1);
                     }
                 }
 

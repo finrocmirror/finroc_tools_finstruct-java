@@ -203,7 +203,7 @@ public class Graph extends GraphVizElement {
     public void applyLayout(Layout layout, boolean keepPositions) throws Exception {
         Process p = Runtime.getRuntime().exec(layout.name());
         String graph = getAsDotFile(layout, keepPositions);
-        logDomain.log(LogLevel.LL_DEBUG_VERBOSE_1, "GraphViz graph prior to layout", graph);
+        logDomain.log(LogLevel.DEBUG_VERBOSE_1, "GraphViz graph prior to layout", graph);
         PrintStream ps = new PrintStream(new BufferedOutputStream(p.getOutputStream()));
         ps.println(graph);
         ps.close();
@@ -217,7 +217,7 @@ public class Graph extends GraphVizElement {
                 i++;
                 s = s.substring(0, s.length() - 1) + outputLines.get(i);
             }
-            logDomain.log(LogLevel.LL_DEBUG_VERBOSE_1, "GraphViz graph after layout", s);
+            logDomain.log(LogLevel.DEBUG_VERBOSE_1, "GraphViz graph after layout", s);
             if (s.trim().startsWith("null [")) {
                 nullVector = toPoint(extractAttributeValue(s, "pos"));
             }
