@@ -67,6 +67,7 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import org.finroc.core.FrameworkElementFlags;
+import org.finroc.core.FrameworkElementTags;
 import org.finroc.core.RuntimeEnvironment;
 import org.finroc.core.finstructable.EditableInterfaces;
 import org.finroc.core.parameter.StaticParameterList;
@@ -1570,21 +1571,35 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                     if (finstructedElement) {
                         RemoteFrameworkElement finstructableGroup = RemoteFrameworkElement.getParentWithFlags(rightClickedOn, FrameworkElementFlags.FINSTRUCTABLE_GROUP, true);
                         if (finstructableGroup != null) {
-                            try {
-                                StaticParameterList parameterList = (StaticParameterList)rr.getAdminInterface().getAnnotation(
-                                                                        finstructableGroup.getRemoteHandle(), StaticParameterList.TYPE);
-                                for (int i = 0; i < parameterList.size(); i++) {
-                                    if (parameterList.get(i).getName().equalsIgnoreCase("xml file")) {
-                                        miSaveChanges.setEnabled(true);
-                                        String file = parameterList.get(i).valPointer().getRawDataPtr().toString();
-                                        if (file.contains("/")) {
-                                            file = file.substring(file.lastIndexOf("/") + 1);
-                                        }
-                                        //miSaveChanges.setText("<html>Save <font color=#8080D0>(to " + file + ")</font></html>");
-                                        miSaveChanges.setText("Save \"" + file + "\"");
-                                    }
+                            final String STRUCTURE_FILE_TAG_START = "finstructable structure file:";
+                            String structureFile = "";
+                            for (String tag : finstructableGroup.getTags()) {
+                                if (tag.startsWith(STRUCTURE_FILE_TAG_START)) {
+                                    structureFile = tag.substring(STRUCTURE_FILE_TAG_START.length()).trim();
+                                    break;
                                 }
-                            } catch (Exception exception) {}
+                            }
+                            if (structureFile.length() == 0) {
+                                try {
+                                    StaticParameterList parameterList = (StaticParameterList)rr.getAdminInterface().getAnnotation(
+                                                                            finstructableGroup.getRemoteHandle(), StaticParameterList.TYPE);
+                                    for (int i = 0; i < parameterList.size(); i++) {
+                                        if (parameterList.get(i).getName().equalsIgnoreCase("xml file")) {
+                                            structureFile = parameterList.get(i).valPointer().getRawDataPtr().toString();
+                                            break;
+                                        }
+                                    }
+                                } catch (Exception exception) {
+                                }
+                            }
+                            //miSaveChanges.setText("<html>Save <font color=#8080D0>(to " + file + ")</font></html>");
+                            if (structureFile.length() > 0) {
+                                /*if (structureFile.contains("/")) {
+                                    structureFile = structureFile.substring(structureFile.lastIndexOf("/") + 1);
+                                }*/
+                                miSaveChanges.setEnabled(true);
+                                miSaveChanges.setText("Save \"" + structureFile + "\"");
+                            }
                         }
 
                         if (((RemoteFrameworkElement)rightClickedOn).getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP)) {
