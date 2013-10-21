@@ -787,8 +787,11 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
         @Override
         public boolean handlesPoint(Point p) {
-            updateRectangle();
-            return rect.contains(p);
+            if (gvVertex.getLayoutPosition() != null) {
+                updateRectangle();
+                return rect.contains(p);
+            }
+            return false;
         }
 
         @Override
@@ -1395,7 +1398,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         } else if (ae.getSource() == miCreateInterfaces) {
             if (rightClickedOn instanceof RemoteFrameworkElement) {
                 new CreateInterfacesDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, getFinstruct().getIoInterface());
-                refreshViewAfter(250);
+                refreshViewAfter(500);
             }
         } else if (ae.getSource() == miEditInterfaces) {
             if (rightClickedOn instanceof RemoteFrameworkElement) {

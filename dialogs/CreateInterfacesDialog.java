@@ -69,7 +69,7 @@ public class CreateInterfacesDialog extends MDialog {
     /**
      * Task to create an interface
      */
-    static class CreationTask implements Serializable {
+    public static class CreationTask implements Serializable {
 
         /** UID */
         private static final long serialVersionUID = 2945689873558975031L;
@@ -137,7 +137,7 @@ public class CreateInterfacesDialog extends MDialog {
 
         RemoteRuntime rr = RemoteRuntime.find(element);
         for (RemoteCreateModuleAction a : rr.getAdminInterface().getRemoteModuleTypes()) {
-            if (a.groupName.equals("core") || a.groupName.equals("libfinroc_plugin_runtime_construction.so") && a.name.equals("Interface")) {
+            if (a.groupName.equals("core") || a.groupName.equals("finroc_plugins_runtime_construction") && a.name.equals("Interface")) {
                 createInterfaceAction = a;
                 break;
             }
@@ -355,7 +355,7 @@ public class CreateInterfacesDialog extends MDialog {
                     if (o instanceof RemoteFrameworkElement) {
                         RemoteFrameworkElement element = (RemoteFrameworkElement)o;
                         for (final CreationTask task : creation.tasks) {
-                            if (element.getName().equals(task.name) && task.portCreationList.getSize() > 0) {
+                            if (element.getName().equals(task.name) && task.create && task.portCreationList.getSize() > 0) {
 
                                 ThreadLocalCache.get();
                                 // okay, the port list of this element needs to be set
@@ -367,6 +367,7 @@ public class CreateInterfacesDialog extends MDialog {
                                     rr.getAdminInterface().setAnnotation(handle, elementParamList);
 
                                     setPortListCount--;
+                                    break;
                                 } catch (Exception e) {
                                     Finstruct.showErrorMessage("Failed to set annotation list", true, true);
                                 }

@@ -367,9 +367,18 @@ public class FinrocComponentFactory implements ComponentFactory {
                 return wrapped.getEntry(index);
             }
 
+            @SuppressWarnings( { "rawtypes", "unchecked" })
             @Override
             public List < PropertyAccessor<? >> getElementAccessors(PortCreationList.Entry element) {
-                return FieldAccessorFactory.getInstance().createAccessors(element);
+                List < PropertyAccessor<? >> accs = FieldAccessorFactory.getInstance().createAccessors(element);
+                PropertyAccessor createOptionFlagAccessor = accs.remove(accs.size() - 1);
+                if ((wrapped.getSelectableCreateOptions() & PortCreationList.CREATE_OPTION_SHARED) != 0) {
+                    accs.add(1, new PortCreationEntryFlagAccessor(createOptionFlagAccessor, PortCreationList.CREATE_OPTION_SHARED));
+                }
+                if ((wrapped.getSelectableCreateOptions() & PortCreationList.CREATE_OPTION_OUTPUT) != 0) {
+                    accs.add(1, new PortCreationEntryFlagAccessor(createOptionFlagAccessor, PortCreationList.CREATE_OPTION_OUTPUT));
+                }
+                return accs;
             }
 
             @Override
@@ -382,6 +391,36 @@ public class FinrocComponentFactory implements ComponentFactory {
                 wrapped.removeElement(index);
             }
 
+            public static class PortCreationEntryFlagAccessor extends PropertyAccessorAdapter<Byte, Boolean> {
+
+                final byte flag;
+
+                public PortCreationEntryFlagAccessor(PropertyAccessor<Byte> wrapped, byte flag) {
+                    super(wrapped, Boolean.class);
+                    this.flag = flag;
+                }
+
+                @Override
+                public Boolean get() throws Exception {
+                    return (wrapped.get() & flag) != 0;
+                }
+
+                @Override
+                public void set(Boolean newValue) throws Exception {
+                    byte flags = wrapped.get();
+                    if (newValue) {
+                        flags |= flag;
+                    } else {
+                        flags &= ~flag;
+                    }
+                    wrapped.set(flags);
+                }
+
+                @Override
+                public String getName() {
+                    return flag == PortCreationList.CREATE_OPTION_OUTPUT ? "Output" : "Shared";
+                }
+            }
         }
     }
 
