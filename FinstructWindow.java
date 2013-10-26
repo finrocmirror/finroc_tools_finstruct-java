@@ -148,7 +148,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     private final JPopupMenu popupMenu = new JPopupMenu();
 
     /** List component for popup menu above */
-    @SuppressWarnings( { "rawtypes", "unchecked" })
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     private final JList addressList = new JList();
 
     /** Any view instances that were created in this window */
@@ -1038,7 +1038,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                     if (currentSearchRequest.equals(searchRequest)) {
                         SwingUtilities.invokeLater(new Runnable() {
 
-                            @SuppressWarnings( { "serial", "rawtypes", "unchecked" })
+                            @SuppressWarnings({ "serial", "rawtypes", "unchecked" })
                             @Override
                             public void run() {
                                 addressList.setModel(new AbstractListModel() {

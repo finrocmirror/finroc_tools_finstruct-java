@@ -71,7 +71,7 @@ public class FinrocComponentFactory implements ComponentFactory {
         this.commonParent = commonParent;
     }
 
-    @SuppressWarnings( { "rawtypes", "unchecked" })
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public PropertyEditComponent<?> createComponent(PropertyAccessor<?> acc, PropertiesPanel panel) throws Exception {
         Class<?> type = acc.getType();
@@ -367,7 +367,7 @@ public class FinrocComponentFactory implements ComponentFactory {
                 return wrapped.getEntry(index);
             }
 
-            @SuppressWarnings( { "rawtypes", "unchecked" })
+            @SuppressWarnings({ "rawtypes", "unchecked" })
             @Override
             public List < PropertyAccessor<? >> getElementAccessors(PortCreationList.Entry element) {
                 List < PropertyAccessor<? >> accs = FieldAccessorFactory.getInstance().createAccessors(element);
