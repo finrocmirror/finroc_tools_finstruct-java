@@ -126,13 +126,26 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             } else {
                 NetPort np1 = port.getPort().asNetPort();
                 NetPort np2 = port2.getPort().asNetPort();
-                AdminClient ac = RemoteRuntime.find(np1).getAdminInterface();
-                if (ac != null) {
+                AdminClient ac1 = RemoteRuntime.find(np1).getAdminInterface();
+                AdminClient ac2 = RemoteRuntime.find(np2).getAdminInterface();
+                if (ac1 != null && ac1 == ac2) {
                     if (port.getPort().mayConnectTo(port2.getPort(), false) || port2.getPort().mayConnectTo(port.getPort(), false)) {
-                        ac.connect(np1, np2);
+                        ac1.connect(np1, np2);
                         timer.restart();
                         return;
                     }
+                } else if (port.getPort().mayConnectTo(port2.getPort(), false) || port2.getPort().mayConnectTo(port.getPort(), false)) {
+                    String result = "No port is shared";
+                    if (ac1 != null && ((RemotePort)port2).getFlag(FrameworkElementFlags.SHARED)) {
+                        result = ac1.networkConnect(np1, "", RemoteRuntime.find(np2).uuid, ((RemotePort)port2).getRemoteHandle(), ((HasUid)port2).getUid());
+                    }
+                    if (result != null && ac2 != null && ((RemotePort)port).getFlag(FrameworkElementFlags.SHARED)) {
+                        result = ac2.networkConnect(np2, "", RemoteRuntime.find(np1).uuid, ((RemotePort)port).getRemoteHandle(), ((HasUid)port).getUid());
+                    }
+                    if (result != null) {
+                        Finstruct.showErrorMessage("Cannot connect ports: " + result, false, false);
+                    }
+                    return;
                 }
             }
         }
