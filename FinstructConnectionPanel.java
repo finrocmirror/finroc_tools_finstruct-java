@@ -251,6 +251,22 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     /**
+     * Expand provided node in all visible trees
+     *
+     * @param node Node to expand
+     */
+    public void expand(ModelNode node) {
+        if (node.isNodeAncestor((ModelNode)leftTree.getModel().getRoot())) {
+            leftTree.expandToElement(node);
+        }
+        if (showRightTree) {
+            if (node.isNodeAncestor((ModelNode)rightTree.getModel().getRoot())) {
+                rightTree.expandToElement(node);
+            }
+        }
+    }
+
+    /**
      * Expand provided node and collapse all others
      *
      * @param leftTree Left tree (or rather right one?)
