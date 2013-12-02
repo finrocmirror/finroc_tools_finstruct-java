@@ -338,6 +338,9 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         for (int i = 0; i < root.getChildCount(); i++) {
 
             // do not add hidden elements
+            if (root.getChildAt(i).isHidden(true)) {
+                continue;
+            }
             if (hiddenElements.size() > 0) {
                 String qualifiedName = root.getChildAt(i).getQualifiedName('/');
                 if (hiddenElements.contains(qualifiedName)) {
@@ -345,7 +348,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
                 }
             }
 
-            V vertex = createVertexInstance((ModelNode)root.getChildAt(i));
+            V vertex = createVertexInstance(root.getChildAt(i));
             if (vertex != null) {
                 result.add(vertex);
             }
