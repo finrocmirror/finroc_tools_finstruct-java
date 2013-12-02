@@ -76,6 +76,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     /** menu items */
     private final JMenuItem miOpenInNewWindow;
 
+    /** Temporary storage for edge destinations - used only by AWT Thread for painting connections */
+    private final ArrayList<AbstractPort> tempDestinationList = new ArrayList<AbstractPort>();
+
     /**
      * @param owner Parent of connection panel
      * @param treeFont Font to use for tree
@@ -126,13 +129,28 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             } else {
                 NetPort np1 = port.getPort().asNetPort();
                 NetPort np2 = port2.getPort().asNetPort();
-                AdminClient ac = RemoteRuntime.find(np1).getAdminInterface();
-                if (ac != null) {
+                AdminClient ac1 = RemoteRuntime.find(np1).getAdminInterface();
+                AdminClient ac2 = RemoteRuntime.find(np2).getAdminInterface();
+                if (ac1 != null && ac1 == ac2) {
                     if (port.getPort().mayConnectTo(port2.getPort(), false) || port2.getPort().mayConnectTo(port.getPort(), false)) {
-                        ac.connect(np1, np2);
+                        ac1.connect(np1, np2);
                         timer.restart();
                         return;
                     }
+                } else if (port.getPort().mayConnectTo(port2.getPort(), false) || port2.getPort().mayConnectTo(port.getPort(), false)) {
+                    String result = "No port is shared";
+                    if (ac1 != null && ((RemotePort)port2).getFlag(FrameworkElementFlags.SHARED)) {
+                        result = ac1.networkConnect(np1, "", RemoteRuntime.find(np2).uuid, ((RemotePort)port2).getRemoteHandle(), ((HasUid)port2).getUid(), false);
+                        timer.restart();
+                    }
+                    if (result != null && ac2 != null && ((RemotePort)port).getFlag(FrameworkElementFlags.SHARED)) {
+                        result = ac2.networkConnect(np2, "", RemoteRuntime.find(np1).uuid, ((RemotePort)port).getRemoteHandle(), ((HasUid)port).getUid(), false);
+                        timer.restart();
+                    }
+                    if (result != null) {
+                        Finstruct.showErrorMessage("Cannot connect ports: " + result, false, false);
+                    }
+                    return;
                 }
             }
         }
@@ -225,13 +243,28 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 }
                 return;
             } else {
+                List<PortWrapperTreeNode> partners = getConnectionPartners(port, true);
                 NetPort np1 = port.getPort().asNetPort();
                 AdminClient ac = RemoteRuntime.find(np1).getAdminInterface();
                 if (ac != null) {
                     ac.disconnectAll(np1);
                     timer.restart();
-                    return;
                 }
+
+                // Remove any network connections in reverse direction
+                for (PortWrapperTreeNode partner : partners) {
+                    ArrayList<AbstractPort> result = new ArrayList<AbstractPort>();
+                    NetPort partnerNetPort = ((RemotePort)partner).getPort().asNetPort();
+                    int reverseIndex = partnerNetPort.getRemoteEdgeDestinations(result);
+                    for (int i = 0; i < reverseIndex; i++) {
+                        AdminClient partnerClient = RemoteRuntime.find(partnerNetPort).getAdminInterface();
+                        if (partnerClient != null && ac != partnerClient && result.get(i) == np1.getPort()) {
+                            partnerClient.networkConnect(partnerNetPort, "", RemoteRuntime.find(np1).uuid, ((RemotePort)port).getRemoteHandle(), ((HasUid)port).getUid(), true);
+                            timer.restart();
+                        }
+                    }
+                }
+                return;
             }
         }
         Finstruct.logDomain.log(LogLevel.DEBUG_WARNING, getLogDescription(), "Cannot disconnect port: " + port);
@@ -247,6 +280,22 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         drawConnectionsHelper(g, leftTree, rightTree);
         if (!(getRightTree() instanceof ConfigFileModel)) {
             drawConnectionsHelper(g, rightTree, leftTree);
+        }
+    }
+
+    /**
+     * Expand provided node in all visible trees
+     *
+     * @param node Node to expand
+     */
+    public void expand(ModelNode node) {
+        if (node.isNodeAncestor((ModelNode)leftTree.getModel().getRoot())) {
+            leftTree.expandToElement(node);
+        }
+        if (showRightTree) {
+            if (node.isNodeAncestor((ModelNode)rightTree.getModel().getRoot())) {
+                rightTree.expandToElement(node);
+            }
         }
     }
 
@@ -300,8 +349,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             List<PortWrapperTreeNode> partners = getConnectionPartners(portWrapper, true);
 
             for (PortWrapperTreeNode partner : partners) {
-                ModelNode parentNode = ((ModelNode)partner).getParent();
-                if (parentNode != null && parentNode.getName().equals("server ports") && parentNode.getParent() != null && parentNode.getParent().getName().startsWith("finstruct ")) {
+                if (((ModelNode)partner).isHidden(true)) {
                     continue;
                 }
                 TreePath tp = otherTree.getTreePathFor((PortWrapperTreeNode)partner);
@@ -366,12 +414,16 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         }
         NetPort np = getNetPort((PortWrapperTreeNode)port);
         if (np != null) {
-            if (np.getRemoteEdgeDestinations().contains(partner.getPort())) {
-                return ConnectorIcon.LineStart.Outgoing;
+            int firstReverse = np.getRemoteEdgeDestinations(tempDestinationList);
+            int partnerIndex = tempDestinationList.indexOf(partner.getPort());
+            if (partnerIndex >= 0) {
+                return partnerIndex < firstReverse ? ConnectorIcon.LineStart.Outgoing : ConnectorIcon.LineStart.Incoming;
             } else {
                 NetPort npPartner = getNetPort((PortWrapperTreeNode)partner);
-                if (npPartner.getRemoteEdgeDestinations().contains(port.getPort())) {
-                    return ConnectorIcon.LineStart.Incoming;
+                firstReverse = npPartner.getRemoteEdgeDestinations(tempDestinationList);
+                partnerIndex = tempDestinationList.indexOf(port.getPort());
+                if (partnerIndex >= 0) {
+                    return partnerIndex < firstReverse ? ConnectorIcon.LineStart.Incoming : ConnectorIcon.LineStart.Outgoing;
                 }
                 // Ok, there's no connection yet
             }

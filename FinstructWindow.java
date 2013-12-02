@@ -142,7 +142,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
      * Timer for periodic checking if current view is still up to date
      * Causes FinstructView.checkViewUpToDate() to be called every 200ms
      */
-    private final Timer periodicViewCheckTimer = new Timer(200, this);
+    protected final Timer periodicViewCheckTimer = new Timer(200, this);
 
     /** Popup menu for address field */
     private final JPopupMenu popupMenu = new JPopupMenu();

@@ -63,6 +63,7 @@ import org.finroc.core.plugin.Plugins;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.PortWrapperTreeNode;
+import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.util.Files;
 import org.finroc.tools.gui.ConnectionPanel;
 import org.finroc.tools.gui.GUIUiBase;
@@ -319,6 +320,21 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     @Override
     public void actionPerformed(ActionEvent ae) {
         super.actionPerformed(ae);
+        if (ae.getSource() == periodicViewCheckTimer) {
+            if (getCurrentView() != null && getCurrentView().getRootElement() == null) {
+                ModelNode elementToShow = finstruct.getIoInterface().getElementToShowInitially();
+                if (elementToShow != null) {
+                    connectionPanel.expandOnly(true, elementToShow);
+                    showElement(elementToShow);
+                }
+            }
+            if (getCurrentView() != null) {
+                for (RemoteFrameworkElement elementToShow : finstruct.getIoInterface().getAndClearElementsToShowInitially()) {
+                    connectionPanel.expand(elementToShow.getParent());
+                }
+            }
+            return;
+        }
         try {
             Object src = ae.getSource();
             if (src == miDisconnectDiscard) {
@@ -511,32 +527,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     public FinstructSettings getSettings() {
         return settings;
     }
-
-//    @Override TODO
-//    public void runtimeChange(byte changeType, final FrameworkElement element) {
-//
-//        // If nothing is displayed change view to any remote runtime
-//        if (changeType == RuntimeListener.ADD && getCurrentView() != null && getCurrentView().getRootElement() == null) {
-//            if (element.getParent().getFlag(FrameworkElementFlags.ALTERNATIVE_LINK_ROOT) &&
-//                    element.getParent().getFlag(FrameworkElementFlags.NETWORK_ELEMENT) &&
-//                    (element.getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP) || element.getFlag(FrameworkElementFlags.EDGE_AGGREGATOR))) {
-//                SwingUtilities.invokeLater(new Runnable() {
-//
-//                    @Override
-//                    public void run() {
-//                        connectionPanel.expandOnly(true, element);
-//                        //connectionPanel.
-//                        showElement(element);
-//                    }
-//
-//                });
-//            }
-//        }
-//    }
-//
-//    @Override
-//    public void runtimeEdgeChange(byte changeType, AbstractPort source, AbstractPort target) {
-//    }
 
     @Override public void treeNodesInserted(TreeModelEvent e) {}
     @Override public void treeNodesChanged(TreeModelEvent e) {}
