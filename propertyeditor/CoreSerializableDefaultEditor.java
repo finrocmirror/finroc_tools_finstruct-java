@@ -23,7 +23,7 @@ package org.finroc.tools.finstruct.propertyeditor;
 
 import org.finroc.core.portdatabase.MaxStringSerializationLength;
 import org.finroc.tools.gui.util.propertyeditor.StringEditor;
-import org.rrlib.finroc_core_utils.serialization.PortDataListImpl;
+import org.rrlib.serialization.PortDataListImpl;
 
 /**
  * @author Max Reichardt

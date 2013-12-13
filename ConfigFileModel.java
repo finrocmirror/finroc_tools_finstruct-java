@@ -35,9 +35,10 @@ import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.PortWrapperTreeNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemoteRuntime;
-import org.rrlib.finroc_core_utils.log.LogLevel;
-import org.rrlib.finroc_core_utils.xml.XML2WrapperException;
-import org.rrlib.finroc_core_utils.xml.XMLNode;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
+import org.rrlib.xml.XMLException;
+import org.rrlib.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -63,7 +64,7 @@ public class ConfigFileModel extends DefaultTreeModel {
                 RemoteRuntime.find(root).getAdminInterface().getParameterInfo((RemoteFrameworkElement)root);
                 initFromFile(findConfigFile((RemoteFrameworkElement)root));
             } catch (Exception e) {
-                Finstruct.logDomain.log(LogLevel.ERROR, "ConfigFileModel", e);
+                Log.log(LogLevel.ERROR, this, e);
             }
         }
     }
@@ -127,7 +128,7 @@ public class ConfigFileModel extends DefaultTreeModel {
                     ConfigEntryWrapper n = new ConfigEntryWrapper(slashedUid + name, name);
                     parent.add(n);
                 }
-            } catch (XML2WrapperException e) {
+            } catch (XMLException e) {
                 e.printStackTrace();
             }
         }

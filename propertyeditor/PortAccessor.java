@@ -38,14 +38,13 @@ import org.finroc.core.port.std.PortDataManager;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.Finstruct;
-import org.finroc.tools.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
-import org.rrlib.finroc_core_utils.rtti.DataTypeBase;
-import org.rrlib.finroc_core_utils.rtti.GenericObject;
-import org.rrlib.finroc_core_utils.serialization.EnumValue;
-import org.rrlib.finroc_core_utils.serialization.PortDataListImpl;
-import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
-import org.rrlib.finroc_core_utils.serialization.Serialization;
+import org.rrlib.serialization.BinarySerializable;
+import org.rrlib.serialization.EnumValue;
+import org.rrlib.serialization.PortDataListImpl;
+import org.rrlib.serialization.Serialization;
+import org.rrlib.serialization.rtti.DataTypeBase;
+import org.rrlib.serialization.rtti.GenericObject;
 
 /**
  * @author Max Reichardt
@@ -54,7 +53,7 @@ import org.rrlib.finroc_core_utils.serialization.Serialization;
  * It creates an extra port that is connected to port to wrap.
  */
 @SuppressWarnings("rawtypes")
-public class PortAccessor<T extends RRLibSerializable> implements PropertyAccessor<T>, PortListener {
+public class PortAccessor<T extends BinarySerializable> implements PropertyAccessor<T>, PortListener {
 
     /** port to get and set data */
     protected final AbstractPort wrapped;
@@ -70,9 +69,6 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
 
     protected final ErrorPrinter errorPrinter = new ErrorPrinter();
 
-    static {
-        TypedObjectCloner.register();
-    }
 
     /**
      * @param wrapped Wrapped partner (network) port
@@ -97,10 +93,11 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
     @SuppressWarnings("unchecked")
     @Override
     public Class<T> getType() {
-        return (wrapped.getDataType().getType() == DataTypeBase.Type.LIST || wrapped.getDataType().getType() == DataTypeBase.Type.PTR_LIST) ?
+        return (wrapped.getDataType().getType() == DataTypeBase.Classification.LIST || wrapped.getDataType().getType() == DataTypeBase.Classification.PTR_LIST) ?
                (Class<T>)PortDataListImpl.class : (Class<T>)wrapped.getDataType().getJavaClass();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public T get() throws Exception {
         if (!wrapped.isReady()) {
@@ -109,13 +106,13 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
         if (wrapped instanceof PortBase) {
             PortBase pb = (PortBase)wrapped;
             PortDataManager pd = pb.getLockedUnsafeRaw();
-            T result = ObjectCloner.clone(pd.getObject().<T>getData());
+            T result = Serialization.deepCopy((T)pd.getObject().getData());
             pd.releaseLock();
             return result;
         } else {
             CCPortBase cpb = (CCPortBase)wrapped;
             GenericObject pd = cpb.getAutoLockedRaw();
-            T result = ObjectCloner.clone(pd.<T>getData());
+            T result = Serialization.deepCopy((T)pd.getData());
             ThreadLocalCache.get().releaseAllLocks();
             return result;
         }
@@ -130,17 +127,17 @@ public class PortAccessor<T extends RRLibSerializable> implements PropertyAccess
         if (ap instanceof CCPortBase) {
             if (ap.getFlag(FrameworkElementFlags.NETWORK_ELEMENT)) {
                 CCPortDataManager c = ThreadLocalCache.get().getUnusedInterThreadBuffer(DataTypeBase.findType(newValue.getClass()));
-                Serialization.deepCopy(newValue, c.getObject().<T>getData(), null);
+                Serialization.deepCopy(newValue, c.getObject().getData());
                 RemoteRuntime.find(RemotePort.get(ap)[0]).getAdminInterface().setRemotePortValue(ap.asNetPort(), c, errorPrinter);
             } else {
                 CCPortDataManagerTL c = ThreadLocalCache.get().getUnusedBuffer(DataTypeBase.findType(newValue.getClass()));
-                Serialization.deepCopy(newValue, c.getObject().<T>getData(), null);
+                Serialization.deepCopy(newValue, c.getObject().getData());
                 ((CCPortBase)wrapped).publish(c);
             }
         } else {
             PortDataManager result = PortDataManager.create((newValue instanceof EnumValue) ? ((EnumValue)newValue).getType() :
                                      ((newValue instanceof PortDataListImpl) ? ((PortDataListImpl)newValue).getElementType().getListType() : DataTypeBase.findType(newValue.getClass())));
-            Serialization.deepCopy(newValue, result.getObject().<T>getData(), null);
+            Serialization.deepCopy(newValue, result.getObject().getData(), null);
             if (ap.getFlag(FrameworkElementFlags.NETWORK_ELEMENT)) {
                 RemoteRuntime.find(RemotePort.get(ap)[0]).getAdminInterface().setRemotePortValue(ap.asNetPort(), result, errorPrinter);
             } else {

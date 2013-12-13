@@ -74,8 +74,9 @@ import org.finroc.tools.gui.util.gui.MAction;
 import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
-import org.rrlib.finroc_core_utils.log.LogLevel;
-import org.rrlib.finroc_core_utils.xml.XMLNode;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
+import org.rrlib.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -378,9 +379,9 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
 
     public static void showErrorMessage(final Exception e, final boolean printStackTrace) {
         if (printStackTrace) {
-            logDomain.log(LogLevel.ERROR, "Finstruct", e);
+            Log.log(LogLevel.ERROR, e);
         } else {
-            logDomain.log(LogLevel.ERROR, "Finstruct", e.getMessage());
+            Log.log(LogLevel.ERROR, e.getMessage());
         }
         if (SwingUtilities.isEventDispatchThread()) {
             JOptionPane.showMessageDialog(null, (printStackTrace ? (e.getClass().getName() + "\n") : "") + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -486,15 +487,11 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
             Object sel = e.getPath().getLastPathComponent();
             if (!(sel instanceof PortWrapperTreeNode)) {
                 if (sel instanceof ModelNode) {
-                    logDomain.log(LogLevel.DEBUG, getLogDescription(), "Setting view root to " + sel.toString());
+                    Log.log(LogLevel.DEBUG, this, "Setting view root to " + sel.toString());
                     showElement((ModelNode)sel);
                 }
             }
         }
-    }
-
-    private String getLogDescription() {
-        return "Finroc Main Window";
     }
 
     /**

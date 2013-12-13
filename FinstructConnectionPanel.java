@@ -55,7 +55,8 @@ import org.finroc.tools.gui.ConnectorIcon;
 import org.finroc.tools.gui.ConnectorIcon.IconColor;
 import org.finroc.tools.gui.ConnectorIcon.LineStart;
 import org.finroc.tools.gui.util.gui.MJTree;
-import org.rrlib.finroc_core_utils.log.LogLevel;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
 
 /**
  * @author Max Reichardt
@@ -154,7 +155,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 }
             }
         }
-        Finstruct.logDomain.log(LogLevel.DEBUG_WARNING, getLogDescription(), "Cannot connect ports: " + port  + " " + port2);
+        Log.log(LogLevel.DEBUG_WARNING, this, "Cannot connect ports: " + port  + " " + port2);
     }
 
     @Override
@@ -267,7 +268,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 return;
             }
         }
-        Finstruct.logDomain.log(LogLevel.DEBUG_WARNING, getLogDescription(), "Cannot disconnect port: " + port);
+        Log.log(LogLevel.DEBUG_WARNING, this, "Cannot disconnect port: " + port);
     }
 
     @Override

@@ -28,11 +28,11 @@ import javax.naming.OperationNotSupportedException;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 
-import org.finroc.tools.gui.FinrocGUI;
 import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
-import org.rrlib.finroc_core_utils.log.LogLevel;
-import org.rrlib.finroc_core_utils.rtti.DataTypeBase;
-import org.rrlib.finroc_core_utils.serialization.EnumValue;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
+import org.rrlib.serialization.EnumValue;
+import org.rrlib.serialization.rtti.DataTypeBase;
 
 /**
  * @author Max Reichardt
@@ -53,7 +53,7 @@ public class EnumEditor extends PropertyEditComponent<EnumValue> {
             jcmb = new JComboBox();
             valueUpdated(getCurWidgetValue());
         } catch (Exception e) {
-            FinrocGUI.logDomain.log(LogLevel.ERROR, toString(), e);
+            Log.log(LogLevel.ERROR, this, e);
         }
         jcmb.setPreferredSize(new Dimension(TEXTFIELDWIDTH, jcmb.getPreferredSize().height));
         add(jcmb, BorderLayout.WEST);
@@ -66,7 +66,7 @@ public class EnumEditor extends PropertyEditComponent<EnumValue> {
             jcmb = new JComboBox();
             valueUpdated(object);
         } catch (Exception e) {
-            FinrocGUI.logDomain.log(LogLevel.ERROR, toString(), e);
+            Log.log(LogLevel.ERROR, this, e);
         }
         add(jcmb);
         jcmb.setEnabled(isModifiable());

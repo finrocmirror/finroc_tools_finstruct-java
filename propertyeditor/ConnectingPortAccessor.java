@@ -26,7 +26,7 @@ import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortCreationInfo;
 import org.finroc.core.port.std.PortBase;
 import org.finroc.core.remote.RemotePort;
-import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
+import org.rrlib.serialization.BinarySerializable;
 
 /**
  * @author Max Reichardt
@@ -34,7 +34,7 @@ import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
  * Provides PropertyAccessor adapter for ports.
  * It creates an extra port that is connected to port to wrap.
  */
-public class ConnectingPortAccessor<T extends RRLibSerializable> extends PortAccessor<T> {
+public class ConnectingPortAccessor<T extends BinarySerializable> extends PortAccessor<T> {
 
     /** Wrapped partner (network) port */
     protected final AbstractPort partner;

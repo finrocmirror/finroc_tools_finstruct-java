@@ -23,9 +23,10 @@ package org.finroc.tools.finstruct;
 
 import java.io.File;
 
-import org.rrlib.finroc_core_utils.log.LogLevel;
-import org.rrlib.finroc_core_utils.xml.XMLDocument;
-import org.rrlib.finroc_core_utils.xml.XMLNode;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
+import org.rrlib.xml.XMLDocument;
+import org.rrlib.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -51,7 +52,7 @@ public class FinstructSettings {
                         document = new XMLDocument(SETTINGSFILE, false);
                         return document;
                     } catch (Exception e) {
-                        Finstruct.logDomain.log(LogLevel.WARNING, "FinstructSettings", "Could not parse settings file. Creating new one. ", e);
+                        Log.log(LogLevel.WARNING, this, "Could not parse settings file. Creating new one. ", e);
                         document = new XMLDocument();
                         document.addRootNode("finstruct-settings");
                     }
@@ -91,7 +92,7 @@ public class FinstructSettings {
             try {
                 document.writeToFile(SETTINGSFILE, true);
             } catch (Exception e) {
-                Finstruct.logDomain.log(LogLevel.ERROR, "FinstructSettings", "Could not save settings file. Reason: ", e);
+                Log.log(LogLevel.ERROR, this, "Could not save settings file. Reason: ", e);
             }
         }
     }

@@ -49,14 +49,14 @@ import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.plugins.data_types.StdStringList;
-import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.FinstructConnectionPanel;
 import org.finroc.tools.finstruct.FinstructView;
 import org.finroc.tools.gui.util.gui.IconManager;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.propertyeditor.gui.PropertiesDialog;
-import org.rrlib.finroc_core_utils.log.LogLevel;
-import org.rrlib.finroc_core_utils.xml.XMLNode;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
+import org.rrlib.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -140,7 +140,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             try {
                 serializedHiddenElements.serialize(node.addChildNode("hidden"));
             } catch (Exception e) {
-                Finstruct.logDomain.log(LogLevel.ERROR, getLogDescription(), e);
+                Log.log(LogLevel.ERROR, this, e);
             }
         }
     }

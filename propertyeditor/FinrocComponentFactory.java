@@ -36,7 +36,6 @@ import org.finroc.tools.gui.util.propertyeditor.BooleanEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComboBoxEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComponentFactory;
 import org.finroc.tools.gui.util.propertyeditor.FieldAccessorFactory;
-import org.finroc.tools.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.tools.gui.util.propertyeditor.PropertiesPanel;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessorAdapter;
@@ -46,12 +45,13 @@ import org.finroc.tools.gui.util.propertyeditor.PropertyListEditor;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.finroc.plugins.data_types.ContainsStrings;
 import org.finroc.plugins.data_types.PaintablePortData;
-import org.rrlib.finroc_core_utils.rtti.DataTypeBase;
-import org.rrlib.finroc_core_utils.serialization.EnumValue;
-import org.rrlib.finroc_core_utils.serialization.PortDataListImpl;
-import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
-import org.rrlib.finroc_core_utils.serialization.Serialization;
-import org.rrlib.finroc_core_utils.serialization.StringInputStream;
+import org.rrlib.serialization.BinarySerializable;
+import org.rrlib.serialization.EnumValue;
+import org.rrlib.serialization.PortDataListImpl;
+import org.rrlib.serialization.Serialization;
+import org.rrlib.serialization.StringInputStream;
+import org.rrlib.serialization.rtti.Copyable;
+import org.rrlib.serialization.rtti.DataTypeBase;
 
 /**
  * @author Max Reichardt
@@ -62,10 +62,6 @@ public class FinrocComponentFactory implements ComponentFactory {
 
     /** Framework element that all displayed ports are child of */
     private final ModelNode commonParent;
-
-    static {
-        TypedObjectCloner.register();
-    }
 
     public FinrocComponentFactory(ModelNode commonParent) {
         this.commonParent = commonParent;
@@ -99,7 +95,7 @@ public class FinrocComponentFactory implements ComponentFactory {
                 types.addAll(rr.getRemoteTypes().getRemoteTypeNames());
             }
             wpec = new ComboBoxEditor<String>(types.toArray(new String[0]));
-            acc = new CoreSerializableAdapter((PropertyAccessor<RRLibSerializable>)acc, type, DataTypeReference.TYPE);
+            acc = new CoreSerializableAdapter((PropertyAccessor<BinarySerializable>)acc, type, DataTypeReference.TYPE);
         } else if (PaintablePortData.class.isAssignableFrom(type)) {
             wpec = new PaintableViewer();
         } else if (XML.class.isAssignableFrom(type)) {
@@ -112,10 +108,10 @@ public class FinrocComponentFactory implements ComponentFactory {
         } else if (type.equals(PortDataListImpl.class)) {
             wpec = new CoreSerializableDefaultEditor(type);
             acc = new PortDataListAdapter((PropertyAccessor<PortDataListImpl>)acc);
-        } else if (RRLibSerializable.class.isAssignableFrom(type) && (!ContainsStrings.class.isAssignableFrom(type))) {
+        } else if (BinarySerializable.class.isAssignableFrom(type) && (!ContainsStrings.class.isAssignableFrom(type))) {
             DataTypeBase dt = DataTypeBase.findType(acc.getType());
             wpec = new CoreSerializableDefaultEditor(type);
-            acc = new CoreSerializableAdapter((PropertyAccessor<RRLibSerializable>)acc, type, dt);
+            acc = new CoreSerializableAdapter((PropertyAccessor<BinarySerializable>)acc, type, dt);
         }
 
         if (wpec != null) {
@@ -127,7 +123,7 @@ public class FinrocComponentFactory implements ComponentFactory {
     /**
      * Allows using CoreSerializables in TextEditor
      */
-    public static class CoreSerializableAdapter extends PropertyAccessorAdapter<RRLibSerializable, String> {
+    public static class CoreSerializableAdapter extends PropertyAccessorAdapter<BinarySerializable, String> {
 
         /** Expected finroc class of property */
         private final Class<?> finrocClass;
@@ -135,7 +131,7 @@ public class FinrocComponentFactory implements ComponentFactory {
         /** Finroc DataType of property - if available */
         private final DataTypeBase dataType;
 
-        public CoreSerializableAdapter(PropertyAccessor<RRLibSerializable> wrapped, Class<?> finrocClass, DataTypeBase dataType) {
+        public CoreSerializableAdapter(PropertyAccessor<BinarySerializable> wrapped, Class<?> finrocClass, DataTypeBase dataType) {
             super(wrapped, String.class);
             this.finrocClass = finrocClass;
             this.dataType = dataType;
@@ -143,25 +139,23 @@ public class FinrocComponentFactory implements ComponentFactory {
 
         @Override
         public void set(String s) throws Exception {
-            if (dataType != null && RRLibSerializable.class.isAssignableFrom(finrocClass)) {
+            if (dataType != null && BinarySerializable.class.isAssignableFrom(finrocClass)) {
                 DataTypeBase dt = SerializationHelper.getTypedStringDataType(dataType, s);
-                RRLibSerializable buffer = (RRLibSerializable)dt.createInstance();
+                BinarySerializable buffer = (BinarySerializable)dt.createInstance();
                 SerializationHelper.typedStringDeserialize(buffer, s);
                 wrapped.set(buffer);
             } else {
-                RRLibSerializable buffer = (RRLibSerializable)finrocClass.newInstance(); /*(RRLibSerializable)JavaOnlyPortDataFactory.rawCreate(finrocClass);*/
-                buffer.deserialize(new StringInputStream(s));
-                wrapped.set(buffer);
+                wrapped.set((BinarySerializable)new StringInputStream(s).readObject(finrocClass));
             }
         }
 
         @Override
         public String get() throws Exception {
-            RRLibSerializable cs = wrapped.get();
+            BinarySerializable cs = wrapped.get();
             if (cs == null) {
                 return "";
             }
-            if (dataType != null && RRLibSerializable.class.isAssignableFrom(finrocClass)) {
+            if (dataType != null && BinarySerializable.class.isAssignableFrom(finrocClass)) {
                 return SerializationHelper.typedStringSerialize(dataType, cs, dataType);
             } else {
                 return Serialization.serialize(cs);
@@ -191,7 +185,7 @@ public class FinrocComponentFactory implements ComponentFactory {
             String[] strings = s.trim().split("\n");
             list.resize(strings.length);
             for (int i = 0; i < strings.length; i++) {
-                list.get(i).deserialize(new StringInputStream(strings[i]));
+                Serialization.deepCopy(new StringInputStream(strings[i]).readObject(elementType.getJavaClass()), list.get(i));
             }
             wrapped.set(list);
         }
@@ -327,20 +321,23 @@ public class FinrocComponentFactory implements ComponentFactory {
         }
 
         /** Wrapper for TypedObjectLists */
-        public static class PortCreationListAccessor implements PropertyListAccessor<PortCreationList.Entry>, ObjectCloner.Cloneable {
+        public static class PortCreationListAccessor implements PropertyListAccessor<PortCreationList.Entry>, Copyable<PortCreationListAccessor> {
 
             /** Wrapped TypedObjectList */
-            private final PortCreationList wrapped;
+            private PortCreationList wrapped;
 
             private PortCreationListAccessor(PortCreationList wrapped) {
                 assert(wrapped != null);
                 this.wrapped = wrapped;
             }
 
+            private PortCreationListAccessor() {} // only for deepCopy.newInstance() to succeed
+
             @Override
-            public Object clone() {
-                return new PortCreationListAccessor(ObjectCloner.clone(wrapped));
+            public void copyFrom(PortCreationListAccessor source) {
+                this.wrapped = Serialization.deepCopy(source.wrapped);
             }
+
 
             @Override
             public boolean equals(Object o) {

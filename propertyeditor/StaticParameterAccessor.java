@@ -27,10 +27,8 @@ import java.util.List;
 
 import org.finroc.core.parameter.StaticParameterBase;
 import org.finroc.core.parameter.StaticParameterList;
-import org.finroc.tools.gui.util.propertyeditor.ObjectCloner;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
-import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
-import org.rrlib.finroc_core_utils.serialization.Serialization;
+import org.rrlib.serialization.Serialization;
 
 /**
  * @author Max Reichardt
@@ -58,16 +56,15 @@ public class StaticParameterAccessor implements PropertyAccessor {
 
     @Override
     public Object get() throws Exception {
-        return ObjectCloner.clone(wrapped.valPointer().getData());
+        return Serialization.deepCopy(wrapped.valPointer().getData());
     }
 
     @Override
     public void set(Object newValue) throws Exception {
-        if (newValue instanceof RRLibSerializable) {
-            wrapped.set(Serialization.serialize((RRLibSerializable)newValue));
-        } else {
-            assert(newValue instanceof String);
+        if (newValue instanceof String) {
             wrapped.set(newValue.toString());
+        } else {
+            wrapped.set(Serialization.serialize(newValue));
         }
     }
 

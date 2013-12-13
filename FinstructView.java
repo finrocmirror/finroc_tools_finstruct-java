@@ -31,8 +31,7 @@ import javax.swing.JPanel;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.tools.gui.util.gui.MPanel;
 import org.finroc.tools.gui.util.gui.MToolBar;
-import org.rrlib.finroc_core_utils.log.LogDomain;
-import org.rrlib.finroc_core_utils.xml.XMLNode;
+import org.rrlib.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -51,8 +50,6 @@ public abstract class FinstructView extends MPanel {
 
     /** Qualified name of root element */
     private String rootElementQualifiedName;
-
-    public static final LogDomain logDomain = Finstruct.logDomain;
 
     Finstruct finstruct;
     FinstructWindow finstructWindow;

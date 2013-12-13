@@ -21,28 +21,28 @@
 //----------------------------------------------------------------------
 package org.finroc.tools.finstruct.propertyeditor;
 
-import org.finroc.core.portdatabase.SerializationHelper;
 import org.finroc.tools.gui.util.propertyeditor.ObjectAccessor;
-import org.rrlib.finroc_core_utils.serialization.RRLibSerializable;
+import org.rrlib.serialization.BinarySerializable;
+import org.rrlib.serialization.Serialization;
 
 /**
  * @author Max Reichardt
  *
  * ObjectAccessor for finroc objects
  */
-public class FinrocObjectAccessor extends ObjectAccessor<RRLibSerializable> {
+public class FinrocObjectAccessor extends ObjectAccessor<BinarySerializable> {
 
-    public FinrocObjectAccessor(RRLibSerializable wrapped) {
+    public FinrocObjectAccessor(BinarySerializable wrapped) {
         super(wrapped.getClass().getSimpleName() + " object", wrapped);
     }
 
-    public FinrocObjectAccessor(String name, RRLibSerializable wrapped) {
+    public FinrocObjectAccessor(String name, BinarySerializable wrapped) {
         super(name, wrapped);
     }
 
     @Override
-    public void set(RRLibSerializable newValue) throws Exception {
-        SerializationHelper.deepCopy(newValue, wrapped);
+    public void set(BinarySerializable newValue) throws Exception {
+        Serialization.deepCopy(newValue, wrapped);
     }
 
     @Override

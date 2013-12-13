@@ -26,9 +26,6 @@ import java.awt.geom.Point2D;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.rrlib.finroc_core_utils.jc.log.LogDefinitions;
-import org.rrlib.finroc_core_utils.log.LogDomain;
-
 /**
  * @author Max Reichardt
  *
@@ -44,9 +41,6 @@ public abstract class GraphVizElement {
 
     /** Key of attribute that contains finroc handle */
     public final String HANDLE_KEY = "finstructhandle";
-
-    /** Log Domain to use */
-    public LogDomain logDomain = LogDefinitions.finroc.getSubDomain("finstruct").getSubDomain("graphviz");
 
     /**
      * @param name Name/key of attribute

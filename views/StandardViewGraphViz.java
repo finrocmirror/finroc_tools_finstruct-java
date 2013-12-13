@@ -90,8 +90,9 @@ import org.finroc.tools.finstruct.util.MouseHandlerManager;
 import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.gui.MAction;
-import org.rrlib.finroc_core_utils.log.LogLevel;
-import org.rrlib.finroc_core_utils.xml.XMLNode;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
+import org.rrlib.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -185,7 +186,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
         } catch (Exception e) {}
         if (!ok) {
-            logDomain.log(LogLevel.ERROR, "Intialization", "Graphviz (dot executable) does not seem to be installed.");
+            Log.log(LogLevel.ERROR, "Graphviz (dot executable) does not seem to be installed.");
             System.exit(-1);
         }
     }
@@ -395,7 +396,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             getFinstructWindow().updateStartPauseEnabled();
 
         } catch (Exception e) {
-            logDomain.log(LogLevel.ERROR, getLogDescription(), e);
+            Log.log(LogLevel.ERROR, this, e);
         }
     }
 
@@ -1588,7 +1589,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                                                                             finstructableGroup.getRemoteHandle(), StaticParameterList.TYPE);
                                     for (int i = 0; i < parameterList.size(); i++) {
                                         if (parameterList.get(i).getName().equalsIgnoreCase("xml file")) {
-                                            structureFile = parameterList.get(i).valPointer().getRawDataPtr().toString();
+                                            structureFile = parameterList.get(i).valPointer().getData().toString();
                                             break;
                                         }
                                     }
@@ -1652,7 +1653,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             try {
                 serializedExpandedGroups.serialize(node.addChildNode("expanded"));
             } catch (Exception e) {
-                Finstruct.logDomain.log(LogLevel.ERROR, getLogDescription(), e);
+                Log.log(LogLevel.ERROR, this, e);
             }
         }
         if (!toolBar.isSelected(DiverseSwitches.antialiasing)) {

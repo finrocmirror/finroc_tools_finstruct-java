@@ -41,7 +41,8 @@ import org.finroc.tools.gui.util.gui.MDialog;
 import org.finroc.tools.gui.util.propertyeditor.PropertiesPanel;
 import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
-import org.rrlib.finroc_core_utils.log.LogLevel;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
 
 /**
  * @author Max Reichardt
@@ -152,7 +153,7 @@ public class ParameterEditDialog extends MDialog implements ActionListener {
                 try {
                     wpec.applyChanges();
                 } catch (Exception e1) {
-                    Finstruct.logDomain.log(LogLevel.ERROR, "ParameterEditDialog", e1);
+                    Log.log(LogLevel.ERROR, this, e1);
                 }
             }
             if (element != null) {

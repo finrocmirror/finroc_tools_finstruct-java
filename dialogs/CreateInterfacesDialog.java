@@ -56,8 +56,9 @@ import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.util.propertyeditor.PropertyList;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
-import org.rrlib.finroc_core_utils.log.LogLevel;
-import org.rrlib.finroc_core_utils.serialization.Serialization;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
+import org.rrlib.serialization.Serialization;
 
 /**
  * @author Max Reichardt
@@ -200,7 +201,7 @@ public class CreateInterfacesDialog extends MDialog {
                 try {
                     wpec.applyChanges();
                 } catch (Exception e1) {
-                    Finstruct.logDomain.log(LogLevel.ERROR, "ParameterEditDialog", e1);
+                    Log.log(LogLevel.ERROR, this, e1);
                 }
             }
 
@@ -293,7 +294,7 @@ public class CreateInterfacesDialog extends MDialog {
                     try {
                         wpec.applyChanges();
                     } catch (Exception e1) {
-                        Finstruct.logDomain.log(LogLevel.ERROR, "ParameterEditDialog", e1);
+                        Log.log(LogLevel.ERROR, this, e1);
                     }
                 }
 

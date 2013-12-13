@@ -48,8 +48,9 @@ import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.propertyeditor.PropertiesPanel;
 import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
-import org.rrlib.finroc_core_utils.log.LogLevel;
-import org.rrlib.finroc_core_utils.xml.XMLNode;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
+import org.rrlib.xml.XMLNode;
 
 /**
  * @author Max Reichardt
@@ -195,7 +196,7 @@ public class PortView extends FinstructView implements ActionListener {
                 }
             }
         } catch (Exception e) {
-            PropertiesPanel.logDomain.log(LogLevel.ERROR, getLogDescription(), e);
+            Log.log(LogLevel.ERROR, this, e);
             JOptionPane.showMessageDialog(null, e.getClass().getName() + "\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -257,7 +258,7 @@ public class PortView extends FinstructView implements ActionListener {
                 try {
                     component.updateValue();
                 } catch (Exception e) {
-                    logDomain.log(LogLevel.ERROR, getLogDescription(), e);
+                    Log.log(LogLevel.ERROR, this, e);
                 }
             }
             if (initialValueRetrieve) {

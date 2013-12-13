@@ -33,7 +33,7 @@ import javax.swing.JTextArea;
 
 import org.finroc.core.datatype.XML;
 import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
-import org.rrlib.finroc_core_utils.xml.XMLDocument;
+import org.rrlib.xml.XMLDocument;
 import org.xml.sax.InputSource;
 
 /**
