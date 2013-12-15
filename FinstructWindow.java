@@ -351,19 +351,19 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             } else if (src == miAddBookmark || src == miRemoveBookmark) {
                 // Remove current view from bookmarks
                 XMLNode bookmarkNode = finstruct.getSettings().getTopLevelNode("bookmarks");
-                for (XMLNode.ConstChildIterator bookmark = bookmarkNode.getChildrenBegin(); bookmark.get() != null; bookmark.next()) {
+                for (XMLNode bookmark : bookmarkNode.children()) {
                     try {
-                        if (bookmark.get().getName().equals("bookmark")) {
-                            String name = bookmark.get().getStringAttribute("root");
-                            String viewName = bookmark.get().getStringAttribute("view");
+                        if (bookmark.getName().equals("bookmark")) {
+                            String name = bookmark.getStringAttribute("root");
+                            String viewName = bookmark.getStringAttribute("view");
                             Class <? extends FinstructView > viewClass = getViewClassByName(viewName);
                             if (getCurrentView().getRootElement() != null && name.equals(getCurrentView().getRootElement().getQualifiedName('/')) && viewClass.equals(getCurrentView().getClass())) {
-                                bookmarkNode.removeChildNode(bookmark.get());
+                                bookmarkNode.removeChildNode(bookmark);
                                 break;
                             }
                         }
                     } catch (Exception e) {
-                        Log.log(LogLevel.WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
+                        Log.log(LogLevel.WARNING, "Could not parse bookmark entry: " + bookmark.getXMLDump(true), e);
                     }
                 }
 
@@ -393,11 +393,11 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             ArrayList<BookmarkSelector> bookmarks = new ArrayList<BookmarkSelector>();
 
             XMLNode bookmarkNode = finstruct.getSettings().getTopLevelNode("bookmarks");
-            for (XMLNode.ConstChildIterator bookmark = bookmarkNode.getChildrenBegin(); bookmark.get() != null; bookmark.next()) {
+            for (XMLNode bookmark : bookmarkNode.children()) {
                 try {
-                    if (bookmark.get().getName().equals("bookmark")) {
-                        String name = bookmark.get().getStringAttribute("root");
-                        String viewName = bookmark.get().getStringAttribute("view");
+                    if (bookmark.getName().equals("bookmark")) {
+                        String name = bookmark.getStringAttribute("root");
+                        String viewName = bookmark.getStringAttribute("view");
                         Class <? extends FinstructView > viewClass = getViewClassByName(viewName);
                         ModelNode root = finstruct.ioInterface.getChildByQualifiedName(name, '/');
 
@@ -412,10 +412,10 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
                         bookmarks.add(new BookmarkSelector(name,
                                                            "<html><font color=#" + color + "><b>" + rootSimpleName + "</b> in <i>" + rootPath + "</i> (" + viewClass.getSimpleName() + ")</font></html>",
-                                                           viewClass, bookmark.get(), enabled));
+                                                           viewClass, bookmark, enabled));
                     }
                 } catch (Exception e) {
-                    Log.log(LogLevel.WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
+                    Log.log(LogLevel.WARNING, "Could not parse bookmark entry: " + bookmark.getXMLDump(true), e);
                 }
             }
 
@@ -948,10 +948,10 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
                         // Search bookmarks first
                         XMLNode bookmarkNode = finstruct.getSettings().getTopLevelNode("bookmarks");
-                        for (XMLNode.ConstChildIterator bookmark = bookmarkNode.getChildrenBegin(); bookmark.get() != null; bookmark.next()) {
+                        for (XMLNode bookmark : bookmarkNode.children()) {
                             try {
-                                if (bookmark.get().getName().equals("bookmark")) {
-                                    String name = bookmark.get().getStringAttribute("root").substring("Interfaces".length());
+                                if (bookmark.getName().equals("bookmark")) {
+                                    String name = bookmark.getStringAttribute("root").substring("Interfaces".length());
                                     String nameLower = name.toLowerCase();
                                     boolean foundAll = true;
                                     int wordBeginMatches = 0;
@@ -964,12 +964,12 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
                                     if (foundAll) {
                                         if (finstruct.ioInterface.getChildByQualifiedName("Interfaces" + name, '/') != null) {
-                                            addSearchResult(searchResult, new StringBuilder(name), bookmark.get().getXMLDump(false), wordBeginMatches);
+                                            addSearchResult(searchResult, new StringBuilder(name), bookmark.getXMLDump(false), wordBeginMatches);
                                         }
                                     }
                                 }
                             } catch (Exception e) {
-                                Log.log(LogLevel.WARNING, "Could not parse bookmark entry: " + bookmark.get().getXMLDump(true), e);
+                                Log.log(LogLevel.WARNING, "Could not parse bookmark entry: " + bookmark.getXMLDump(true), e);
                             }
                         }
 

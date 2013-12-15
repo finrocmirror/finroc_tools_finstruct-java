@@ -113,11 +113,11 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
     protected void rootElementChanged(XMLNode viewConfiguration) {
         if (viewConfiguration != null) {
             hiddenElements.clear();
-            for (XMLNode.ConstChildIterator child = viewConfiguration.getChildrenBegin(); child.get() != null; child.next()) {
-                if (child.get().getName().equals("hidden")) {
+            for (XMLNode child : viewConfiguration.children()) {
+                if (child.getName().equals("hidden")) {
                     StdStringList stringList = new StdStringList();
                     try {
-                        stringList.deserialize(child.get());
+                        stringList.deserialize(child);
                         for (int i = 0; i < stringList.stringCount(); i++) {
                             hiddenElements.add(stringList.getString(i).toString());
                         }

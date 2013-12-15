@@ -67,7 +67,6 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import org.finroc.core.FrameworkElementFlags;
-import org.finroc.core.FrameworkElementTags;
 import org.finroc.core.RuntimeEnvironment;
 import org.finroc.core.finstructable.EditableInterfaces;
 import org.finroc.core.parameter.StaticParameterList;
@@ -242,12 +241,12 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         super.rootElementChanged(viewConfiguration);
         expandedGroups.clear();
         if (viewConfiguration != null) {
-            for (XMLNode.ConstChildIterator child = viewConfiguration.getChildrenBegin(); child.get() != null; child.next()) {
-                if (child.get().getName().equals("expanded")) {
+            for (XMLNode child : viewConfiguration.children()) {
+                if (child.getName().equals("expanded")) {
                     String rootString = getRootElement().getQualifiedName('/') + "/";
                     StdStringList stringList = new StdStringList();
                     try {
-                        stringList.deserialize(child.get());
+                        stringList.deserialize(child);
                         for (int i = 0; i < stringList.stringCount(); i++) {
                             ModelNode expanded = getFinstruct().getIoInterface().getChildByQualifiedName(rootString + stringList.getString(i).toString(), '/');
                             if (expanded != null) {

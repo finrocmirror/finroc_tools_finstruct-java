@@ -76,9 +76,9 @@ public class FinstructSettings {
      */
     public XMLNode getTopLevelNode(String name) {
         XMLNode root = getSettings().getRootNode();
-        for (XMLNode.ConstChildIterator child = root.getChildrenBegin(); child.get() != null; child.next()) {
-            if (child.get().getName().equals(name)) {
-                return child.get();
+        for (XMLNode child : root.children()) {
+            if (child.getName().equals(name)) {
+                return child;
             }
         }
         return root.addChildNode(name);

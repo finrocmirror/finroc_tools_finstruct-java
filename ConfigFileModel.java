@@ -114,8 +114,8 @@ public class ConfigFileModel extends DefaultTreeModel {
      * @param xmlParent XML parent node
      */
     private void createNodes(DefaultMutableTreeNode parent, XMLNode xmlParent, String uid) {
-        for (XMLNode.ConstChildIterator port = xmlParent.getChildrenBegin(); port.get() != xmlParent.getChildrenEnd(); port.next()) {
-            XMLNode child = port.get();
+        for (XMLNode port : xmlParent.children()) {
+            XMLNode child = port;
             try {
                 String slashedUid = (uid.length() == 0 ? "" : (uid + "/"));
                 if (child.getName() == "node") {
