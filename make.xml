@@ -1,5 +1,5 @@
 <targets>
-  <finrocprogram name="finstruct">
+  <finrocprogram name="finstruct" main-class="org.finroc.tools.finstruct.Finstruct">
     <sources>**.java **.png **.txt</sources>
     <script name="finstruct" main-class="org.finroc.tools.finstruct.Finstruct"/>
   </finrocprogram>
