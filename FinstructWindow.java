@@ -276,7 +276,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
         // restore root element
         if (lastRoot != null && restoreRoot) {
-            setViewRootElement(lastRoot, null, false);
+            setViewRootElement(lastRoot, null, true);
         }
 
         updateHistoryButtonState();

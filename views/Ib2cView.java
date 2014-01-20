@@ -172,7 +172,7 @@ public class Ib2cView extends StandardViewGraphViz {
                 super.paint(g2d);
                 return;
             }
-            if (status == null || status.moduleHandle == 0) {
+            if (status == null) {
                 super.paint(g2d);
                 return;
             }
