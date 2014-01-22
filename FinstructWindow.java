@@ -718,6 +718,11 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         }
     }
 
+    @Override
+    public String toString() {
+        return "Finstruct Window '" + getTitle() + "'";
+    }
+
     /**
      * Menu Item that selects a different view
      */
