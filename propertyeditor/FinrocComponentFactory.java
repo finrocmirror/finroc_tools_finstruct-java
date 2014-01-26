@@ -331,7 +331,7 @@ public class FinrocComponentFactory implements ComponentFactory {
                 this.wrapped = wrapped;
             }
 
-            private PortCreationListAccessor() {} // only for deepCopy.newInstance() to succeed
+            public PortCreationListAccessor() {} // only for deepCopy.newInstance() to succeed
 
             @Override
             public void copyFrom(PortCreationListAccessor source) {

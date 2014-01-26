@@ -25,6 +25,7 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.finroc.core.datatype.CoreString;
 import org.finroc.core.parameter.StaticParameterBase;
 import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
@@ -62,9 +63,9 @@ public class StaticParameterAccessor implements PropertyAccessor {
     @Override
     public void set(Object newValue) throws Exception {
         if (newValue instanceof String) {
-            wrapped.set(newValue.toString());
+            wrapped.setValue(new CoreString(newValue.toString()));
         } else {
-            wrapped.set(Serialization.serialize(newValue));
+            wrapped.setValue(newValue);
         }
     }
 

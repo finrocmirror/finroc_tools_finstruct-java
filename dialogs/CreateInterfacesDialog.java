@@ -58,7 +58,6 @@ import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
 import org.rrlib.logging.Log;
 import org.rrlib.logging.LogLevel;
-import org.rrlib.serialization.Serialization;
 
 /**
  * @author Max Reichardt
@@ -364,7 +363,7 @@ public class CreateInterfacesDialog extends MDialog {
                                     RemoteRuntime rr = RemoteRuntime.find(element);
                                     int handle = element.getRemoteHandle();
                                     StaticParameterList elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(handle, StaticParameterList.TYPE);
-                                    elementParamList.get(0).set(Serialization.serialize(task.portCreationList));
+                                    elementParamList.get(0).setValue(task.portCreationList);
                                     rr.getAdminInterface().setAnnotation(handle, elementParamList);
 
                                     setPortListCount--;
