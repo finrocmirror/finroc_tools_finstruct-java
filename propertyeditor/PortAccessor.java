@@ -39,7 +39,6 @@ import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
-import org.rrlib.serialization.BinarySerializable;
 import org.rrlib.serialization.EnumValue;
 import org.rrlib.serialization.PortDataListImpl;
 import org.rrlib.serialization.Serialization;
@@ -53,7 +52,7 @@ import org.rrlib.serialization.rtti.GenericObject;
  * It creates an extra port that is connected to port to wrap.
  */
 @SuppressWarnings("rawtypes")
-public class PortAccessor<T extends BinarySerializable> implements PropertyAccessor<T>, PortListener {
+public class PortAccessor<T> implements PropertyAccessor<T>, PortListener {
 
     /** port to get and set data */
     protected final AbstractPort wrapped;
