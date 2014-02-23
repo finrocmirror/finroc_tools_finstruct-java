@@ -1078,18 +1078,47 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
             final ArrayList<ModelNode> srcPorts = new ArrayList<ModelNode>();
             final HashSet<ModelNode> destPorts = new HashSet<ModelNode>();
+            final ArrayList<AbstractPort> remoteEdgeDestinations = new ArrayList<AbstractPort>();
 
+            // all forward edges
             ArrayList<RemotePort> remotePorts = getSource().getModelElement().getPortsBelow(null);
             for (RemotePort remotePort : remotePorts) {
                 NetPort np = remotePort.getPort().asNetPort();
                 if (np != null) {
                     boolean added = false;
-                    for (AbstractPort port : np.getRemoteEdgeDestinations()) {
+                    remoteEdgeDestinations.clear();
+                    int reverseIndex = np.getRemoteEdgeDestinations(remoteEdgeDestinations);
+                    for (int i = 0; i < reverseIndex; i++) {
+                        AbstractPort port = remoteEdgeDestinations.get(i);
                         for (RemotePort remoteDestPort : RemotePort.get(port)) {
                             if (remoteDestPort.isNodeAncestor(getDestination().getModelElement())) {
                                 destPorts.add(remoteDestPort);
                                 if (!added) {
                                     srcPorts.add(remotePort);
+                                    added = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // reverse network edges
+            remotePorts = getDestination().getModelElement().getPortsBelow(null);
+            for (RemotePort remotePort : remotePorts) {
+                NetPort np = remotePort.getPort().asNetPort();
+                if (np != null) {
+                    remoteEdgeDestinations.clear();
+                    int reverseIndex = np.getRemoteEdgeDestinations(remoteEdgeDestinations);
+                    for (int i = reverseIndex; i < remoteEdgeDestinations.size(); i++) {
+                        AbstractPort port = remoteEdgeDestinations.get(i);
+                        for (RemotePort remoteSourcePort : RemotePort.get(port)) {
+                            if (remoteSourcePort.isNodeAncestor(getSource().getModelElement())) {
+                                if (!srcPorts.contains(remoteSourcePort)) {
+                                    srcPorts.add(remoteSourcePort);
+                                }
+                                if (!destPorts.contains(remotePort)) {
+                                    destPorts.add(remotePort);
                                 }
                             }
                         }
