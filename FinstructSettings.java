@@ -22,10 +22,12 @@
 package org.finroc.tools.finstruct;
 
 import java.io.File;
+import java.util.ArrayList;
 
 import org.rrlib.logging.Log;
 import org.rrlib.logging.LogLevel;
 import org.rrlib.xml.XMLDocument;
+import org.rrlib.xml.XMLException;
 import org.rrlib.xml.XMLNode;
 
 /**
@@ -40,6 +42,11 @@ public class FinstructSettings {
 
     /** Settings XML file */
     private XMLDocument document;
+
+    /** Size of connection history */
+    private static final int CONNECTION_HISTORY_SIZE = 8;
+
+    private static final String CONNECTION_HISTORY_XML_NAME = "connection_history";
 
     /**
      * @return FinstructSettings XML document. Loads or creates it if necessary.
@@ -96,4 +103,48 @@ public class FinstructSettings {
             }
         }
     }
+
+    /**
+     * @return Connection History
+     */
+    public ArrayList<String> getConnectionHistory() {
+        ArrayList<String> result = new ArrayList<String>();
+        try {
+            XMLNode historyNode = getTopLevelNode(CONNECTION_HISTORY_XML_NAME);
+            for (XMLNode child : historyNode.children()) {
+                result.add(child.getTextContent());
+            }
+        } catch (Exception e) {
+            Log.log(LogLevel.ERROR, this, e);
+        }
+        return result;
+    }
+
+    /**
+     * @param newConnection Connection to add to connection history
+     */
+    public void addToConnectionHistory(String newConnection) {
+        ArrayList<String> connectionHistory = getConnectionHistory();
+        if (connectionHistory.size() > 0 && connectionHistory.get(0).equals(newConnection)) {
+            return;
+        }
+        connectionHistory.remove(newConnection);
+        connectionHistory.add(0, newConnection);
+        while (connectionHistory.size() > CONNECTION_HISTORY_SIZE) {
+            connectionHistory.remove(connectionHistory.size() - 1);
+        }
+
+        XMLNode historyNode = getTopLevelNode(CONNECTION_HISTORY_XML_NAME);
+        historyNode.getParent().removeChildNode(historyNode);
+        historyNode = getTopLevelNode(CONNECTION_HISTORY_XML_NAME);
+        for (String connection : connectionHistory) {
+            try {
+                historyNode.addChildNode("connection").setContent(connection);
+            } catch (XMLException e) {
+                Log.log(LogLevel.ERROR, this, e);
+            }
+        }
+        saveSettings();
+    }
+
 }

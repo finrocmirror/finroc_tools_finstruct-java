@@ -32,6 +32,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -65,6 +66,7 @@ import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.PortWrapperTreeNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.util.Files;
+import org.finroc.tools.gui.ConnectDialog;
 import org.finroc.tools.gui.ConnectionPanel;
 import org.finroc.tools.gui.GUIUiBase;
 import org.finroc.tools.gui.StatusBar;
@@ -180,7 +182,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
                 // connect
                 if (finstruct.tcpConnect != null) {
                     try {
-                        finstruct.tcpConnect.connect(address);
+                        finstruct.tcpConnect.connect(address, true);
                     } catch (Exception e) {
                         showErrorMessage(e, true);
                     }
@@ -430,7 +432,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
                 } else if (reconnect) {
                     //ioInterface.reconnect();
                 } else {
-                    connect(null);
+                    connect(null, false);
                     return;
                 }
                 EventRouter.fireConnectionEvent(null, ConnectionListener.INTERFACE_UPDATED);
@@ -444,19 +446,23 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
          *
          * @param address Address to connect to
          */
-        private void connect(String address) throws Exception {
+        private void connect(String address, boolean initial) throws Exception {
             //ioInterface.connect(null);
             ExternalConnection ec = ioInterface.createExternalConnection();
             Finstruct.this.ioInterface.getRootFrameworkElement().addChild(ec);
             ec.init();
             ec.addConnectionListener(Finstruct.this);
             if (address == null) {
-                address = JOptionPane.showInputDialog(null, ioInterface.getName() + ": Please input connection address", ec.getConnectionAddress());
+                ArrayList<String> connectionHistory = settings.getConnectionHistory();
+                String first = connectionHistory.size() > 0 ? connectionHistory.remove(0) : ec.getConnectionAddress();
+                address = new ConnectDialog(Finstruct.this, true, true, initial ? "Would you like to connect now?" : "Please select address to connect to").show(connectionHistory, first);
+                //      JOptionPane.showInputDialog(null, ioInterface.getName() + ": Please input connection address", ec.getConnectionAddress());
             }
             if (address != null) {
                 ec.connect(address, Finstruct.this.ioInterface.getNewModelHandlerInstance());
                 // parent.ioInterface.addModule(ioInterface.createModule());
                 EventRouter.fireConnectionEvent(null, ConnectionListener.INTERFACE_UPDATED);
+                settings.addToConnectionHistory(address);
             } else {
                 ec.managedDelete();
             }
