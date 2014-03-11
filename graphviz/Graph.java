@@ -218,6 +218,10 @@ public class Graph extends GraphVizElement {
                 i++;
                 s = s.substring(0, s.length() - 1) + outputLines.get(i);
             }
+            while (s.contains("[") && (!s.endsWith("];"))) {
+                i++;
+                s += outputLines.get(i).trim();
+            }
             Log.log(LogLevel.DEBUG_VERBOSE_1, "GraphViz graph after layout", s);
             if (s.trim().startsWith("null [")) {
                 nullVector = toPoint(extractAttributeValue(s, "pos"));
