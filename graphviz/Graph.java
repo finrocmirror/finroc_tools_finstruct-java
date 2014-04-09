@@ -214,9 +214,13 @@ public class Graph extends GraphVizElement {
         String graphLine = null;
         for (int i = 0; i < outputLines.size(); i++) {
             String s = outputLines.get(i);
-            while (s.endsWith("\\")) {
+            while (s.endsWith("\\") || (!(s.endsWith("{") || s.endsWith("}") || s.endsWith(";")))) {
                 i++;
-                s = s.substring(0, s.length() - 1) + outputLines.get(i);
+                if (s.endsWith("\\")) {
+                    s = s.substring(0, s.length() - 1) + outputLines.get(i);
+                } else {
+                    s = s + outputLines.get(i);
+                }
             }
             while (s.contains("[") && (!s.endsWith("];"))) {
                 i++;
@@ -235,7 +239,7 @@ public class Graph extends GraphVizElement {
             if (s.contains("pos=\"") && s.contains(HANDLE_KEY + "=")) { // sign for edge or vertex
                 //String tmp = s.split(HANDLE_KEY + "=")[1];
                 //int handle = Integer.parseInt(tmp.substring(0, Math.min(tmp.indexOf(']'), tmp.indexOf(','))));
-                getElement(Integer.parseInt(extractAttributeValue(s, HANDLE_KEY))).processLineFromLayouter(s, nullVector);
+                getElement(Integer.parseInt(extractAttributeValue(s, HANDLE_KEY).trim())).processLineFromLayouter(s, nullVector);
             }
 
             if (s.trim().startsWith("graph [")) {
@@ -245,7 +249,7 @@ public class Graph extends GraphVizElement {
                 graphLine += s.trim();
                 if (graphLine.endsWith(";")) {
                     if ((!graphLine.contains("bb=\"\"")) && graphLine.contains("bb=\"") && graphLine.contains(HANDLE_KEY + "=")) {
-                        ((Graph)getElement(Integer.parseInt(extractAttributeValue(graphLine, HANDLE_KEY)))).readBounds(extractAttributeValue(graphLine, "bb"));
+                        ((Graph)getElement(Integer.parseInt(extractAttributeValue(graphLine, HANDLE_KEY).trim()))).readBounds(extractAttributeValue(graphLine, "bb"));
                     }
                     graphLine = null;
                 }
@@ -282,6 +286,7 @@ public class Graph extends GraphVizElement {
         vertices.clear();
         edges.clear();
         subgraphs.clear();
+        addElement(this);
     }
 
     /**
