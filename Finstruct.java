@@ -133,6 +133,9 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     /** Tool bar for different modes of tree */
     public final MToolBar treeToolBar = new MToolBar("Tree mode");
 
+    /** List of hidden elements */
+    public final ArrayList<String> hiddenElements = new ArrayList<String>();
+
     public static void main(String[] args) {
         RuntimeSettings.setUseCCPorts(false);
         RuntimeSettings.setMaxCoreRegisterIndexBits(19);

@@ -75,9 +75,6 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
     /** Reference to connectionPanel */
     protected FinstructConnectionPanel connectionPanel;
 
-    /** List of hidden elements */
-    protected ArrayList<String> hiddenElements = new ArrayList<String>();
-
     /** Current options for drawing graph */
     protected GraphAppearance graphAppearance = new GraphAppearance();
 
@@ -113,14 +110,14 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
     @Override
     protected void rootElementChanged(XMLNode viewConfiguration) {
         if (viewConfiguration != null) {
-            hiddenElements.clear();
+            getFinstruct().hiddenElements.clear();
             for (XMLNode child : viewConfiguration.children()) {
                 if (child.getName().equals("hidden")) {
                     StdStringList stringList = new StdStringList();
                     try {
                         stringList.deserialize(child);
                         for (int i = 0; i < stringList.stringCount(); i++) {
-                            hiddenElements.add(stringList.getString(i).toString());
+                            getFinstruct().hiddenElements.add(stringList.getString(i).toString());
                         }
                         break;
                     } catch (Exception e) {
@@ -133,9 +130,9 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
 
     @Override
     public void storeViewConfiguration(XMLNode node) {
-        if (hiddenElements.size() > 0) {
+        if (getFinstruct().hiddenElements.size() > 0) {
             StdStringList serializedHiddenElements = new StdStringList();
-            for (String hiddenElement : hiddenElements) {
+            for (String hiddenElement : getFinstruct().hiddenElements) {
                 serializedHiddenElements.add(hiddenElement);
             }
             try {
@@ -165,10 +162,10 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         if (e.getSource() == graphMenu) {
             graphMenu.removeAll();
             miGraphAppearance = createMenuEntry("Appearance...", graphMenu, KeyEvent.VK_A);
-            if (hiddenElements.size() > 0) {
+            if (getFinstruct().hiddenElements.size() > 0) {
                 miShowAllHidden = createMenuEntry("Show all hidden elements", graphMenu, KeyEvent.VK_S);
                 graphMenu.addSeparator();
-                for (String hiddenElement : hiddenElements) {
+                for (String hiddenElement : getFinstruct().hiddenElements) {
                     createMenuEntry("Show " + hiddenElement, graphMenu, 0);
                 }
             }
@@ -195,10 +192,10 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             }
             repaint();
         } else if (ae.getSource() == miShowAllHidden) {
-            hiddenElements.clear();
+            getFinstruct().hiddenElements.clear();
             refresh();
         } else if (ae.getSource() instanceof JMenuItem && ((JMenuItem)ae.getSource()).getText().startsWith("Show ")) {
-            hiddenElements.remove(((JMenuItem)ae.getSource()).getText().substring("Show ".length()));
+            getFinstruct().hiddenElements.remove(((JMenuItem)ae.getSource()).getText().substring("Show ".length()));
             refresh();
         }
     }
@@ -342,9 +339,9 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             if (root.getChildAt(i).isHidden(true)) {
                 continue;
             }
-            if (hiddenElements.size() > 0) {
+            if (getFinstruct().hiddenElements.size() > 0) {
                 String qualifiedName = root.getChildAt(i).getQualifiedName('/');
-                if (hiddenElements.contains(qualifiedName)) {
+                if (getFinstruct().hiddenElements.contains(qualifiedName)) {
                     continue;
                 }
             }

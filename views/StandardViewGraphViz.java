@@ -1436,8 +1436,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
         } else if (ae.getSource() == miHide) {
             String link = rightClickedOn.getQualifiedName('/');
-            if (!hiddenElements.contains(link)) {
-                hiddenElements.add(link);
+            if (!getFinstruct().hiddenElements.contains(link)) {
+                getFinstruct().hiddenElements.add(link);
                 relayout();
             }
         } else if (ae.getSource() instanceof Timer) {
