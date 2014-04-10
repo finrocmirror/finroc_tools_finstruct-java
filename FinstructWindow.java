@@ -63,6 +63,7 @@ import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.views.AbstractGraphView;
+import org.finroc.tools.finstruct.views.ComponentVisualization;
 import org.finroc.tools.finstruct.views.Ib2cView;
 import org.finroc.tools.finstruct.views.PortView;
 import org.finroc.tools.finstruct.views.StandardViewGraphViz;
@@ -158,6 +159,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         views.add(new ViewSelector(StandardViewGraphViz.class, viewSelectGroup));
         views.add(new ViewSelector(PortView.class, viewSelectGroup));
         views.add(new ViewSelector(Ib2cView.class, viewSelectGroup));
+        views.add(new ViewSelector(ComponentVisualization.class, viewSelectGroup));
 
         // view menu
         JMenu menuView = new JMenu("View");
