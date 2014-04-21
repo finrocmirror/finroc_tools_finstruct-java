@@ -29,6 +29,7 @@ import org.finroc.core.datatype.CoreBoolean;
 import org.finroc.core.datatype.DataTypeReference;
 import org.finroc.core.datatype.PortCreationList;
 import org.finroc.core.datatype.XML;
+import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.core.portdatabase.SerializationHelper;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteRuntime;
@@ -43,7 +44,6 @@ import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.util.propertyeditor.PropertyListAccessor;
 import org.finroc.tools.gui.util.propertyeditor.PropertyListEditor;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
-import org.finroc.plugins.data_types.ContainsStrings;
 import org.finroc.plugins.data_types.PaintablePortData;
 import org.rrlib.serialization.BinarySerializable;
 import org.rrlib.serialization.EnumValue;
@@ -65,6 +65,22 @@ public class FinrocComponentFactory implements ComponentFactory {
 
     public FinrocComponentFactory(ModelNode commonParent) {
         this.commonParent = commonParent;
+    }
+
+    /**
+     * @param type Type to check
+     * @return True if type is supported by Finroc component factory
+     * (e.g. a component for displaying and possibly editing is available)
+     */
+    public static boolean isTypeSupported(DataTypeBase dt) {
+        if (FinrocTypeInfo.isCCType(dt) || FinrocTypeInfo.isStdType(dt) || FinrocTypeInfo.isUnknownAdaptableType(dt)) {
+            Class<?> type = dt.getJavaClass();
+            return (type.equals(PortCreationList.class) || DataTypeReference.class.equals(type)
+                    || PaintablePortData.class.isAssignableFrom(type) || XML.class.isAssignableFrom(type) || type.isEnum()
+                    || type.equals(EnumValue.class) || CoreBoolean.class.isAssignableFrom(type) || type.equals(PortDataListImpl.class)
+                    || (BinarySerializable.class.isAssignableFrom(type) && Serialization.isStringSerializable(type)));
+        }
+        return false;
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -108,7 +124,7 @@ public class FinrocComponentFactory implements ComponentFactory {
         } else if (type.equals(PortDataListImpl.class)) {
             wpec = new CoreSerializableDefaultEditor(type);
             acc = new PortDataListAdapter((PropertyAccessor<PortDataListImpl>)acc);
-        } else if (BinarySerializable.class.isAssignableFrom(type) && (!ContainsStrings.class.isAssignableFrom(type))) {
+        } else if (BinarySerializable.class.isAssignableFrom(type) && Serialization.isStringSerializable(type)) {
             DataTypeBase dt = DataTypeBase.findType(acc.getType());
             wpec = new CoreSerializableDefaultEditor(type);
             acc = new CoreSerializableAdapter((PropertyAccessor<BinarySerializable>)acc, type, dt);

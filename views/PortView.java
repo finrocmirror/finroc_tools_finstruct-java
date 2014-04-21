@@ -34,7 +34,6 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import org.finroc.core.port.ThreadLocalCache;
-import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.tools.finstruct.Finstruct;
@@ -143,8 +142,7 @@ public class PortView extends FinstructView implements ActionListener {
         // create new panel
         for (RemotePort port : portsToShow) {
 
-            if (FinrocTypeInfo.isCCType(port.getPort().getDataType()) || FinrocTypeInfo.isStdType(port.getPort().getDataType()) ||
-                    FinrocTypeInfo.isUnknownAdaptableType(port.getPort().getDataType())) {
+            if (FinrocComponentFactory.isTypeSupported(port.getPort().getDataType())) {
                 @SuppressWarnings("rawtypes")
                 ConnectingPortAccessor cpa = new ConnectingPortAccessor(port, commonParent.getQualifiedName('/'));
                 ports.add(cpa);
