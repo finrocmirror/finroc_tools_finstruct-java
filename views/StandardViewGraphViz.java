@@ -214,6 +214,20 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     }
 
     /**
+     * @return Collection of vertices
+     */
+    public Collection<Vertex> getVertices() {
+        return vertices;
+    }
+
+    /**
+     * @return Collection of edges
+     */
+    public Collection<Edge> getEdges() {
+        return edges;
+    }
+
+    /**
      * Convenient method the create menu entries and add this Window as listener
      *
      * @param string Text of menu entry
