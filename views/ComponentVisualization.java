@@ -207,10 +207,14 @@ public class ComponentVisualization extends StandardViewGraphViz {
                     double factorY = (fitTo.getHeight()) / (originalBounds.getHeight());
                     double factor = Math.min(factorX, factorY);
 
-                    g2d.translate(rect.x + Math.max(0, (fitTo.getWidth() - factor * originalBounds.getWidth()) / 2), rect.y + rect.height - VISUALIZATION_HEIGHT);
-                    g2d.scale(factor, factor);
+                    g2d.translate(rect.x + Math.max(0, (fitTo.getWidth() - factor * originalBounds.getWidth()) / 2), rect.y + rect.height - (paintable.isYAxisPointingDownwards() ? VISUALIZATION_HEIGHT : 0));
+                    g2d.scale(factor, paintable.isYAxisPointingDownwards() ? factor : -factor);
                     g2d.translate(-originalBounds.getMinX(), -originalBounds.getMinY());
+                    Rectangle oldClip = g2d.getClipBounds();
+                    g2d.setClip(new Rectangle2D.Double(originalBounds.getX() * (factorX / factor), originalBounds.getY() * (factorY / factor),
+                                                       originalBounds.getWidth() * (factorX / factor), originalBounds.getHeight() * (factorY / factor)));
                     paintable.paint(g2d);
+                    g2d.setClip(oldClip);
                     g2d.setTransform(at);
                 }
             }
