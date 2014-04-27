@@ -30,7 +30,6 @@ import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 
 import javax.swing.ImageIcon;
-import javax.swing.SwingUtilities;
 
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
@@ -111,10 +110,30 @@ public class ComponentVisualization extends StandardViewGraphViz {
     }
 
     /**
+     * @param fe Framework element to find visualization port for
+     * @param tags Port must have (at least) one of these tags
+     * @return Port with one of these tags (or null if no port could be found)
+     */
+    static RemotePort findVisualizationPort(RemoteFrameworkElement fe, final String... tags) {
+        for (RemoteFrameworkElement subElement : fe.getFrameworkElementsBelow(null)) {
+            if (subElement instanceof RemotePort) {
+                for (String tag : subElement.getTags()) {
+                    for (String t : tags) {
+                        if (t.equals(tag)) {
+                            return (RemotePort)subElement;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Vertex that displays real-time component visualization
      */
     @SuppressWarnings("rawtypes")
-    public class AnimatedVertex extends Vertex implements PortListener, Runnable {
+    public class AnimatedVertex extends Vertex implements PortListener {
 
         /** ports used to get behaviour data via push */
         private ConnectingPortAccessor<?> port;
@@ -123,17 +142,21 @@ public class ComponentVisualization extends StandardViewGraphViz {
             super(fe);
 
             // Create port for visualization data access */
-            for (RemoteFrameworkElement subElement : fe.getFrameworkElementsBelow(null)) {
-                for (String tag : subElement.getTags()) {
-                    if (tag.startsWith("visualization-") && (subElement instanceof RemotePort)) {
-                        port = new ConnectingPortAccessor((RemotePort)subElement, "");
-                        visualizationPorts.add(port);
-                        ((PortBase)port.getPort()).addPortListenerRaw(this);
-                        port.init();
-                        port.setAutoUpdate(true);
-                        return;
-                    }
-                }
+            RemotePort remotePort = findVisualizationPort(fe, "visualization-all", "visualization-less", "visualization-low");
+            if (remotePort == null) {
+                remotePort = findVisualizationPort(fe, "visualization-mid", "visualization-more");
+            }
+            if (remotePort == null) {
+                remotePort = findVisualizationPort(fe, "visualization-high");
+            }
+
+            if (remotePort != null) {
+                port = new ConnectingPortAccessor(remotePort, "");
+                visualizationPorts.add(port);
+                ((PortBase)port.getPort()).addPortListenerRaw(this);
+                port.init();
+                port.setAutoUpdate(true);
+                return;
             }
         }
 
@@ -200,22 +223,22 @@ public class ComponentVisualization extends StandardViewGraphViz {
                 // scale to fit etc.
                 Rectangle2D originalBounds = paintable.getBounds();
                 if (originalBounds != null) {
-                    Rectangle2D fitTo = new Rectangle2D.Double(0, 0, rect.getWidth(), VISUALIZATION_HEIGHT);
+                    Rectangle2D fitTo = new Rectangle2D.Double(0, 0, rect.getWidth() - 2, VISUALIZATION_HEIGHT);
                     AffineTransform at = g2d.getTransform();
+                    Rectangle oldClip = g2d.getClipBounds();
 
                     double factorX = (fitTo.getWidth()) / (originalBounds.getWidth());
                     double factorY = (fitTo.getHeight()) / (originalBounds.getHeight());
                     double factor = Math.min(factorX, factorY);
 
-                    g2d.translate(rect.x + Math.max(0, (fitTo.getWidth() - factor * originalBounds.getWidth()) / 2), rect.y + rect.height - (paintable.isYAxisPointingDownwards() ? VISUALIZATION_HEIGHT : 0));
+                    g2d.translate(rect.x + 1, rect.y + rect.height - VISUALIZATION_HEIGHT);
+                    g2d.setClip(fitTo);
+                    g2d.translate(Math.max(0, (fitTo.getWidth() - factor * originalBounds.getWidth()) / 2), (paintable.isYAxisPointingDownwards() ? 0 : VISUALIZATION_HEIGHT));
                     g2d.scale(factor, paintable.isYAxisPointingDownwards() ? factor : -factor);
                     g2d.translate(-originalBounds.getMinX(), -originalBounds.getMinY());
-                    Rectangle oldClip = g2d.getClipBounds();
-                    g2d.setClip(new Rectangle2D.Double(originalBounds.getX() * (factorX / factor), originalBounds.getY() * (factorY / factor),
-                                                       originalBounds.getWidth() * (factorX / factor), originalBounds.getHeight() * (factorY / factor)));
                     paintable.paint(g2d);
-                    g2d.setClip(oldClip);
                     g2d.setTransform(at);
+                    g2d.setClip(oldClip);
                 }
             }
 
@@ -232,13 +255,12 @@ public class ComponentVisualization extends StandardViewGraphViz {
         }
 
         @Override
-        public void run() {
-            repaint(rect.x, rect.y + rect.height - VISUALIZATION_HEIGHT, rect.width, VISUALIZATION_HEIGHT);
-        }
-
-        @Override
         public void portChanged(AbstractPort origin, Object value) {
-            SwingUtilities.invokeLater(this);
+            if (getZoom() != 1.0f) {
+                repaint((int)(rect.x * getZoom()), (int)((rect.y + rect.height - VISUALIZATION_HEIGHT) * getZoom()), (int)(rect.width * getZoom()), (int)(VISUALIZATION_HEIGHT * getZoom())); // thread-safe
+            } else {
+                repaint(rect.x, rect.y + rect.height - VISUALIZATION_HEIGHT, rect.width, VISUALIZATION_HEIGHT); // thread-safe
+            }
         }
     }
 }

@@ -1492,11 +1492,18 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
      *
      * @param zoom Zoom (100% = 1.0f)
      */
-    private void setZoom(double zoom) {
+    public void setZoom(double zoom) {
         this.zoom = (float)zoom;
         mouseHandlers.setZoom(zoom);
         revalidate();
         repaint();
+    }
+
+    /**
+     * @return Current zoom factor
+     */
+    public float getZoom() {
+        return this.zoom;
     }
 
     @Override
