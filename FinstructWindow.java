@@ -592,7 +592,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             if (currentView == null || currentView.getClass() != viewClass) {
                 changeView(getViewInstance(viewClass), false);
             }
-            setViewRootElement(fe, null, false);
+            setViewRootElement(fe, null, true);
         } else {
             Class <? extends FinstructView > selectedView = null;
             pushViewToHistory(); // create history element for current view
@@ -606,7 +606,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
             if (currentView == null || (!currentView.getClass().equals(selectedView))) {
                 changeView(getViewInstance(selectedView), false);
             }
-            setViewRootElement(fe, null, false);
+            setViewRootElement(fe, null, true);
         }
     }
 
