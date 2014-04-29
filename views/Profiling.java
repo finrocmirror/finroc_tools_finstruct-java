@@ -158,7 +158,7 @@ public class Profiling extends StandardViewGraphViz {
         @Override
         public void portChanged() {
             try {
-                TaskProfile.List profiles = this.get();
+                TaskProfile.List profiles = this.getAutoLocked();
                 if (initialReceive) {
                     initialReceive = false;
                     for (int i = 0; i < profiles.size(); i++) {
@@ -215,6 +215,7 @@ public class Profiling extends StandardViewGraphViz {
             } catch (Exception e) {
                 Log.log(LogLevel.ERROR, e);
             }
+            releaseAllLocks();
         }
 
         private AbstractPort getConnectedPort() {

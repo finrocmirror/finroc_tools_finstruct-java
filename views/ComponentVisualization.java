@@ -175,7 +175,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
         public void paint(Graphics2D g2d) {
             Object currentVisualization = null;
             try {
-                currentVisualization = port.get();
+                currentVisualization = port.getAutoLocked();
             } catch (Exception e) {
                 //super.paint(g2d);
                 //return;
@@ -252,6 +252,8 @@ public class ComponentVisualization extends StandardViewGraphViz {
                 }
                 expandIcon.paint(g2d, rect.x + rect.width - 5, rect.y - 1, true);
             }
+
+            releaseAllLocks();
         }
 
         @Override

@@ -28,6 +28,7 @@ import javax.swing.JComponent;
 import javax.swing.JMenuBar;
 import javax.swing.JPanel;
 
+import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.tools.gui.util.gui.MPanel;
 import org.finroc.tools.gui.util.gui.MToolBar;
@@ -171,4 +172,11 @@ public abstract class FinstructView extends MPanel {
      * Any ports in use by view should be deleted in order to avoid leaks.
      */
     protected void destroy() {}
+
+    /**
+     * Releases all locks on all port buffers that were acquired using a GetAutoLocked() method
+     */
+    public void releaseAllLocks() {
+        ThreadLocalCache.getFast().releaseAllLocks();
+    }
 }

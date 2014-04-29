@@ -167,7 +167,7 @@ public class Ib2cView extends StandardViewGraphViz {
         public void paint(Graphics2D g2d) {
             BehaviorStatus status = null;
             try {
-                status = port.get();
+                status = port.getAutoLocked();
             } catch (Exception e) {
                 super.paint(g2d);
                 return;
@@ -217,6 +217,8 @@ public class Ib2cView extends StandardViewGraphViz {
                 }
                 expandIcon.paint(g2d, rect.x + rect.width - 5, rect.y - 1, true);
             }
+
+            releaseAllLocks();
         }
 
         /**

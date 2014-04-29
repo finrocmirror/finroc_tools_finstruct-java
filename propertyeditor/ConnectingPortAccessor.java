@@ -24,6 +24,7 @@ package org.finroc.tools.finstruct.propertyeditor;
 import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortCreationInfo;
+import org.finroc.core.port.cc.CCPortBase;
 import org.finroc.core.port.std.PortBase;
 import org.finroc.core.remote.RemotePort;
 import org.rrlib.serialization.BinarySerializable;
@@ -104,5 +105,15 @@ public class ConnectingPortAccessor<T extends BinarySerializable> extends PortAc
      */
     public AbstractPort getPort() {
         return wrapped;
+    }
+
+    /**
+     * Gets Port's current value
+     *
+     * @return current auto-locked Port data (unlock with releaseAllLocks())
+     */
+    @SuppressWarnings("unchecked")
+    public T getAutoLocked() {
+        return (T)((PortBase)wrapped).getAutoLockedRaw().getObject().getData();
     }
 }
