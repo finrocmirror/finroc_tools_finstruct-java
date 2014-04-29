@@ -55,10 +55,10 @@ public class ComponentVisualization extends StandardViewGraphViz {
     private final ArrayList<ConnectingPortAccessor<?>> visualizationPorts = new ArrayList<ConnectingPortAccessor<?>>();
 
     /** Height of component visualization */
-    private static final int VISUALIZATION_HEIGHT = 60;
+    private static final int VISUALIZATION_HEIGHT = 90;
 
     /** Max. width of component visualization */
-    private static final int VISUALIZATION_WIDTH = 80;
+    private static final int VISUALIZATION_WIDTH = 120;
 
     /** Component background image */
     private ImageIcon background = (ImageIcon)IconManager.getInstance().getIcon("brushed-titanium-max.png");
