@@ -23,6 +23,7 @@ package org.finroc.tools.finstruct;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
@@ -224,15 +225,18 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         }
 
         // file menu
-        JMenu menuFile = new JMenu("File");
-        menuFile.setMnemonic(KeyEvent.VK_F);
-        menuBar.add(menuFile, 0);
         //miConnect = createMenuEntry("Connect All", menuFile, KeyEvent.VK_C);
         //miReconnect = createMenuEntry("Reconnect All", menuFile, KeyEvent.VK_R);
-        miDisconnectDiscard = createMenuEntry("Disconnect & Discard All", menuFile, KeyEvent.VK_D);
-        menuFile.add(miConnectMenu);
-        menuFile.addSeparator();
-        miExit = createMenuEntry("Exit", menuFile, KeyEvent.VK_X);
+        Component[] components = fileMenu.getMenuComponents();
+        fileMenu.removeAll();
+        miDisconnectDiscard = createMenuEntry("Disconnect & Discard All", fileMenu, KeyEvent.VK_D);
+        fileMenu.add(miConnectMenu);
+        fileMenu.addSeparator();
+        for (Component c : components) {
+            fileMenu.add(c);
+        }
+        fileMenu.addSeparator();
+        miExit = createMenuEntry("Exit", fileMenu, KeyEvent.VK_X);
         //miTest = createMenuEntry("Test", menuFile, KeyEvent.VK_F16);
         menuBar.setVisible(true);
 

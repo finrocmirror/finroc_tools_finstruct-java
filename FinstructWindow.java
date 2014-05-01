@@ -31,10 +31,13 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import javax.imageio.ImageIO;
 import javax.swing.AbstractListModel;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -68,6 +71,7 @@ import org.finroc.tools.finstruct.views.Ib2cView;
 import org.finroc.tools.finstruct.views.PortView;
 import org.finroc.tools.finstruct.views.Profiling;
 import org.finroc.tools.finstruct.views.StandardViewGraphViz;
+import org.finroc.tools.gui.util.gui.FileDialog;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.rrlib.logging.Log;
 import org.rrlib.logging.LogLevel;
@@ -109,8 +113,14 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     /** Current history position - if user hasn't moved backwards: history.size() */
     protected int historyPos = 0;
 
+    /** File menu */
+    protected JMenu fileMenu;
+
     /** Bookmark menu */
     private JMenu bookmarkMenu;
+
+    /** File menu items */
+    private JMenuItem miSaveView, miSaveWindow;
 
     /** View menu item */
     private JRadioButtonMenuItem miAutoView;
@@ -154,6 +164,13 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
     public FinstructWindow(Finstruct f) {
         finstruct = f;
+
+        // file menu
+        fileMenu = new JMenu("File");
+        fileMenu.setMnemonic(KeyEvent.VK_F);
+        menuBar.add(fileMenu, 0);
+        miSaveView = createMenuEntry("Save View (as .png)...", fileMenu, KeyEvent.VK_V);
+        miSaveWindow = createMenuEntry("Save Window (as .png)...", fileMenu, KeyEvent.VK_W);
 
         // find views
         ButtonGroup viewSelectGroup = new ButtonGroup();
@@ -344,7 +361,20 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         }
         try {
             Object src = ae.getSource();
-            if (src == next) {
+            if (src == miSaveView || src == miSaveWindow) {
+                BufferedImage image = null;
+                if (ae.getSource() == miSaveView) {
+                    image = new BufferedImage((int)getCurrentView().getPreferredSize().getWidth(), (int)getCurrentView().getPreferredSize().getHeight(), BufferedImage.TYPE_INT_RGB);
+                    getCurrentView().paintAll(image.createGraphics());
+                } else {
+                    image = new BufferedImage(this.getRootPane().getWidth(), this.getRootPane().getHeight(), BufferedImage.TYPE_INT_RGB);
+                    this.getRootPane().paintAll(image.createGraphics());
+                }
+                File file = FileDialog.showSaveDialog("Where should .png be saved to?", "png");
+                if (file != null) {
+                    ImageIO.write(image, "png", file);
+                }
+            } else if (src == next) {
                 showHistoryElement(historyPos + 1);
             } else if (src == back) {
                 int historyPosTemp = historyPos;
