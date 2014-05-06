@@ -70,6 +70,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
             port.delete();
         }
         visualizationPorts.clear();
+        graphAppearance.modules = new Color(45, 45, 60);
     }
 
     @Override
@@ -194,7 +195,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
             // draw background
             if (true) {
                 //Color background = brighten(Color.DARK_GRAY, brighten);
-                Color background = brighten(new Color(45, 45, 60), brighten);
+                Color background = brighten(graphAppearance.modules, brighten);
                 g2d.setColor(background);
                 g2d.fillRect(rect.x, rect.y, rect.width, rect.height);
             } else {
@@ -232,7 +233,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
                     double factor = Math.min(factorX, factorY);
 
                     g2d.translate(rect.x + 1, rect.y + rect.height - VISUALIZATION_HEIGHT);
-                    g2d.setClip(fitTo);
+                    g2d.setClip(fitTo.createIntersection(g2d.getClipBounds()));
                     g2d.translate(Math.max(0, (fitTo.getWidth() - factor * originalBounds.getWidth()) / 2), (paintable.isYAxisPointingDownwards() ? 0 : VISUALIZATION_HEIGHT));
                     g2d.scale(factor, paintable.isYAxisPointingDownwards() ? factor : -factor);
                     g2d.translate(-originalBounds.getMinX(), -originalBounds.getMinY());
