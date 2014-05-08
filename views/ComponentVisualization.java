@@ -25,11 +25,14 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 
 import javax.swing.ImageIcon;
+import javax.swing.JMenuBar;
+import javax.swing.JToggleButton;
 
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
@@ -40,6 +43,8 @@ import org.finroc.core.remote.RemotePort;
 import org.finroc.plugins.data_types.Paintable;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 import org.finroc.tools.gui.util.gui.IconManager;
+import org.finroc.tools.gui.util.gui.MAction;
+import org.finroc.tools.gui.util.gui.MToolBar;
 
 /**
  * @author Max Reichardt
@@ -54,15 +59,26 @@ public class ComponentVisualization extends StandardViewGraphViz {
     /** List of currently active/used port accessors to retrieve behaviour data */
     private final ArrayList<ConnectingPortAccessor<?>> visualizationPorts = new ArrayList<ConnectingPortAccessor<?>>();
 
-    /** Height of component visualization */
-    private static final int VISUALIZATION_HEIGHT = 90;
+    /** Default Height of component visualization */
+    private static final int DEFAULT_VISUALIZATION_HEIGHT = 90;
 
-    /** Max. width of component visualization */
-    private static final int VISUALIZATION_WIDTH = 120;
+    /** Default Max. width of component visualization */
+    private static final int DEFAULT_VISUALIZATION_WIDTH = 120;
+
+    /** Current visualization height and width (possibly with zooming applied) */
+    private int visualizationHeight = DEFAULT_VISUALIZATION_HEIGHT, visualizationWidth = DEFAULT_VISUALIZATION_WIDTH;
 
     /** Component background image */
     private ImageIcon background = (ImageIcon)IconManager.getInstance().getIcon("brushed-titanium-max.png");
 
+    /** Reference to toggle button in toolbar */
+    private JToggleButton zoomLabelsButton;
+
+    /** Diverse toolbar switches */
+    private enum ToolbarSwitches { ZoomLabels }
+
+    /** Current zoom level of visualization */
+    private float visualizationZoom = 1.0f;
 
     public void clear() {
         // Delete old ports
@@ -71,6 +87,12 @@ public class ComponentVisualization extends StandardViewGraphViz {
         }
         visualizationPorts.clear();
         graphAppearance.modules = new Color(45, 45, 60);
+    }
+
+    @Override
+    public void initMenuAndToolBar(JMenuBar menuBar, MToolBar toolBar) {
+        zoomLabelsButton = toolBar.addToggleButton(new MAction(ToolbarSwitches.ZoomLabels, "zoom-labels-derived.png", "Zoom Labels", this), true);
+        super.initMenuAndToolBar(menuBar, toolBar);
     }
 
     @Override
@@ -130,6 +152,48 @@ public class ComponentVisualization extends StandardViewGraphViz {
         return null;
     }
 
+    @Override
+    public void actionPerformed(ActionEvent ae) {
+        if (ae.getSource() == zoomLabelsButton) {
+            if (zoomLabelsButton.isSelected()) {
+                setZoom(getZoom() < 1.0 ? getZoom() : visualizationZoom);
+            } else {
+                visualizationZoom = 1.0f;
+                setZoom(getZoom());
+            }
+            return;
+        }
+        super.actionPerformed(ae);
+    }
+
+    @Override
+    public void setZoom(double zoom) {
+        int oldHeight = visualizationHeight;
+        if (zoomLabelsButton.isSelected()) {
+            super.setZoom(zoom);
+            visualizationZoom = 1.0f;
+            visualizationHeight = DEFAULT_VISUALIZATION_HEIGHT;
+            visualizationWidth = DEFAULT_VISUALIZATION_WIDTH;
+        } else {
+            if (zoom != 1.0f) {
+                visualizationZoom *= zoom;
+            }
+            if (visualizationZoom <= 1.0f || zoom == 1.0f) {
+                super.setZoom(zoom);
+                visualizationZoom = 1.0f;
+                visualizationHeight = DEFAULT_VISUALIZATION_HEIGHT;
+                visualizationWidth = DEFAULT_VISUALIZATION_WIDTH;
+            } else {
+                super.setZoom(1.0);
+                visualizationHeight = (int)(DEFAULT_VISUALIZATION_HEIGHT * visualizationZoom);
+                visualizationWidth = (int)(DEFAULT_VISUALIZATION_WIDTH * visualizationZoom);
+            }
+        }
+        if (oldHeight != visualizationHeight) {
+            relayout();
+        }
+    }
+
     /**
      * Vertex that displays real-time component visualization
      */
@@ -165,7 +229,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
             super.reset();
 
             // increase height, so that we have space for upper and lower bar
-            gvVertex.setSize(Math.max(gvVertex.getWidth(), VISUALIZATION_WIDTH), gvVertex.getHeight() + VISUALIZATION_HEIGHT);
+            gvVertex.setSize(Math.max(gvVertex.getWidth(), visualizationWidth), gvVertex.getHeight() + visualizationHeight);
         }
 
         /**
@@ -214,7 +278,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
             g2d.setColor(getTextColor());
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             for (int i = 0; i < label.size(); i++) {
-                g2d.drawString(label.get(i), rect.x + 3, (rect.y + rect.height - (5 + VISUALIZATION_HEIGHT)) + ((i + 1) - label.size()) * lineIncrementY);
+                g2d.drawString(label.get(i), rect.x + 3, (rect.y + rect.height - (5 + visualizationHeight)) + ((i + 1) - label.size()) * lineIncrementY);
             }
 
             // draw visualization
@@ -224,7 +288,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
                 // scale to fit etc.
                 Rectangle2D originalBounds = paintable.getBounds();
                 if (originalBounds != null) {
-                    Rectangle2D fitTo = new Rectangle2D.Double(0, 0, rect.getWidth() - 2, VISUALIZATION_HEIGHT);
+                    Rectangle2D fitTo = new Rectangle2D.Double(0, 0, rect.getWidth() - 2, visualizationHeight);
                     AffineTransform at = g2d.getTransform();
                     Rectangle oldClip = g2d.getClipBounds();
 
@@ -232,9 +296,9 @@ public class ComponentVisualization extends StandardViewGraphViz {
                     double factorY = (fitTo.getHeight()) / (originalBounds.getHeight());
                     double factor = Math.min(factorX, factorY);
 
-                    g2d.translate(rect.x + 1, rect.y + rect.height - VISUALIZATION_HEIGHT);
+                    g2d.translate(rect.x + 1, rect.y + rect.height - visualizationHeight);
                     g2d.setClip(fitTo.createIntersection(g2d.getClipBounds()));
-                    g2d.translate(Math.max(0, (fitTo.getWidth() - factor * originalBounds.getWidth()) / 2), (paintable.isYAxisPointingDownwards() ? 0 : VISUALIZATION_HEIGHT));
+                    g2d.translate(Math.max(0, (fitTo.getWidth() - factor * originalBounds.getWidth()) / 2), (paintable.isYAxisPointingDownwards() ? 0 : visualizationHeight));
                     g2d.scale(factor, paintable.isYAxisPointingDownwards() ? factor : -factor);
                     g2d.translate(-originalBounds.getMinX(), -originalBounds.getMinY());
                     paintable.paint(g2d);
@@ -260,9 +324,9 @@ public class ComponentVisualization extends StandardViewGraphViz {
         @Override
         public void portChanged(AbstractPort origin, Object value) {
             if (getZoom() != 1.0f) {
-                repaint((int)(rect.x * getZoom()), (int)((rect.y + rect.height - VISUALIZATION_HEIGHT) * getZoom()), (int)(rect.width * getZoom()), (int)(VISUALIZATION_HEIGHT * getZoom())); // thread-safe
+                repaint((int)(rect.x * getZoom()), (int)((rect.y + rect.height - visualizationHeight) * getZoom()), (int)(rect.width * getZoom()), (int)(visualizationHeight * getZoom())); // thread-safe
             } else {
-                repaint(rect.x, rect.y + rect.height - VISUALIZATION_HEIGHT, rect.width, VISUALIZATION_HEIGHT); // thread-safe
+                repaint(rect.x, rect.y + rect.height - visualizationHeight, rect.width, visualizationHeight); // thread-safe
             }
         }
     }
