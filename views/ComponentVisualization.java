@@ -80,6 +80,19 @@ public class ComponentVisualization extends StandardViewGraphViz {
     /** Current zoom level of visualization */
     private float visualizationZoom = 1.0f;
 
+    /** Enum for level of detail */
+    public enum LevelOfDetail { Low, Mid, High };
+
+    /** Port tags for each level of detail - ordered by preference */
+    private final static String[][] PORT_TAGS = new String[][] {
+        { "visualization-low", "visualization-less", "visualization-all", "visualization-mid", "visualization-more", "visualization-high" },
+        { "visualization-mid", "visualization-all", "visualization-more", "visualization-less", "visualization-high", "visualization-low" },
+        { "visualization-high", "visualization-more", "visualization-all", "visualization-mid", "visualization-less", "visualization-low" }
+    };
+
+    /** Maximum Y resolution for each level of detail */
+    private final static int[] MAX_Y_RESOLUTION = { 90, 180, Integer.MAX_VALUE };
+
     public void clear() {
         // Delete old ports
         for (ConnectingPortAccessor<?> port : visualizationPorts) {
@@ -134,22 +147,25 @@ public class ComponentVisualization extends StandardViewGraphViz {
 
     /**
      * @param fe Framework element to find visualization port for
-     * @param tags Port must have (at least) one of these tags
-     * @return Port with one of these tags (or null if no port could be found)
+     * @param tags Port must have (at least) one of these tags. The first tag has rank 1. The second rank 2 etc.
+     * @return Port with one of these tags. If multiple ports have an appropriate tag, one with the lowest rank tag is returned.
      */
-    static RemotePort findVisualizationPort(RemoteFrameworkElement fe, final String... tags) {
+    static RemotePort findVisualizationPort(RemoteFrameworkElement fe, final String[] tags) {
+        RemotePort result = null;
+        int bestResultRank = Integer.MAX_VALUE;
         for (RemoteFrameworkElement subElement : fe.getFrameworkElementsBelow(null)) {
             if (subElement instanceof RemotePort) {
                 for (String tag : subElement.getTags()) {
-                    for (String t : tags) {
-                        if (t.equals(tag)) {
-                            return (RemotePort)subElement;
+                    for (int i = 0; i < tags.length; i++) {
+                        if (i < bestResultRank && tags[i].equals(tag)) {
+                            result = (RemotePort)subElement;
+                            bestResultRank = i;
                         }
                     }
                 }
             }
         }
-        return null;
+        return result;
     }
 
     @Override
@@ -206,14 +222,18 @@ public class ComponentVisualization extends StandardViewGraphViz {
         public AnimatedVertex(RemoteFrameworkElement fe) {
             super(fe);
 
+            // Determine appropriate level of detail
+            LevelOfDetail levelOfDetail = LevelOfDetail.Low;
+            int yResolution = (int)((getZoom() * visualizationZoom) * DEFAULT_VISUALIZATION_HEIGHT);
+            for (int i = 0; i <= 2; i++) {
+                if (yResolution <= MAX_Y_RESOLUTION[i]) {
+                    levelOfDetail = LevelOfDetail.values()[i];
+                    break;
+                }
+            }
+
             // Create port for visualization data access */
-            RemotePort remotePort = findVisualizationPort(fe, "visualization-all", "visualization-less", "visualization-low");
-            if (remotePort == null) {
-                remotePort = findVisualizationPort(fe, "visualization-mid", "visualization-more");
-            }
-            if (remotePort == null) {
-                remotePort = findVisualizationPort(fe, "visualization-high");
-            }
+            RemotePort remotePort = findVisualizationPort(fe, PORT_TAGS[levelOfDetail.ordinal()]);
 
             if (remotePort != null) {
                 port = new ConnectingPortAccessor(remotePort, "");
