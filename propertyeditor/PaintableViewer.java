@@ -94,7 +94,7 @@ public class PaintableViewer extends PropertyEditComponent<PaintablePortData> {
             @Override
             public void drawGeometries(Graphics2D g2d) {
                 if (currentlyViewed != null) {
-                    currentlyViewed.paint(g2d);
+                    currentlyViewed.paint(g2d, null);
                 }
             }
 

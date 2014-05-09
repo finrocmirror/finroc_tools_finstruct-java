@@ -26,7 +26,6 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 
@@ -42,9 +41,12 @@ import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.plugins.data_types.Paintable;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
+import org.finroc.tools.gui.commons.fastdraw.BufferedImageRGB;
 import org.finroc.tools.gui.util.gui.IconManager;
 import org.finroc.tools.gui.util.gui.MAction;
 import org.finroc.tools.gui.util.gui.MToolBar;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
 
 /**
  * @author Max Reichardt
@@ -56,8 +58,8 @@ public class ComponentVisualization extends StandardViewGraphViz {
     /** UID */
     private static final long serialVersionUID = -94026792839034582L;
 
-    /** List of currently active/used port accessors to retrieve behaviour data */
-    private final ArrayList<ConnectingPortAccessor<?>> visualizationPorts = new ArrayList<ConnectingPortAccessor<?>>();
+    /** List of currently active/used animated vertices */
+    private final ArrayList<AnimatedVertex> animatedVertices = new ArrayList<AnimatedVertex>();
 
     /** Default Height of component visualization */
     private static final int DEFAULT_VISUALIZATION_HEIGHT = 90;
@@ -95,10 +97,10 @@ public class ComponentVisualization extends StandardViewGraphViz {
 
     public void clear() {
         // Delete old ports
-        for (ConnectingPortAccessor<?> port : visualizationPorts) {
-            port.delete();
+        for (AnimatedVertex vertex : animatedVertices) {
+            vertex.delete();
         }
-        visualizationPorts.clear();
+        animatedVertices.clear();
         graphAppearance.modules = new Color(45, 45, 60);
     }
 
@@ -219,6 +221,15 @@ public class ComponentVisualization extends StandardViewGraphViz {
         /** ports used to get behaviour data via push */
         private ConnectingPortAccessor<?> port;
 
+        /** Array with prerendered image buffers: currently triple-buffering */
+        private BufferedImageRGB[] imageBuffers = new BufferedImageRGB[3];
+
+        /** Index of next image buffer to use */
+        private int nextBufferIndex = 0;
+
+        /** Reference to image buffer that should be currently displayed - may be NULL */
+        private volatile BufferedImageRGB currentBuffer;
+
         public AnimatedVertex(RemoteFrameworkElement fe) {
             super(fe);
 
@@ -235,14 +246,21 @@ public class ComponentVisualization extends StandardViewGraphViz {
             // Create port for visualization data access */
             RemotePort remotePort = findVisualizationPort(fe, PORT_TAGS[levelOfDetail.ordinal()]);
 
+            for (int i = 0; i < imageBuffers.length; i++) {
+                imageBuffers[i] = new BufferedImageRGB();
+            }
+
             if (remotePort != null) {
                 port = new ConnectingPortAccessor(remotePort, "");
-                visualizationPorts.add(port);
                 ((PortBase)port.getPort()).addPortListenerRaw(this);
                 port.init();
                 port.setAutoUpdate(true);
                 return;
             }
+        }
+
+        public void delete() {
+            port.delete();
         }
 
         public void reset() {
@@ -258,17 +276,6 @@ public class ComponentVisualization extends StandardViewGraphViz {
          * @param g2d Graphics object
          */
         public void paint(Graphics2D g2d) {
-            Object currentVisualization = null;
-            try {
-                currentVisualization = port.getAutoLocked();
-            } catch (Exception e) {
-                //super.paint(g2d);
-                //return;
-            }
-            if (currentVisualization == null) {
-                //super.paint(g2d);
-                //return;
-            }
 
             int h = getHighlightLevel();
 
@@ -302,29 +309,8 @@ public class ComponentVisualization extends StandardViewGraphViz {
             }
 
             // draw visualization
-            if (currentVisualization instanceof Paintable) {
-                Paintable paintable = (Paintable)currentVisualization;
-
-                // scale to fit etc.
-                Rectangle2D originalBounds = paintable.getBounds();
-                if (originalBounds != null) {
-                    Rectangle2D fitTo = new Rectangle2D.Double(0, 0, rect.getWidth() - 2, visualizationHeight);
-                    AffineTransform at = g2d.getTransform();
-                    Rectangle oldClip = g2d.getClipBounds();
-
-                    double factorX = (fitTo.getWidth()) / (originalBounds.getWidth());
-                    double factorY = (fitTo.getHeight()) / (originalBounds.getHeight());
-                    double factor = Math.min(factorX, factorY);
-
-                    g2d.translate(rect.x + 1, rect.y + rect.height - visualizationHeight);
-                    g2d.setClip(fitTo.createIntersection(g2d.getClipBounds()));
-                    g2d.translate(Math.max(0, (fitTo.getWidth() - factor * originalBounds.getWidth()) / 2), (paintable.isYAxisPointingDownwards() ? 0 : visualizationHeight));
-                    g2d.scale(factor, paintable.isYAxisPointingDownwards() ? factor : -factor);
-                    g2d.translate(-originalBounds.getMinX(), -originalBounds.getMinY());
-                    paintable.paint(g2d);
-                    g2d.setTransform(at);
-                    g2d.setClip(oldClip);
-                }
+            if (currentBuffer != null) {
+                g2d.drawImage(currentBuffer.getBufferedImage(), rect.x + 1, rect.y + rect.height - visualizationHeight, null);
             }
 
             // draw border etc.
@@ -343,6 +329,50 @@ public class ComponentVisualization extends StandardViewGraphViz {
 
         @Override
         public void portChanged(AbstractPort origin, Object value) {
+            if (rect.getWidth() <= 2) {
+                return;
+            }
+
+            if (value instanceof Paintable) {
+                Paintable paintable = (Paintable)value;
+                BufferedImageRGB imageBuffer = imageBuffers[nextBufferIndex];
+                imageBuffer.fill(graphAppearance.modules.getRGB());
+                nextBufferIndex++;
+                if (nextBufferIndex == imageBuffers.length) {
+                    nextBufferIndex = 0;
+                }
+                Rectangle2D fitTo = new Rectangle2D.Double(0, 0, rect.getWidth() - 1, visualizationHeight);
+                if (imageBuffer.getWidth() != (int)fitTo.getWidth() || imageBuffer.getHeight() != (int)fitTo.getHeight()) {
+                    imageBuffer.resize((int)fitTo.getWidth() + 1, (int)fitTo.getHeight() + 1); // one pixel larger cope with points on right and bottom edges of bounding box
+                }
+
+                Graphics2D g2d = imageBuffer.getBufferedImage().createGraphics();
+
+                try {
+                    // scale to fit etc.
+                    Rectangle2D originalBounds = paintable.getBounds();
+                    if (originalBounds != null) {
+
+                        double factorX = (fitTo.getWidth()) / (originalBounds.getWidth());
+                        double factorY = (fitTo.getHeight()) / (originalBounds.getHeight());
+                        double factor = Math.min(factorX, factorY);
+
+                        //g2d.translate(rect.x + 1, rect.y + rect.height - visualizationHeight);
+                        //g2d.setClip(fitTo.createIntersection(g2d.getClipBounds()));
+                        g2d.translate(Math.max(0, (fitTo.getWidth() - factor * originalBounds.getWidth()) / 2), (paintable.isYAxisPointingDownwards() ? 0 : visualizationHeight));
+                        g2d.scale(factor, paintable.isYAxisPointingDownwards() ? factor : -factor);
+                        g2d.translate(-originalBounds.getMinX(), -originalBounds.getMinY());
+                        paintable.paint(g2d, imageBuffer);
+                    }
+                } catch (Exception e) {
+                    Log.log(LogLevel.ERROR, e);
+                }
+                g2d.dispose();
+
+                currentBuffer = imageBuffer;
+            }
+
+
             if (getZoom() != 1.0f) {
                 repaint((int)(rect.x * getZoom()), (int)((rect.y + rect.height - visualizationHeight) * getZoom()), (int)(rect.width * getZoom()), (int)(visualizationHeight * getZoom())); // thread-safe
             } else {
