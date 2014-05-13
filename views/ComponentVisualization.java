@@ -95,13 +95,26 @@ public class ComponentVisualization extends StandardViewGraphViz {
     /** Maximum Y resolution for each level of detail */
     private final static int[] MAX_Y_RESOLUTION = { 90, 180, Integer.MAX_VALUE };
 
+    public ComponentVisualization() {
+        if (true) {
+            graphAppearance.background = Color.white;
+            graphAppearance.groups = new Color(204, 204, 204);
+            graphAppearance.modules = graphAppearance.groups;
+            graphAppearance.metallicBackgroundImage = false;
+            graphAppearance.sensorData = Color.ORANGE;
+            updateGraphAppearance();
+        } else {
+            // futuristic look
+            graphAppearance.modules = new Color(45, 45, 60);
+        }
+    }
+
     public void clear() {
         // Delete old ports
         for (AnimatedVertex vertex : animatedVertices) {
             vertex.delete();
         }
         animatedVertices.clear();
-        graphAppearance.modules = new Color(45, 45, 60);
     }
 
     @Override
@@ -347,6 +360,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
                 }
 
                 Graphics2D g2d = imageBuffer.getBufferedImage().createGraphics();
+                g2d.setColor(getTextColor());
 
                 try {
                     // scale to fit etc.

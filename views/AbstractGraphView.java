@@ -184,12 +184,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
     public void actionPerformed(ActionEvent ae) {
         if (ae.getSource() == miGraphAppearance) {
             new PropertiesDialog(getFinstructWindow(), graphAppearance, null, true);
-            if (graphAppearance.metallicBackgroundImage) {
-                setBackground(background);
-            } else {
-                setBackground((ImageIcon)null);
-                setBackground(graphAppearance.background);
-            }
+            updateGraphAppearance();
             repaint();
         } else if (ae.getSource() == miShowAllHidden) {
             getFinstruct().hiddenElements.clear();
@@ -197,6 +192,16 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
         } else if (ae.getSource() instanceof JMenuItem && ((JMenuItem)ae.getSource()).getText().startsWith("Show ")) {
             getFinstruct().hiddenElements.remove(((JMenuItem)ae.getSource()).getText().substring("Show ".length()));
             refresh();
+        }
+    }
+
+    /** Updates Swing components to match desired graph appearance */
+    public void updateGraphAppearance() {
+        if (graphAppearance.metallicBackgroundImage) {
+            setBackground(background);
+        } else {
+            setBackground((ImageIcon)null);
+            setBackground(graphAppearance.background);
         }
     }
 
