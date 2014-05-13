@@ -295,7 +295,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
             updateRectangle();
 
             // set colors
-            int brighten = h * 64;
+            int brighten = h * 12;
             // draw background
             if (true) {
                 //Color background = brighten(Color.DARK_GRAY, brighten);
@@ -322,6 +322,10 @@ public class ComponentVisualization extends StandardViewGraphViz {
             }
 
             // draw visualization
+            if (currentBuffer == null) {
+                portChanged(port.getPort(), port.getAutoLocked());
+                releaseAllLocks();
+            }
             if (currentBuffer != null) {
                 g2d.drawImage(currentBuffer.getBufferedImage(), rect.x + 1, rect.y + rect.height - visualizationHeight, null);
             }
@@ -341,7 +345,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
         }
 
         @Override
-        public void portChanged(AbstractPort origin, Object value) {
+        public synchronized void portChanged(AbstractPort origin, Object value) {
             if (rect.getWidth() <= 2) {
                 return;
             }
@@ -349,7 +353,6 @@ public class ComponentVisualization extends StandardViewGraphViz {
             if (value instanceof Paintable) {
                 Paintable paintable = (Paintable)value;
                 BufferedImageRGB imageBuffer = imageBuffers[nextBufferIndex];
-                imageBuffer.fill(graphAppearance.modules.getRGB());
                 nextBufferIndex++;
                 if (nextBufferIndex == imageBuffers.length) {
                     nextBufferIndex = 0;
@@ -358,6 +361,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
                 if (imageBuffer.getWidth() != (int)fitTo.getWidth() || imageBuffer.getHeight() != (int)fitTo.getHeight()) {
                     imageBuffer.resize((int)fitTo.getWidth() + 1, (int)fitTo.getHeight() + 1); // one pixel larger cope with points on right and bottom edges of bounding box
                 }
+                imageBuffer.fill(graphAppearance.modules.getRGB());
 
                 Graphics2D g2d = imageBuffer.getBufferedImage().createGraphics();
                 g2d.setColor(getTextColor());
