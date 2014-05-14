@@ -263,6 +263,7 @@ public class ComponentVisualization extends StandardViewGraphViz {
                 imageBuffers[i] = new BufferedImageRGB();
             }
 
+            animatedVertices.add(this);
             if (remotePort != null) {
                 port = new ConnectingPortAccessor(remotePort, "");
                 ((PortBase)port.getPort()).addPortListenerRaw(this);
