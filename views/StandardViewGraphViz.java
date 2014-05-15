@@ -1180,6 +1180,12 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
     }
 
+    @Override
+    public void initAsEmbeddedView(StandardViewGraphViz parentView, ModelNode root) {
+        this.toolBar = parentView.getFinstructWindow().getToolBar();
+        super.initAsEmbeddedView(parentView, root);
+    }
+
     /**
      * Expansion icon in top-left of group representation
      */

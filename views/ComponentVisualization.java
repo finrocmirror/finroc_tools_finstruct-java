@@ -22,10 +22,13 @@
 package org.finroc.tools.finstruct.views;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Shape;
 import java.awt.event.ActionEvent;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 
@@ -40,6 +43,7 @@ import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.plugins.data_types.Paintable;
+import org.finroc.tools.finstruct.FinstructView;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 import org.finroc.tools.gui.commons.fastdraw.BufferedImageRGB;
 import org.finroc.tools.gui.util.gui.IconManager;
@@ -53,7 +57,7 @@ import org.rrlib.logging.LogLevel;
  *
  * View for real-time component visualization
  */
-public class ComponentVisualization extends StandardViewGraphViz {
+public class ComponentVisualization extends Ib2cView {
 
     /** UID */
     private static final long serialVersionUID = -94026792839034582L;
@@ -138,9 +142,19 @@ public class ComponentVisualization extends StandardViewGraphViz {
     protected Vertex createVertexInstance(ModelNode fe) {
         if (hasRealtimeVisualization(fe)) {
             return new AnimatedVertex((RemoteFrameworkElement)fe);
+        } else if (showEmbeddedView(fe)) {
+            return new AnimatedVertex((RemoteFrameworkElement)fe, new Ib2cView());
         } else {
             return super.createVertexInstance(fe);
         }
+    }
+
+    /**
+     * @param fe Framework element to check
+     * @return True if this framework element should be visualized using an embedded view
+     */
+    private boolean showEmbeddedView(ModelNode fe) {
+        return false; // fe.getName().equals("Behaviors")  || (isBehaviour(fe) && (fe instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)fe).isTagged("group"));
     }
 
     /**
@@ -225,6 +239,19 @@ public class ComponentVisualization extends StandardViewGraphViz {
         }
     }
 
+
+
+    @Override
+    protected void updateView() {
+        super.updateView();
+
+        for (AnimatedVertex vertex : animatedVertices) {
+            vertex.updateVertex();
+        }
+    }
+
+
+
     /**
      * Vertex that displays real-time component visualization
      */
@@ -242,6 +269,9 @@ public class ComponentVisualization extends StandardViewGraphViz {
 
         /** Reference to image buffer that should be currently displayed - may be NULL */
         private volatile BufferedImageRGB currentBuffer;
+
+        /** Embedded view */
+        private FinstructView embeddedView;
 
         public AnimatedVertex(RemoteFrameworkElement fe) {
             super(fe);
@@ -271,10 +301,29 @@ public class ComponentVisualization extends StandardViewGraphViz {
                 port.setAutoUpdate(true);
                 return;
             }
+
+        }
+
+        public void updateVertex() {
+            if (embeddedView != null) {
+                repaint();
+            }
+        }
+
+        public AnimatedVertex(RemoteFrameworkElement fe, FinstructView view) {
+            super(fe);
+
+            embeddedView = view;
+            embeddedView.initAsEmbeddedView(ComponentVisualization.this, fe);
         }
 
         public void delete() {
-            port.delete();
+            if (port != null) {
+                port.delete();
+            }
+            if (embeddedView != null) {
+                embeddedView.destroyEmbeddedView();
+            }
         }
 
         public void reset() {
@@ -323,12 +372,36 @@ public class ComponentVisualization extends StandardViewGraphViz {
             }
 
             // draw visualization
-            if (currentBuffer == null) {
-                portChanged(port.getPort(), port.getAutoLocked());
-                releaseAllLocks();
-            }
-            if (currentBuffer != null) {
-                g2d.drawImage(currentBuffer.getBufferedImage(), rect.x + 1, rect.y + rect.height - visualizationHeight, null);
+            if (embeddedView != null) {
+                AffineTransform oldTransform = g2d.getTransform();
+                Shape oldClip = g2d.getClip();
+
+                Rectangle2D fitTo = new Rectangle2D.Double(0, 0, rect.getWidth() - 1, visualizationHeight);
+                Dimension viewDimension = embeddedView.getPreferredSize();
+                if (viewDimension.getWidth() != 0 || viewDimension.getHeight() != 0) {
+
+                    double factorX = (fitTo.getWidth()) / (viewDimension.getWidth());
+                    double factorY = (fitTo.getHeight()) / (viewDimension.getHeight());
+                    double factor = Math.min(factorX, factorY);
+
+                    g2d.translate(rect.x + 1, rect.y + rect.height - visualizationHeight);
+                    g2d.setClip(0, 0, rect.width, visualizationHeight);
+                    g2d.scale(factor, factor);
+                    //embeddedView.setSize(viewDimension);
+                    embeddedView.paintComponent(g2d);
+                    //embeddedView.paintAll(g2d);
+
+                    g2d.setTransform(oldTransform);
+                    g2d.setClip(oldClip);
+                }
+            } else {
+                if (currentBuffer == null) {
+                    portChanged(port.getPort(), port.getAutoLocked());
+                    releaseAllLocks();
+                }
+                if (currentBuffer != null) {
+                    g2d.drawImage(currentBuffer.getBufferedImage(), rect.x + 1, rect.y + rect.height - visualizationHeight, null);
+                }
             }
 
             // draw border etc.

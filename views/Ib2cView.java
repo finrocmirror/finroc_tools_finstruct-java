@@ -85,7 +85,7 @@ public class Ib2cView extends StandardViewGraphViz {
      * @param fe Framework element
      * @return True if framework element is a behaviour
      */
-    private static boolean isBehaviour(ModelNode fe) {
+    protected static boolean isBehaviour(ModelNode fe) {
         return (fe instanceof RemoteFrameworkElement) && (((RemoteFrameworkElement)fe).isTagged("ib2c_module") || ((RemoteFrameworkElement)fe).isTagged("ib2c_group"));
     }
 

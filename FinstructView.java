@@ -23,6 +23,7 @@
 package org.finroc.tools.finstruct;
 
 import java.awt.BorderLayout;
+import java.awt.Graphics;
 
 import javax.swing.JComponent;
 import javax.swing.JMenuBar;
@@ -30,6 +31,7 @@ import javax.swing.JPanel;
 
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.remote.ModelNode;
+import org.finroc.tools.finstruct.views.StandardViewGraphViz;
 import org.finroc.tools.gui.util.gui.MPanel;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.rrlib.xml.XMLNode;
@@ -178,5 +180,29 @@ public abstract class FinstructView extends MPanel {
      */
     public void releaseAllLocks() {
         ThreadLocalCache.getFast().releaseAllLocks();
+    }
+
+    @Override
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
+    }
+
+    /**
+     * Initializes this view as embedded view of another view
+     * (Must be destroyed when no longer used)
+     *
+     * @param parentView Parent view
+     */
+    public void initAsEmbeddedView(StandardViewGraphViz parentView, ModelNode rootNode) {
+        finstruct = parentView.getFinstruct();
+        finstructWindow = parentView.getFinstructWindow();
+        setRootElement(rootNode, null, true);
+    }
+
+    /**
+     * Destroys embedded view (performs cleanup etc.)
+     */
+    public void destroyEmbeddedView() {
+        destroy();
     }
 }
