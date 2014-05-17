@@ -156,7 +156,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     private JSpinner rankSep = new JSpinner(new SpinnerNumberModel(RANK_SEP_DEFAULT, 0.05, 2.0, 0.05));
 
     /** Diverse toolbar switches */
-    private enum DiverseSwitches { antialiasing, lineBreaks }
+    protected enum DiverseSwitches { antialiasing, lineBreaks }
 
     /** Zoom factor */
     private float zoom = 1.0f;

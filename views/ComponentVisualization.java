@@ -372,6 +372,13 @@ public class ComponentVisualization extends Ib2cView {
             // draw text
             g2d.setColor(getTextColor());
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            if (getZoom() != 1.0) {
+                for (int i = 0; i < label.size(); i++) {
+                    if (g2d.getFontMetrics().stringWidth(label.get(i)) > rect.width - 3) {
+                        g2d.setFont(g2d.getFont().deriveFont(g2d.getFont().getSize() - 0.7f));
+                    }
+                }
+            }
             for (int i = 0; i < label.size(); i++) {
                 g2d.drawString(label.get(i), rect.x + 3, (rect.y + rect.height - (5 + visualizationHeight)) + ((i + 1) - label.size()) * lineIncrementY);
             }
@@ -444,6 +451,9 @@ public class ComponentVisualization extends Ib2cView {
 
                 Graphics2D g2d = imageBuffer.getBufferedImage().createGraphics();
                 g2d.setColor(getTextColor());
+                if (getFinstructWindow().getToolBar().isSelected(DiverseSwitches.antialiasing)) {
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                }
 
                 try {
                     // scale to fit etc.
