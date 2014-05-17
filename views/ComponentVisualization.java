@@ -333,6 +333,11 @@ public class ComponentVisualization extends Ib2cView {
             gvVertex.setSize(Math.max(gvVertex.getWidth(), visualizationWidth), gvVertex.getHeight() + visualizationHeight);
         }
 
+        @Override
+        protected int getMinimumLineWidth() {
+            return visualizationWidth;
+        }
+
         /**
          * Paint Vertex
          *

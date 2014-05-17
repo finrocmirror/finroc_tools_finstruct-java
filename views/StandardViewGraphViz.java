@@ -28,6 +28,7 @@ import java.awt.Composite;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -106,7 +107,10 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     /** Font for display */
     static Font FONT = new JLabel().getFont().deriveFont(Font.PLAIN);
 
-    /** Label for getting node bounds - may only be used in synchronized context */
+    /** Font metrics for JavaGraphics2D */
+    private final FontMetrics graphics2DfontMetrics;
+
+    /** Test Label for getting node bounds - may only be used in synchronized context */
     private final JLabel testLabel = new JLabel("Test");
 
     /** Two-line test label */
@@ -175,6 +179,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     /** The maximum number of lines displayed in a vertex */
     private static final int MAX_VERTEX_LABEL_LENGTH = 2000;
 
+    /** Don't perform line breaks below this vertex label width */
+    private static final int MIN_VERTEX_LABEL_WIDTH = 20;
+
     static {
         boolean ok = false;
         try {
@@ -191,6 +198,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     }
 
     public StandardViewGraphViz() {
+        Graphics2D g2d = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB).createGraphics();
+        graphics2DfontMetrics = g2d.getFontMetrics();
+        g2d.dispose();
         testLabel.setFont(FONT);
         twoLineTestLabel.setFont(FONT);
         lineIncrementY = twoLineTestLabel.getPreferredSize().height - testLabel.getPreferredSize().height;
@@ -586,8 +596,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
          * @return Vertex width (in pixel) for a vertex with the specified text
          */
         private int getVertexWidth(String text) {
-            testLabel.setText(text);
-            return testLabel.getPreferredSize().width + 5;
+            //testLabel.setText(text);
+            //return testLabel.getPreferredSize().width + 5;
+            return graphics2DfontMetrics.stringWidth(text) + 5;
         }
 
         /**
@@ -596,6 +607,14 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
          */
         private int getVertexHeight(int lineCount) {
             return labelBaseHeight + ((lineCount - 1) * lineIncrementY) + 6;
+        }
+
+        /**
+         * (may be overridden)
+         * @return Don't perform line breaks below this label width
+         */
+        protected int getMinimumLineWidth() {
+            return MIN_VERTEX_LABEL_WIDTH;
         }
 
         public void reset() {
@@ -620,103 +639,59 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 ArrayList<String> bestText = new ArrayList<String>();
 
                 // find optimal line breaks
-                if (words.length <= 10) {
 
-                    // try every combination of line breaks brute force
-                    for (int i = 0; i < Math.pow(2, words.length - 1); i++) { // use i as bitmask for line breaks
+                // Determine width of all words
+                int[] wordWidth = new int[words.length];
+                int spaceLength = getVertexWidth(" X") - getVertexWidth("X");
+                int emptyLength = getVertexWidth("");
+                int minWidth = emptyLength;
+                for (int i = 0; i < words.length; i++) {
+                    wordWidth[i] = getVertexWidth(words[i]) - emptyLength;
+                    minWidth = Math.max(minWidth, wordWidth[i]); // try every width from 'longest word width' to 'Math.max(1000, longest word width + 200)'
+                }
+                minWidth = Math.max(getMinimumLineWidth(), minWidth + emptyLength);
+                int maxWidth = Math.max(1000, minWidth + 200);
 
-                        // reset temp vars
-                        int i2 = i;
-                        int width = 0;
-                        sb.setLength(0);
-                        lines.clear();
+                // Simply try different widths ("semi-efficient" - but within O(n), n = #words)
+                for (int width = minWidth; width <= maxWidth; width++) {
+                    sb.setLength(0);
+                    lines.clear();
+                    int lineLength = emptyLength;
 
-                        // create string
-                        for (int j = 0; j < (words.length - 1); j++) {
-                            boolean lineChange = ((i2 & 1) == 1);
-                            i2 >>>= 1;
-                            sb.append(words[j]);
-                            if (lineChange) {
-                                width = Math.max(width, getVertexWidth(sb.toString()));
+                    // create string
+                    for (int i = 0; i < words.length; i++) {
+                        if (sb.length() == 0) {
+                            sb.append(words[i]);
+                            lineLength += wordWidth[i];
+                        } else {
+                            if (lineLength + spaceLength + wordWidth[i] < width) {
+                                sb.append(" ").append(words[i]);
+                                lineLength = lineLength + spaceLength + wordWidth[i];
+                            } else {
                                 lines.add(sb.toString());
                                 sb.setLength(0);
-                            } else {
-                                sb.append(" ");
-                            }
-                        }
-                        sb.append(words[words.length - 1]);
-                        width = Math.max(width, getVertexWidth(sb.toString()));
-                        lines.add(sb.toString());
-
-                        // compare to best combination
-                        //double score = Math.pow(w, 1.1) + (h * 1.7);
-                        int height = getVertexHeight(lines.size());
-                        double score = width + (height * 1.7);
-                        if (score < bestScore) {
-                            bestDim.width = width;
-                            bestDim.height = height;
-                            bestText.clear();
-                            bestText.addAll(lines);
-                            bestScore = score;
-                        }
-                    }
-
-                } else {
-
-                    // Determine width of all words
-                    int[] wordWidth = new int[words.length];
-                    int spaceLength = getVertexWidth(" X") - getVertexWidth("X");
-                    int emptyLength = getVertexWidth("");
-                    int minWidth = emptyLength;
-                    for (int i = 0; i < words.length; i++) {
-                        wordWidth[i] = getVertexWidth(words[i]) - emptyLength;
-                        minWidth = Math.max(minWidth, wordWidth[i]); // try every width from 'longest word width' to 'Math.max(1000, longest word width + 200)'
-                    }
-                    int maxWidth = Math.max(1000, minWidth + 200);
-
-                    //minWidth +=
-
-                    for (int width = minWidth; width <= maxWidth; width++) {
-                        sb.setLength(0);
-                        lines.clear();
-                        int lineLength = emptyLength;
-
-                        // create string
-                        for (int i = 0; i < words.length; i++) {
-                            if (sb.length() == 0) {
                                 sb.append(words[i]);
-                                lineLength += wordWidth[i];
-                            } else {
-                                if (lineLength + spaceLength + wordWidth[i] < width) {
-                                    sb.append(" ").append(words[i]);
-                                    lineLength = lineLength + spaceLength + wordWidth[i];
-                                } else {
-                                    lines.add(sb.toString());
-                                    sb.setLength(0);
-                                    /*if (lines.size() == MAX_LINES_PER_VERTEX) {
-                                        lines.add("...");
-                                        break;
-                                    }*/
-                                    sb.append(words[i]);
-                                    lineLength = wordWidth[i];
-                                }
+                                lineLength = wordWidth[i];
                             }
                         }
-                        if (sb.length() != 0) {
-                            lines.add(sb.toString());
-                        }
+                    }
+                    if (sb.length() != 0) {
+                        lines.add(sb.toString());
+                    }
 
-                        // compare to best combination
-                        //double score = Math.pow(w, 1.1) + (h * 1.7);
-                        int height = getVertexHeight(lines.size());
-                        double score = width + (height * 1.7);
-                        if (score < bestScore) {
-                            bestDim.width = width + emptyLength;
-                            bestDim.height = height;
-                            bestText.clear();
-                            bestText.addAll(lines);
-                            bestScore = score;
-                        }
+                    // compare to best combination
+                    //double score = Math.pow(w, 1.1) + (h * 1.7);
+                    int height = getVertexHeight(lines.size());
+                    double score = width + (height * 1.7);
+                    if (score < bestScore) {
+                        bestDim.width = width;// + emptyLength;
+                        bestDim.height = height;
+                        bestText.clear();
+                        bestText.addAll(lines);
+                        bestScore = score;
+                    }
+                    if (lines.size() == 1) {
+                        break;
                     }
                 }
 
@@ -749,6 +724,14 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
             g2d.setColor(getTextColor());
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setFont(testLabel.getFont());
+            if (getZoom() != 1.0) {
+                for (int i = 0; i < label.size(); i++) {
+                    if (g2d.getFontMetrics().stringWidth(label.get(i)) > rect.width - 3) {
+                        g2d.setFont(testLabel.getFont().deriveFont(testLabel.getFont().getSize() - 0.7f));
+                    }
+                }
+            }
             for (int i = 0; i < label.size(); i++) {
                 g2d.drawString(label.get(i), rect.x + 3, (rect.y + rect.height - 5) + ((i + 1) - label.size()) * lineIncrementY);
             }
