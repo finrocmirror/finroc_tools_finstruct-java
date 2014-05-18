@@ -28,7 +28,6 @@ import java.awt.Composite;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -106,9 +105,6 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
     /** Font for display */
     static Font FONT = new JLabel().getFont().deriveFont(Font.PLAIN);
-
-    /** Font metrics for JavaGraphics2D */
-    private final FontMetrics graphics2DfontMetrics;
 
     /** Test Label for getting node bounds - may only be used in synchronized context */
     private final JLabel testLabel = new JLabel("Test");
@@ -198,9 +194,6 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     }
 
     public StandardViewGraphViz() {
-        Graphics2D g2d = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB).createGraphics();
-        graphics2DfontMetrics = g2d.getFontMetrics();
-        g2d.dispose();
         testLabel.setFont(FONT);
         twoLineTestLabel.setFont(FONT);
         lineIncrementY = twoLineTestLabel.getPreferredSize().height - testLabel.getPreferredSize().height;
@@ -311,7 +304,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
         }
 
-        relayout();
+        relayout(false);
 
         // get Admin interface
         /*try {
@@ -336,75 +329,86 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
      * relayout vertices etc.
      *
      * (SubGraphs are created for entries in expandedGroups)
+     *
+     * @param keepVerticesAndEdges Vertices and edges are not changed/recreated. Their bounds are merely adapted to new FontMetrics and zoom level.
      */
-    protected void relayout() {
+    public void relayout(boolean keepVerticesAndEdges) {
         try {
-            final ModelNode root = getRootElement();
+            if (!doingPdfExport()) {
+                setFontMetricsToDefault(zoom);
+            }
+            if (!keepVerticesAndEdges) {
+                final ModelNode root = getRootElement();
 
-            int width = getWidth();
-            int height = getHeight();
-            //List<String> outputLines;
-            graph.clear();
-            mouseHandlers.clear();
-            vertices.clear();
-            subgraphs.clear();
-            synchronized (RuntimeEnvironment.getInstance().getRegistryLock()) {
-                if (root == null) {
-                    repaint();
-                    return;
-                }
+                int width = getWidth();
+                int height = getHeight();
+                //List<String> outputLines;
+                graph.clear();
+                mouseHandlers.clear();
+                vertices.clear();
+                subgraphs.clear();
+                synchronized (RuntimeEnvironment.getInstance().getRegistryLock()) {
+                    if (root == null) {
+                        repaint();
+                        return;
+                    }
 
-                // create new graph
-                List<Vertex> rootVertices = getVertices(root);
-                if (rootVertices.size() == 0) {
-                    repaint();
-                    return;
-                }
+                    // create new graph
+                    List<Vertex> rootVertices = getVertices(root);
+                    if (rootVertices.size() == 0) {
+                        repaint();
+                        return;
+                    }
 
-                // add vertices and create subgraphs
-                for (Vertex v : rootVertices) {
-                    if (expandedGroups.contains(v.getModelElement())) {
-                        createSubGraph(graph, v.getModelElement());
-                    } else {
-                        graph.add(v.gvVertex);
-                        vertices.add(v);
+                    // add vertices and create subgraphs
+                    for (Vertex v : rootVertices) {
+                        if (expandedGroups.contains(v.getModelElement())) {
+                            createSubGraph(graph, v.getModelElement());
+                        } else {
+                            graph.add(v.gvVertex);
+                            vertices.add(v);
+                        }
+                    }
+
+                    // process vertices
+                    for (Vertex v : vertices) {
+                        mouseHandlers.add(v, false);
+                        int wh = (int)((v.gvVertex.getWidth() + 1) / 2) + 3;
+                        int hh = (int)((v.gvVertex.getHeight() + 1) / 2) + 3;
+                        if (v.hasFixedPos()) {
+                            v.gvVertex.setFixedPosition(v.onRight() ? (width - wh) : wh, v.atBottom() ? (height - hh) : hh);
+                            v.gvVertex.setRank(v.atBottom() ? "source" : "sink");
+                            //ps.print(", pos=\"" + toInch(v.onRight() ? (width - wh) : wh) + "," + toInch(v.atBottom() ? (height - hh) : hh) + "!\"");
+                        }
+                    }
+
+                    // add edges
+                    edges = getEdges(root, vertices);
+                    for (Edge e : edges) {
+                        graph.add(e.gvEdge);
+                        mouseHandlers.add(e, false);
+                        e.processFlags();
+                    }
+
+                    // flood unknown edges in graph
+                    final ArrayList<Edge> visitedList = new ArrayList<Edge>();
+                    for (Edge e : edges) {
+                        if (e.isClassified()) {
+                            visitedList.clear();
+                            floodEdges(e, true, visitedList, edges); // forwards
+                            visitedList.clear();
+                            floodEdges(e, false, visitedList, edges); // backwards
+                        }
+                    }
+
+                    // See whether we can classify more edges with flooding information
+                    for (Edge e : edges) {
+                        e.classify();
                     }
                 }
-
-                // process vertices
+            } else {
                 for (Vertex v : vertices) {
-                    mouseHandlers.add(v, false);
-                    int wh = (int)((v.gvVertex.getWidth() + 1) / 2) + 3;
-                    int hh = (int)((v.gvVertex.getHeight() + 1) / 2) + 3;
-                    if (v.hasFixedPos()) {
-                        v.gvVertex.setFixedPosition(v.onRight() ? (width - wh) : wh, v.atBottom() ? (height - hh) : hh);
-                        v.gvVertex.setRank(v.atBottom() ? "source" : "sink");
-                        //ps.print(", pos=\"" + toInch(v.onRight() ? (width - wh) : wh) + "," + toInch(v.atBottom() ? (height - hh) : hh) + "!\"");
-                    }
-                }
-
-                // add edges
-                edges = getEdges(root, vertices);
-                for (Edge e : edges) {
-                    graph.add(e.gvEdge);
-                    mouseHandlers.add(e, false);
-                    e.processFlags();
-                }
-
-                // flood unknown edges in graph
-                final ArrayList<Edge> visitedList = new ArrayList<Edge>();
-                for (Edge e : edges) {
-                    if (e.isClassified()) {
-                        visitedList.clear();
-                        floodEdges(e, true, visitedList, edges); // forwards
-                        visitedList.clear();
-                        floodEdges(e, false, visitedList, edges); // backwards
-                    }
-                }
-
-                // See whether we can classify more edges with flooding information
-                for (Edge e : edges) {
-                    e.classify();
+                    v.reset();
                 }
             }
 
@@ -482,7 +486,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
         graphDrawnMonochrome = !isConnectedToRootNode();
         boolean monochrome = graphDrawnMonochrome;
-        if (monochrome) {
+        if (monochrome && (!doingPdfExport())) {
             imageBuffer = new BufferedImage(this.getWidth(), this.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
             g2d = imageBuffer.createGraphics();
             g2d.setColor(new Color(0, 0, 0, 0));
@@ -490,7 +494,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         } else {
             g2d = (Graphics2D)g.create();
         }
-        super.paintComponent(g);
+        if (!doingPdfExport()) {
+            super.paintComponent(g);
+        }
 
         g2d.scale(zoom, zoom);
         boolean antialiasing = toolBar.isSelected(DiverseSwitches.antialiasing);
@@ -533,7 +539,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
         }
 
-        if (monochrome) {
+        if (monochrome && (!doingPdfExport())) {
             ImageFilter greyScaleFilter = new RGBImageFilter() {
 
                 @Override
@@ -587,6 +593,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
         public Vertex(ModelNode fe) {
             super(fe);
+            gvVertex = new org.finroc.tools.finstruct.graphviz.Vertex();
             reset();
             gvVertex.setAttributeQuoted("description", fe.getName());
         }
@@ -598,7 +605,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         private int getVertexWidth(String text) {
             //testLabel.setText(text);
             //return testLabel.getPreferredSize().width + 5;
-            return graphics2DfontMetrics.stringWidth(text) + 5;
+            return getCurrentFontMetrics().stringWidth(text) + 5;
         }
 
         /**
@@ -619,7 +626,6 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
         public void reset() {
             super.reset();
-            gvVertex = new org.finroc.tools.finstruct.graphviz.Vertex();
             boolean lineBreaks = toolBar.isSelected(DiverseSwitches.lineBreaks);
             String elementName = getModelElement().getName();
             if (elementName.length() > MAX_VERTEX_LABEL_LENGTH) {
@@ -671,7 +677,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                                 lines.add(sb.toString());
                                 sb.setLength(0);
                                 sb.append(words[i]);
-                                lineLength = wordWidth[i];
+                                lineLength = wordWidth[i] + emptyLength;
                             }
                         }
                     }
@@ -724,16 +730,10 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
             g2d.setColor(getTextColor());
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2d.setFont(testLabel.getFont());
-            if (getZoom() != 1.0) {
-                for (int i = 0; i < label.size(); i++) {
-                    if (g2d.getFontMetrics().stringWidth(label.get(i)) > rect.width - 3) {
-                        g2d.setFont(testLabel.getFont().deriveFont(testLabel.getFont().getSize() - 0.7f));
-                    }
-                }
-            }
+            //g2d.setFont(testLabel.getFont());
+            int yOffset = doingPdfExport() ? 6 : 5;
             for (int i = 0; i < label.size(); i++) {
-                g2d.drawString(label.get(i), rect.x + 3, (rect.y + rect.height - 5) + ((i + 1) - label.size()) * lineIncrementY);
+                g2d.drawString(label.get(i), rect.x + 3, (rect.y + rect.height - yOffset) + ((i + 1) - label.size()) * lineIncrementY);
             }
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
             g2d.setColor(Color.BLACK);
@@ -1021,7 +1021,10 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             path.moveTo(x2 + Math.cos(angle + ARROW_ANGLE) * ARROW_LEN, y2 + Math.sin(angle + ARROW_ANGLE) * ARROW_LEN);
             path.lineTo(x2, y2);
             path.lineTo(x2 + Math.cos(angle - ARROW_ANGLE) * ARROW_LEN, y2 + Math.sin(angle - ARROW_ANGLE) * ARROW_LEN);
-            g2d.draw(path);
+            // g2d.draw(path);  // this looks not as nice
+            path.lineTo(x2 - Math.cos(angle) * ARROW_LEN * 0.7, y2 - Math.sin(angle) * ARROW_LEN * 0.7);
+            path.closePath();
+            g2d.fill(path);
         }
 
         @Override
@@ -1142,6 +1145,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
      * @param alphaDelta Rate to modify alpha per pixel
      */
     public void drawRectangleGlow(Graphics2D g2d, int x, int y, int width, int height, float startAlpha, float alphaDelta) {
+        if (doingPdfExport()) {
+            return;
+        }
         Composite oldComp = g2d.getComposite();
         //g2d.setColor(Color.WHITE);
         for (float al = startAlpha; al < 1.0f; al += alphaDelta) {
@@ -1244,7 +1250,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 } else {
                     expandedGroups.add(group);
                 }
-                relayout();
+                relayout(false);
             }
         }
     }
@@ -1379,11 +1385,11 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         if (ae instanceof MActionEvent) {
             Enum e = ((MActionEvent)ae).getEnumID();
             if (e instanceof Graph.Layout) {
-                relayout();
+                relayout(true);
             } else if (e == DiverseSwitches.antialiasing) {
                 repaint();
             } else if (e == DiverseSwitches.lineBreaks) {
-                relayout();
+                relayout(true);
             }
         } else if (ae.getSource() == zoomIn) {
             setZoom(zoom * 1.33);
@@ -1395,7 +1401,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             if (rightClickedOn instanceof RemoteFrameworkElement) {
                 CreateModuleDialog cmd = new CreateModuleDialog(getFinstructWindow());
                 cmd.show((RemoteFrameworkElement)rightClickedOn, getFinstruct().getIoInterface());
-                relayout();
+                relayout(false);
             }
         } else if (ae.getSource() == miSaveChanges) {
             RemoteFrameworkElement fe = RemoteFrameworkElement.getParentWithFlags(rightClickedOn, FrameworkElementFlags.FINSTRUCTABLE_GROUP, true);
@@ -1441,10 +1447,10 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             String link = rightClickedOn.getQualifiedName('/');
             if (!getFinstruct().hiddenElements.contains(link)) {
                 getFinstruct().hiddenElements.add(link);
-                relayout();
+                relayout(false);
             }
         } else if (ae.getSource() instanceof Timer) {
-            relayout();
+            relayout(false);
         } else {
             super.actionPerformed(ae);
         }
@@ -1484,6 +1490,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     public void setZoom(double zoom) {
         this.zoom = (float)zoom;
         mouseHandlers.setZoom(zoom);
+        relayout(true);
         revalidate();
         repaint();
     }
@@ -1533,7 +1540,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
     @Override
     public void refresh() {
-        relayout();
+        relayout(false);
     }
 
     @Override
@@ -1552,7 +1559,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             if (rs > 0 && ns > 0) {
                 graph.setAttribute("ranksep", ("" + rs).replace(',', '.'));
                 graph.setAttribute("nodesep", ("" + ns).replace(',', '.'));
-                relayout();
+                relayout(true);
             }
         }
 

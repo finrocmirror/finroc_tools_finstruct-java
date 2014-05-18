@@ -89,9 +89,9 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
 
     /** Contains options for drawing graph */
     public class GraphAppearance {
-        boolean metallicBackgroundImage = true;
-        Color background = Color.white, modules = Color.blue, groups = Color.blue.darker().darker(),
-              sensorData = Color.yellow, controllerData = Color.red, otherEdges = Color.black;
+        public boolean metallicBackgroundImage = true;
+        public Color background = Color.white, modules = Color.blue, groups = Color.blue.darker().darker(),
+                     sensorData = Color.yellow, controllerData = Color.red, otherEdges = Color.black;
     }
 
     public AbstractGraphView() {
@@ -620,8 +620,8 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
          * Reset special interface info
          */
         public void reset() {
-            specialNode = null;
-            isGroup = false;
+            //specialNode = null;
+            //isGroup = false;
         }
 
         /**
@@ -725,5 +725,12 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
     public JComponent initLeftPanel(FinstructConnectionPanel connectionPanel) {
         this.connectionPanel = connectionPanel;
         return super.initLeftPanel(connectionPanel);
+    }
+
+    /**
+     * @return Graph appearance object - may be modified
+     */
+    public GraphAppearance getGraphAppearance() {
+        return graphAppearance;
     }
 }

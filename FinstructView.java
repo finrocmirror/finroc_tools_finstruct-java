@@ -23,7 +23,11 @@
 package org.finroc.tools.finstruct;
 
 import java.awt.BorderLayout;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
 
 import javax.swing.JComponent;
 import javax.swing.JMenuBar;
@@ -54,8 +58,21 @@ public abstract class FinstructView extends MPanel {
     /** Qualified name of root element */
     private String rootElementQualifiedName;
 
+    /** True if view is currently rendered for pdf export */
+    boolean doingPdfExport;
+
     Finstruct finstruct;
     FinstructWindow finstructWindow;
+
+    /** Default graphics2d object for drawing to screen and to bitmaps */
+    private final Graphics2D BITMAP_GRAPHICS_2D = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB).createGraphics();
+
+    /** Font metrics for Graphics2D to make layout for */
+    private FontMetrics currentFontMetrics;
+
+    public FinstructView() {
+        currentFontMetrics = BITMAP_GRAPHICS_2D.getFontMetrics();
+    }
 
     public String toString() {
         return getClass().getSimpleName();
@@ -204,5 +221,39 @@ public abstract class FinstructView extends MPanel {
      */
     public void destroyEmbeddedView() {
         destroy();
+    }
+
+    /**
+     * @return Returns true if view is currently rendered for pdf export
+     */
+    public boolean doingPdfExport() {
+        return doingPdfExport;
+    }
+
+    /**
+     * @param metrics FontMetrics to use for label layout
+     */
+    public void setCurrentFontMetrics(FontMetrics metrics) {
+        this.currentFontMetrics = metrics;
+    }
+
+    /**
+     * Sets font metrics to default (bitmap) graphics2d metrics
+     *
+     * @param zoom Current zoom level
+     */
+    public void setFontMetricsToDefault(float zoom) {
+        synchronized (BITMAP_GRAPHICS_2D) {
+            BITMAP_GRAPHICS_2D.setTransform(new AffineTransform());
+            BITMAP_GRAPHICS_2D.scale(zoom, zoom);
+            currentFontMetrics = BITMAP_GRAPHICS_2D.getFontMetrics();
+        }
+    }
+
+    /**
+     * @return FontMetrics of graphics2D object to draw to
+     */
+    public FontMetrics getCurrentFontMetrics() {
+        return currentFontMetrics;
     }
 }

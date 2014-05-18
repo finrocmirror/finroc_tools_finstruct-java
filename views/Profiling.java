@@ -98,9 +98,11 @@ public class Profiling extends StandardViewGraphViz {
     }
 
     @Override
-    protected void relayout() {
-        clear();
-        super.relayout();
+    public void relayout(boolean keepVerticesAndEdges) {
+        if (!keepVerticesAndEdges) {
+            clear();
+        }
+        super.relayout(keepVerticesAndEdges);
     }
 
     @Override

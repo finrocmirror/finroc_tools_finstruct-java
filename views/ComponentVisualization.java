@@ -133,9 +133,11 @@ public class ComponentVisualization extends Ib2cView {
     }
 
     @Override
-    protected void relayout() {
-        clear();
-        super.relayout();
+    public void relayout(boolean keepVerticesAndEdges) {
+        if (!keepVerticesAndEdges) {
+            clear();
+        }
+        super.relayout(keepVerticesAndEdges);
     }
 
     @Override
@@ -235,7 +237,7 @@ public class ComponentVisualization extends Ib2cView {
             }
         }
         if (oldHeight != visualizationHeight) {
-            relayout();
+            relayout(false);
         }
     }
 
@@ -372,13 +374,6 @@ public class ComponentVisualization extends Ib2cView {
             // draw text
             g2d.setColor(getTextColor());
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            if (getZoom() != 1.0) {
-                for (int i = 0; i < label.size(); i++) {
-                    if (g2d.getFontMetrics().stringWidth(label.get(i)) > rect.width - 3) {
-                        g2d.setFont(g2d.getFont().deriveFont(g2d.getFont().getSize() - 0.7f));
-                    }
-                }
-            }
             for (int i = 0; i < label.size(); i++) {
                 g2d.drawString(label.get(i), rect.x + 3, (rect.y + rect.height - (5 + visualizationHeight)) + ((i + 1) - label.size()) * lineIncrementY);
             }
@@ -405,6 +400,33 @@ public class ComponentVisualization extends Ib2cView {
 
                     g2d.setTransform(oldTransform);
                     g2d.setClip(oldClip);
+                }
+            } else if (doingPdfExport()) {
+                Object visualizationData = port.getAutoLocked();
+                if (visualizationData instanceof Paintable) {
+                    Paintable paintable = (Paintable)visualizationData;
+
+                    // scale to fit etc.
+                    Rectangle2D originalBounds = paintable.getBounds();
+                    if (originalBounds != null) {
+                        Rectangle2D fitTo = new Rectangle2D.Double(0, 0, rect.getWidth() - 1, visualizationHeight);
+                        AffineTransform oldTransform = g2d.getTransform();
+                        Shape oldClip = g2d.getClip();
+
+                        double factorX = (fitTo.getWidth()) / (originalBounds.getWidth());
+                        double factorY = (fitTo.getHeight()) / (originalBounds.getHeight());
+                        double factor = Math.min(factorX, factorY);
+
+                        g2d.translate(rect.x + 0.5, rect.y + rect.height - visualizationHeight);
+                        g2d.setClip(0, 0, rect.width - 1, visualizationHeight);
+                        g2d.translate(Math.max(0, (fitTo.getWidth() - factor * originalBounds.getWidth()) / 2), (paintable.isYAxisPointingDownwards() ? 0 : visualizationHeight));
+                        g2d.scale(factor, paintable.isYAxisPointingDownwards() ? factor : -factor);
+                        g2d.translate(-originalBounds.getMinX(), -originalBounds.getMinY());
+                        paintable.paint(g2d, null);
+
+                        g2d.setTransform(oldTransform);
+                        g2d.setClip(oldClip);
+                    }
                 }
             } else {
                 if (currentBuffer == null) {

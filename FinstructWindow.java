@@ -23,6 +23,9 @@ package org.finroc.tools.finstruct;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -32,7 +35,9 @@ import java.awt.event.MouseListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,6 +84,9 @@ import org.rrlib.xml.XMLDocument;
 import org.rrlib.xml.XMLNode;
 import org.xml.sax.InputSource;
 
+import com.itextpdf.awt.PdfGraphics2D;
+import com.itextpdf.text.pdf.PdfWriter;
+
 /**
  * @author Max Reichardt
  *
@@ -120,7 +128,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     private JMenu bookmarkMenu;
 
     /** File menu items */
-    private JMenuItem miSaveView, miSaveWindow;
+    private JMenuItem miSaveView, miSaveWindow, miSaveViewPdf;
 
     /** View menu item */
     private JRadioButtonMenuItem miAutoView;
@@ -170,6 +178,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         fileMenu.setMnemonic(KeyEvent.VK_F);
         menuBar.add(fileMenu, 0);
         miSaveView = createMenuEntry("Save View (as .png)...", fileMenu, KeyEvent.VK_V);
+        miSaveViewPdf = createMenuEntry("Save View (as .pdf)...", fileMenu, KeyEvent.VK_V);
         miSaveWindow = createMenuEntry("Save Window (as .png)...", fileMenu, KeyEvent.VK_W);
 
         // find views
@@ -373,6 +382,64 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                 File file = FileDialog.showSaveDialog("Where should .png be saved to?", "png");
                 if (file != null) {
                     ImageIO.write(image, "png", file);
+                }
+            } else if (src == miSaveViewPdf) {
+                Color oldSensorColor = null;
+                try {
+                    // dummy document to get font metrics
+                    com.itextpdf.text.Document document = new com.itextpdf.text.Document(new com.itextpdf.text.Rectangle(1, 1));
+                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                    PdfWriter pdfWriter = PdfWriter.getInstance(document, byteArrayOutputStream);
+                    document.open();
+                    Graphics2D g2d = new PdfGraphics2D(pdfWriter.getDirectContent(), 1, 1);
+
+                    // relayout view
+                    getCurrentView().doingPdfExport = true;
+                    getCurrentView().setCurrentFontMetrics(g2d.getFontMetrics());
+                    if (getCurrentView() instanceof StandardViewGraphViz) {
+                        StandardViewGraphViz graphView = (StandardViewGraphViz)getCurrentView();
+                        graphView.relayout(true);
+                        if (graphView.getGraphAppearance().sensorData.equals(Color.yellow)) {
+                            oldSensorColor = Color.yellow;
+                            graphView.getGraphAppearance().sensorData = Color.orange;
+                        }
+                    }
+
+                    g2d.dispose();
+                    document.close();
+
+                    // create real document
+                    Dimension viewSize = getCurrentView().getPreferredSize();
+                    document = new com.itextpdf.text.Document(new com.itextpdf.text.Rectangle(viewSize.width + 7, viewSize.height + 1));
+                    byteArrayOutputStream = new ByteArrayOutputStream();
+                    pdfWriter = PdfWriter.getInstance(document, byteArrayOutputStream);
+                    document.open();
+                    g2d = new PdfGraphics2D(pdfWriter.getDirectContent(), viewSize.width + 7, viewSize.height + 1); // canvas.createGraphics(150, 150);
+                    g2d.translate(4, 1);
+                    g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                    getCurrentView().paintComponent(g2d);
+                    g2d.dispose();
+                    document.close();
+                    byteArrayOutputStream.close();
+
+                    // ask where to save document
+                    File file = FileDialog.showSaveDialog("Where should .pdf be saved to?", "pdf");
+                    if (file != null) {
+                        FileOutputStream stream = new FileOutputStream(file);
+                        stream.write(byteArrayOutputStream.toByteArray());
+                        stream.close();
+                    }
+                } catch (Exception e) {
+                    Finstruct.showErrorMessage(e, true);
+                } finally {
+                    getCurrentView().doingPdfExport = false;
+                    if (getCurrentView() instanceof StandardViewGraphViz) {
+                        StandardViewGraphViz graphView = (StandardViewGraphViz)getCurrentView();
+                        graphView.relayout(true);
+                        if (oldSensorColor != null) {
+                            graphView.getGraphAppearance().sensorData = oldSensorColor;
+                        }
+                    }
                 }
             } else if (src == next) {
                 showHistoryElement(historyPos + 1);

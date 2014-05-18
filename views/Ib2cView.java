@@ -67,9 +67,11 @@ public class Ib2cView extends StandardViewGraphViz {
     }
 
     @Override
-    protected void relayout() {
-        clear();
-        super.relayout();
+    public void relayout(boolean keepVerticesAndEdges) {
+        if (!keepVerticesAndEdges) {
+            clear();
+        }
+        super.relayout(keepVerticesAndEdges);
     }
 
     @Override
@@ -205,8 +207,9 @@ public class Ib2cView extends StandardViewGraphViz {
 
             g2d.setColor(getTextColor());
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int yOffset = doingPdfExport() ? 9 : 8;
             for (int i = 0; i < label.size(); i++) {
-                g2d.drawString(label.get(i), rect.x + 3, (rect.y + rect.height - 8) + ((i + 1) - label.size()) * lineIncrementY);
+                g2d.drawString(label.get(i), rect.x + 3, (rect.y + rect.height - yOffset) + ((i + 1) - label.size()) * lineIncrementY);
             }
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
             g2d.setColor(Color.BLACK);
