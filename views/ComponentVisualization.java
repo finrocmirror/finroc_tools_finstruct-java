@@ -57,7 +57,7 @@ import org.rrlib.logging.LogLevel;
  *
  * View for real-time component visualization
  */
-public class ComponentVisualization extends Ib2cView {
+public class ComponentVisualization extends Ib2cViewClassic {
 
     /** UID */
     private static final long serialVersionUID = -94026792839034582L;
@@ -145,7 +145,7 @@ public class ComponentVisualization extends Ib2cView {
         if (hasRealtimeVisualization(fe)) {
             return new AnimatedVertex((RemoteFrameworkElement)fe);
         } else if (showEmbeddedView(fe)) {
-            return new AnimatedVertex((RemoteFrameworkElement)fe, new Ib2cView());
+            return new AnimatedVertex((RemoteFrameworkElement)fe, new Ib2cViewClassic());
         } else {
             return super.createVertexInstance(fe);
         }

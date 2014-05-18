@@ -41,8 +41,9 @@ import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
  * @author Max Reichardt
  *
  * IB2C View based on GraphViz Standard View
+ * (in 'classic' MCA2 style)
  */
-public class Ib2cView extends StandardViewGraphViz {
+public class Ib2cViewClassic extends StandardViewGraphViz {
 
     /** UID */
     private static final long serialVersionUID = -8861192928055307809L;

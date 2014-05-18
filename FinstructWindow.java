@@ -41,6 +41,7 @@ import java.io.FileOutputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 import javax.swing.AbstractListModel;
@@ -71,10 +72,7 @@ import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.views.AbstractGraphView;
-import org.finroc.tools.finstruct.views.ComponentVisualization;
-import org.finroc.tools.finstruct.views.Ib2cView;
 import org.finroc.tools.finstruct.views.PortView;
-import org.finroc.tools.finstruct.views.Profiling;
 import org.finroc.tools.finstruct.views.StandardViewGraphViz;
 import org.finroc.tools.gui.util.gui.FileDialog;
 import org.finroc.tools.gui.util.gui.MToolBar;
@@ -181,13 +179,11 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         miSaveViewPdf = createMenuEntry("Save View (as .pdf)...", fileMenu, KeyEvent.VK_V);
         miSaveWindow = createMenuEntry("Save Window (as .png)...", fileMenu, KeyEvent.VK_W);
 
-        // find views
+        // views
         ButtonGroup viewSelectGroup = new ButtonGroup();
-        views.add(new ViewSelector(StandardViewGraphViz.class, viewSelectGroup));
-        views.add(new ViewSelector(PortView.class, viewSelectGroup));
-        views.add(new ViewSelector(Ib2cView.class, viewSelectGroup));
-        views.add(new ViewSelector(ComponentVisualization.class, viewSelectGroup));
-        views.add(new ViewSelector(Profiling.class, viewSelectGroup));
+        for (Map.Entry<String, Class<? extends FinstructView>> entry : Finstruct.getRegisteredViewTypes().entrySet()) {
+            views.add(new ViewSelector(entry.getValue(), entry.getKey(), viewSelectGroup));
+        }
 
         // view menu
         JMenu menuView = new JMenu("View");
@@ -229,6 +225,19 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
 
         addWindowListener(this);
         addressList.addMouseListener(this);
+    }
+
+    /**
+     * @param viewClass View class to obtain name for
+     * @return Name of specified view class
+     */
+    private String getViewClassName(Class<?> viewClass) {
+        for (Map.Entry<String, Class<? extends FinstructView>> entry : Finstruct.getRegisteredViewTypes().entrySet()) {
+            if (entry.getValue() == viewClass) {
+                return entry.getKey();
+            }
+        }
+        throw new RuntimeException("Not a registered view");
     }
 
     /**
@@ -512,7 +521,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                         String color = enabled ? "000000" : "909090";
 
                         bookmarks.add(new BookmarkSelector(name,
-                                                           "<html><font color=#" + color + "><b>" + rootSimpleName + "</b> in <i>" + rootPath + "</i> (" + viewClass.getSimpleName() + ")</font></html>",
+                                                           "<html><font color=#" + color + "><b>" + rootSimpleName + "</b> in <i>" + rootPath + "</i> (" + getViewClassName(viewClass) + ")</font></html>",
                                                            viewClass, bookmark, enabled));
                     }
                 } catch (Exception e) {
@@ -799,7 +808,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
      */
     private Class <? extends FinstructView > getViewClassByName(String viewClassName) {
         for (ViewSelector view : views) {
-            if (view.view.getSimpleName().equals(viewClassName)) {
+            if (view.view.getSimpleName().equals(viewClassName) || view.getText().equals(viewClassName)) {
                 return view.view;
             }
         }
@@ -813,7 +822,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
      */
     private void storeCurrentView(XMLNode node) {
         if (currentView != null) {
-            node.setAttribute("view", currentView.getClass().getSimpleName());
+            node.setAttribute("view", getViewClassName(currentView.getClass()));
             node.setAttribute("root", currentView.getRootElement().getQualifiedName('/'));
             currentView.storeViewConfiguration(node);
         }
@@ -832,10 +841,10 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         /** UID */
         private static final long serialVersionUID = 5767567242843313612L;
 
-        Class <? extends FinstructView > view;
+        final Class <? extends FinstructView > view;
 
-        ViewSelector(Class <? extends FinstructView > view, ButtonGroup group) {
-            super(view.getSimpleName());
+        ViewSelector(Class <? extends FinstructView > view, String viewName, ButtonGroup group) {
+            super(viewName);
             group.add(this);
             this.view = view;
             addActionListener(this);

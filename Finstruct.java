@@ -34,6 +34,9 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -67,6 +70,11 @@ import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.PortWrapperTreeNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.util.Files;
+import org.finroc.tools.finstruct.views.ComponentVisualization;
+import org.finroc.tools.finstruct.views.Ib2cViewClassic;
+import org.finroc.tools.finstruct.views.PortView;
+import org.finroc.tools.finstruct.views.Profiling;
+import org.finroc.tools.finstruct.views.StandardViewGraphViz;
 import org.finroc.tools.gui.ConnectDialog;
 import org.finroc.tools.gui.ConnectionPanel;
 import org.finroc.tools.gui.GUIUiBase;
@@ -137,6 +145,10 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     /** List of hidden elements */
     public final ArrayList<String> hiddenElements = new ArrayList<String>();
 
+    /** Map with registered view types: view name -> view class */
+    private static final SortedMap<String, Class<? extends FinstructView>> registeredViewTypes =
+        new TreeMap<String, Class<? extends FinstructView>>(String.CASE_INSENSITIVE_ORDER);
+
     public static void main(String[] args) {
         RuntimeSettings.setUseCCPorts(false);
         RuntimeSettings.setMaxCoreRegisterIndexBits(19);
@@ -175,6 +187,13 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
                 }
             } catch (Exception e) {}
         }
+
+        // Register views that come with finstruct
+        registerViewType(StandardViewGraphViz.class, "Component Graph");
+        registerViewType(PortView.class, "Port Data");
+        registerViewType(Ib2cViewClassic.class, "iB2C (Classic)");
+        registerViewType(ComponentVisualization.class, "Component-defined Visualization");
+        registerViewType(Profiling.class, "Execution Order");
 
         final String address = connect;
         SwingUtilities.invokeLater(new Runnable() {
@@ -289,6 +308,24 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     public static Finstruct getInstance() {
         assert(finstructInstance != null);
         return finstructInstance;
+    }
+
+    /**
+     * Register/add view type
+     * Should be called by plugins in order to add views
+     *
+     * @param viewClass View's Java class
+     * @param viewName View's name (displayed in menu)
+     */
+    public static void registerViewType(Class<? extends FinstructView> viewClass, String viewName) {
+        registeredViewTypes.put(viewName, viewClass);
+    }
+
+    /**
+     * @return Unmodifiable map with registered views
+     */
+    public static SortedMap<String, Class<? extends FinstructView>> getRegisteredViewTypes() {
+        return Collections.unmodifiableSortedMap(registeredViewTypes);
     }
 
     /**
