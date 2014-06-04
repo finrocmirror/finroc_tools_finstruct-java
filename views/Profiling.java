@@ -46,6 +46,7 @@ import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.plugins.data_types.Paintable;
 import org.finroc.plugins.data_types.TaskProfile;
+import org.finroc.plugins.data_types.TaskProfile.TaskClassification;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 import org.finroc.tools.finstruct.propertyeditor.PortAccessor;
 import org.finroc.tools.gui.util.gui.IconManager;
@@ -184,9 +185,6 @@ public class Profiling extends StandardViewGraphViz {
                                     // Add profile variable
                                     TaskProfile profileToUpdate = new TaskProfile();
                                     profileToUpdate.copyFrom(profile);
-                                    if (AbstractGraphView.isSensorInterface(profileElement)) {
-                                        profileToUpdate.sensorTask = true;
-                                    }
                                     profilesToUpdate.add(profileToUpdate);
                                     Vertex v = (Vertex)vertex;
                                     TaskProfile[] newProfiles = null;
@@ -208,7 +206,7 @@ public class Profiling extends StandardViewGraphViz {
                     for (int i = 0; i < profiles.size(); i++) {
                         TaskProfile profile = profiles.get(i);
                         for (TaskProfile profileToUpdate : profilesToUpdate) {
-                            if (profileToUpdate.handle == profile.handle) {
+                            if (profileToUpdate.handle == profile.handle && profileToUpdate.taskClassification == profile.taskClassification) {
                                 profileToUpdate.copyFrom(profile);
                             }
                         }
@@ -264,7 +262,7 @@ public class Profiling extends StandardViewGraphViz {
                     g2d.setStroke(new BasicStroke(3));
                     g2d.setColor(Color.white);
                     g2d.fillOval(rect.x + rect.width - RADIUS, currentYOffset - RADIUS, 2 * RADIUS, 2 * RADIUS);
-                    g2d.setColor(profile.sensorTask ? Color.yellow : Color.red);
+                    g2d.setColor(profile.taskClassification == TaskClassification.SENSE ? Color.yellow : (profile.taskClassification == TaskClassification.CONTROL ? Color.red : Color.gray));
                     g2d.drawOval(rect.x + rect.width  - RADIUS, currentYOffset - RADIUS, 2 * RADIUS, 2 * RADIUS);
                     g2d.setStroke(oldStroke);
                     g2d.setColor(Color.black);
