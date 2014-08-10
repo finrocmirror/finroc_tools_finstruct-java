@@ -33,6 +33,7 @@ import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.core.portdatabase.SerializationHelper;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteRuntime;
+import org.finroc.core.remote.RemoteType;
 import org.finroc.tools.gui.util.propertyeditor.BooleanEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComboBoxEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComponentFactory;
@@ -73,7 +74,7 @@ public class FinrocComponentFactory implements ComponentFactory {
      * (e.g. a component for displaying and possibly editing is available)
      */
     public static boolean isTypeSupported(DataTypeBase dt) {
-        if (FinrocTypeInfo.isCCType(dt) || FinrocTypeInfo.isStdType(dt) || FinrocTypeInfo.isUnknownAdaptableType(dt)) {
+        if (FinrocTypeInfo.isCCType(dt) || FinrocTypeInfo.isStdType(dt) || ((dt instanceof RemoteType) && ((RemoteType)dt).isAdaptable())) {
             Class<?> type = dt.getJavaClass();
             return (type.equals(PortCreationList.class) || DataTypeReference.class.equals(type)
                     || PaintablePortData.class.isAssignableFrom(type) || XML.class.isAssignableFrom(type) || type.isEnum()

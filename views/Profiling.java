@@ -113,7 +113,7 @@ public class Profiling extends StandardViewGraphViz {
         ModelNode current = fe;
         while (current != null) {
             ModelNode port = current.getChildByQualifiedName("Profiling/Details", '/');
-            if (port instanceof RemotePort && ((RemotePort)port).getPort().getDataType() == TaskProfile.LIST_TYPE) {
+            if (port instanceof RemotePort && ((RemotePort)port).getPort().getDataType() == TaskProfile.TYPE.getListType()) {
                 for (ProfilingPortConnnection connection : profilingPorts) {
                     if (((RemotePort)port).getPort() == connection.getConnectedPort()) {
                         return new Vertex(fe); // a port for this thread container already exists
