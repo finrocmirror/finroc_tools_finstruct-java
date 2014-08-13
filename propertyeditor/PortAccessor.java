@@ -125,17 +125,17 @@ public class PortAccessor<T> implements PropertyAccessor<T>, PortListener {
         }
         if (ap instanceof CCPortBase) {
             if (ap.getFlag(FrameworkElementFlags.NETWORK_ELEMENT)) {
-                CCPortDataManager c = ThreadLocalCache.get().getUnusedInterThreadBuffer(DataTypeBase.findType(newValue.getClass()));
+                CCPortDataManager c = ThreadLocalCache.get().getUnusedInterThreadBuffer(DataTypeBase.findType(newValue.getClass(), ap.getDataType()));
                 Serialization.deepCopy(newValue, c.getObject().getData());
                 RemoteRuntime.find(RemotePort.get(ap)[0]).getAdminInterface().setRemotePortValue(ap.asNetPort(), c, errorPrinter);
             } else {
-                CCPortDataManagerTL c = ThreadLocalCache.get().getUnusedBuffer(DataTypeBase.findType(newValue.getClass()));
+                CCPortDataManagerTL c = ThreadLocalCache.get().getUnusedBuffer(DataTypeBase.findType(newValue.getClass(), ap.getDataType()));
                 Serialization.deepCopy(newValue, c.getObject().getData());
                 ((CCPortBase)wrapped).publish(c);
             }
         } else {
             PortDataManager result = PortDataManager.create((newValue instanceof EnumValue) ? ((EnumValue)newValue).getType() :
-                                     ((newValue instanceof PortDataListImpl) ? ((PortDataListImpl)newValue).getElementType().getListType() : DataTypeBase.findType(newValue.getClass())));
+                                     ((newValue instanceof PortDataListImpl) ? ((PortDataListImpl)newValue).getElementType().getListType() : DataTypeBase.findType(newValue.getClass(), ap.getDataType())));
             Serialization.deepCopy(newValue, result.getObject().getData(), null);
             if (ap.getFlag(FrameworkElementFlags.NETWORK_ELEMENT)) {
                 RemoteRuntime.find(RemotePort.get(ap)[0]).getAdminInterface().setRemotePortValue(ap.asNetPort(), result, errorPrinter);

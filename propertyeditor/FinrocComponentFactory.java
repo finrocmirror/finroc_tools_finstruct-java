@@ -126,7 +126,7 @@ public class FinrocComponentFactory implements ComponentFactory {
             wpec = new CoreSerializableDefaultEditor(type);
             acc = new PortDataListAdapter((PropertyAccessor<PortDataListImpl>)acc);
         } else if (BinarySerializable.class.isAssignableFrom(type) && Serialization.isStringSerializable(type)) {
-            DataTypeBase dt = DataTypeBase.findType(acc.getType());
+            DataTypeBase dt = DataTypeBase.findType(acc.getType(), null);
             wpec = new CoreSerializableDefaultEditor(type);
             acc = new CoreSerializableAdapter((PropertyAccessor<BinarySerializable>)acc, type, dt);
         }
