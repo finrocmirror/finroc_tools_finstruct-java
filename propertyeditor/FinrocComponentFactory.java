@@ -76,10 +76,12 @@ public class FinrocComponentFactory implements ComponentFactory {
     public static boolean isTypeSupported(DataTypeBase dt) {
         if (FinrocTypeInfo.isCCType(dt) || FinrocTypeInfo.isStdType(dt) || ((dt instanceof RemoteType) && ((RemoteType)dt).isAdaptable())) {
             Class<?> type = dt.getJavaClass();
-            return (type.equals(PortCreationList.class) || DataTypeReference.class.equals(type)
-                    || PaintablePortData.class.isAssignableFrom(type) || XML.class.isAssignableFrom(type) || type.isEnum()
-                    || type.equals(EnumValue.class) || CoreBoolean.class.isAssignableFrom(type) || type.equals(PortDataListImpl.class)
-                    || (BinarySerializable.class.isAssignableFrom(type) && Serialization.isStringSerializable(type)));
+            if (type != null) {
+                return (type.equals(PortCreationList.class) || DataTypeReference.class.equals(type)
+                        || PaintablePortData.class.isAssignableFrom(type) || XML.class.isAssignableFrom(type) || type.isEnum()
+                        || type.equals(EnumValue.class) || CoreBoolean.class.isAssignableFrom(type) || type.equals(PortDataListImpl.class)
+                        || (BinarySerializable.class.isAssignableFrom(type) && Serialization.isStringSerializable(type)));
+            }
         }
         return false;
     }
