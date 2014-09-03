@@ -78,7 +78,7 @@ public class EnumEditor extends PropertyEditComponent<EnumValue> {
             return null;
         }
         EnumValue ev = new EnumValue(dataType);
-        ev.set(jcmb.getSelectedIndex());
+        ev.setIndex(jcmb.getSelectedIndex());
         return ev;
     }
 
@@ -93,11 +93,11 @@ public class EnumEditor extends PropertyEditComponent<EnumValue> {
             String[] constants = new String[dataType.getEnumConstants().length];
             EnumValue ev = new EnumValue(t.getType());
             for (int i = 0; i < constants.length; i++) {
-                ev.set(i);
+                ev.setIndex(i);
                 constants[i] = ev.toString();
             }
             jcmb.setModel(new DefaultComboBoxModel(constants));
         }
-        jcmb.setSelectedIndex(t.getOrdinal());
+        jcmb.setSelectedIndex(t.getIndex());
     }
 }
