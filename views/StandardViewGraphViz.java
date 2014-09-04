@@ -1718,6 +1718,13 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         }
     }
 
+    /**
+     * @return True if antialiasing should be used for rendering view
+     */
+    public boolean isAntialiasingEnabled() {
+        return toolBar.isSelected(DiverseSwitches.antialiasing);
+    }
+
 //    /**
 //     * Action that create a remote module
 //     */
