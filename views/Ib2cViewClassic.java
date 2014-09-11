@@ -21,13 +21,15 @@
 //----------------------------------------------------------------------
 package org.finroc.tools.finstruct.views;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.util.ArrayList;
+import java.util.Collection;
 
-import javax.swing.SwingUtilities;
-
+import org.finroc.core.datatype.CoreNumber;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortListener;
 import org.finroc.core.port.std.PortBase;
@@ -36,6 +38,7 @@ import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.plugins.data_types.BehaviorStatus;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
+import org.finroc.tools.finstruct.propertyeditor.PortAccessor;
 
 /**
  * @author Max Reichardt
@@ -54,12 +57,26 @@ public class Ib2cViewClassic extends StandardViewGraphViz {
     /** List of currently active/used port accessors to retrieve behaviour data */
     private final ArrayList<ConnectingPortAccessor<BehaviorStatus>> ports4BehaviourAccess = new ArrayList<ConnectingPortAccessor<BehaviorStatus>>();
 
+    /**
+     * List of currently active/used port accessors to retrieve behaviour meta signal data for edges
+     * TODO: to gain a little more efficiency, the information could also be retrieved from the ports4BehaviourAccess. However, this would also make the code more complex.
+     */
+    private final ArrayList<ConnectingPortAccessor<CoreNumber>> ports4SignalAccess = new ArrayList<ConnectingPortAccessor<CoreNumber>>();
+
+
+    /** Create behavior edges by default? (may be set to false by subclasses) */
+    protected boolean createBehaviorEdges = true;
+
     public void clear() {
         // Delete old ports
         for (ConnectingPortAccessor<BehaviorStatus> cpa : ports4BehaviourAccess) {
             cpa.delete();
         }
         ports4BehaviourAccess.clear();
+        for (ConnectingPortAccessor<CoreNumber> cpa : ports4SignalAccess) {
+            cpa.delete();
+        }
+        ports4SignalAccess.clear();
     }
 
     @Override
@@ -81,6 +98,15 @@ public class Ib2cViewClassic extends StandardViewGraphViz {
             return new BehaviourVertex((RemoteFrameworkElement)fe);
         } else {
             return super.createVertexInstance(fe);
+        }
+    }
+
+    @Override
+    protected Edge createEdgeInstance(Vertex source, Vertex dest) {
+        if (createBehaviorEdges) {
+            return new BehaviourEdge(source, dest);
+        } else {
+            return super.createEdgeInstance(source, dest);
         }
     }
 
@@ -130,7 +156,7 @@ public class Ib2cViewClassic extends StandardViewGraphViz {
      * Activation, Activity and Target Rating as horizontal Bars
      */
     @SuppressWarnings("rawtypes")
-    public class BehaviourVertex extends Vertex implements PortListener, Runnable {
+    public class BehaviourVertex extends Vertex implements PortListener {
 
         /** ports used to get behaviour data via push */
         private ConnectingPortAccessor<BehaviorStatus> port;
@@ -239,13 +265,118 @@ public class Ib2cViewClassic extends StandardViewGraphViz {
         }
 
         @Override
-        public void run() {
-            repaint();
+        public void portChanged(AbstractPort origin, Object value) {
+            repaint(rect); // thread-safe
+        }
+    }
+
+    @Override
+    public Collection<Edge> getEdges(final ModelNode root, Collection<Vertex> allVertices) {
+        Collection<Edge> result = super.getEdges(root, allVertices);
+        for (Edge edge : result) {
+            if (edge instanceof BehaviourEdge) {
+                ((BehaviourEdge)edge).init();
+            }
+        }
+        return result;
+    }
+
+    /** Stroke for behavior edges */
+    private static final BasicStroke FAT_EDGE_STROKE = new BasicStroke(2);
+
+    /**
+     * Edge that changes colors depending on behavior signals
+     */
+    public class BehaviourEdge extends Edge implements PortListener<CoreNumber> {
+
+        /** UID */
+        private static final long serialVersionUID = 5314477566659015096L;
+
+        private int numberOfConnectedBehaviorSignals;
+
+        /** If edge transfers any behavior meta signals, contains the ports to obtain the relevant values from */
+        private RemotePort stimulationPort, inhibitionPort, activityTransferPort; //, targetRatingTransferPort;
+
+        /** Current edge color */
+        private Color color;
+
+        /** Port used to get relevant behavior signal data via push */
+        private ConnectingPortAccessor<CoreNumber> port;
+
+        protected BehaviourEdge(Vertex src, Vertex dest) {
+            super(src, dest);
+        }
+
+        public void init() {
+            color = numberOfConnectedBehaviorSignals > 0 ? Color.darkGray : new Color(0.5f, 0.5f, 0.5f);
+
+            if (stimulationPort != null) {
+                port = new ConnectingPortAccessor<CoreNumber>(stimulationPort, "");
+            } else if (inhibitionPort != null) {
+                port = new ConnectingPortAccessor<CoreNumber>(inhibitionPort, "");
+            } else if (activityTransferPort != null) {
+                port = new ConnectingPortAccessor<CoreNumber>(activityTransferPort, "");
+            }
+            if (port != null) {
+                ports4SignalAccess.add(port);
+                ((PortBase)port.getPort()).addPortListenerRaw(this);
+                port.init();
+                port.setAutoUpdate(true);
+            }
         }
 
         @Override
-        public void portChanged(AbstractPort origin, Object value) {
-            SwingUtilities.invokeLater(this);
+        protected void addConnection(RemotePort sourcePort, RemotePort destinationPort) {
+            if (sourcePort.getParent() != null && isBehaviour(sourcePort.getParent().getParent()) ||
+                    destinationPort.getParent() != null && isBehaviour(destinationPort.getParent().getParent())) {
+                // source and target ports belong to ib2c behaviors
+
+                if (destinationPort.getName().equals("Stimulation")) {
+                    stimulationPort = destinationPort;
+                    numberOfConnectedBehaviorSignals++;
+                } else if (destinationPort.getName().contains("Inhibition")) {
+                    inhibitionPort = destinationPort;
+                    numberOfConnectedBehaviorSignals++;
+                } else if (sourcePort.getName().contains("Activity") || sourcePort.getName().contains("Stimulation") || sourcePort.getName().contains("Inhibit")) {
+                    activityTransferPort = sourcePort;
+                    numberOfConnectedBehaviorSignals++;
+//              } else if (sourcePort.getName().contains("Target Rating")) {  // seems unused in tQMCAGraphEdge::SetColors()
+//                  targetRatingTransferPort = sourcePort;
+//                  numberOfConnectedBehaviorSignals++;
+                }
+            }
+        }
+
+        @Override
+        public Color getColor() {
+            return color;
+        }
+
+        @Override
+        public void paint(Graphics2D g2d) {
+            if (numberOfConnectedBehaviorSignals > 0) {
+                Stroke oldStroke = g2d.getStroke();
+                g2d.setStroke(FAT_EDGE_STROKE);
+                super.paint(g2d);
+                g2d.setStroke(oldStroke);
+            } else {
+                super.paint(g2d);
+            }
+        }
+
+        @Override
+        public synchronized void portChanged(AbstractPort origin, CoreNumber value) {
+            CoreNumber number = (CoreNumber)value;
+            float f = Math.max(0f, Math.min(1f, number.floatValue())); // make sure number is between 0 and 1
+            float half = f * 0.5f;
+            if (stimulationPort != null) {
+                color = new Color(0.5f - half, 0.5f + half, 0.5f - half); // green
+            } else if (inhibitionPort != null) {
+                color = new Color(0.5f + half, 0.5f - half, 0.5f - half); // red
+            } else if (activityTransferPort != null) {
+                color = new Color(0.5f - half, 0.5f - half, 0.5f + half); // blue - is that good?
+            }
+            super.triggerRepaint();
         }
     }
 }

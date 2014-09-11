@@ -887,7 +887,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         /** Flags from flooding all unknown edges in graph */
         protected int floodedFlags;
 
-        private Edge(Vertex src, Vertex dest) {
+        protected Edge(Vertex src, Vertex dest) {
             gvEdge = new org.finroc.tools.finstruct.graphviz.Edge(src.gvVertex, dest.gvVertex);
         }
 
@@ -1062,7 +1062,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         }
 
         public void triggerRepaint() {
-            if (zoom == 1) {
+            if (zoom == 1 && gvEdge.getPath() != null) {
                 StandardViewGraphViz.this.repaint(gvEdge.getPath().getBounds());
             } else {
                 StandardViewGraphViz.this.repaint();
