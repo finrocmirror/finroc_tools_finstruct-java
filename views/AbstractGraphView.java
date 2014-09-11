@@ -429,6 +429,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
                             result.put(eNew, eNew);
                         }
                         e.dataTypeFlags |= src2.dataTypeFlags | dest2.dataTypeFlags;
+                        e.addConnection(port, destTemp);
                     }
                 }
             }
@@ -567,6 +568,16 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             }
             return 0;
         }
+
+        /**
+         * Add another connection between two ports to this graph edge
+         * (Edge class may ignore which specific connections it represents - as the base class does.
+         *  However, ib2c edge class, for instance, processes this information to color edges)
+         *
+         * @param sourcePort Source port of connection
+         * @param destinationPort Destination port of connection
+         */
+        protected void addConnection(RemotePort sourcePort, RemotePort destinationPort) {}
     }
 
     /**
