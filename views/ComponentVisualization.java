@@ -100,6 +100,7 @@ public class ComponentVisualization extends Ib2cViewClassic {
     private final static int[] MAX_Y_RESOLUTION = { 90, 180, Integer.MAX_VALUE };
 
     public ComponentVisualization() {
+        super.createBehaviorEdges = false;
         if (true) {
             graphAppearance.background = Color.white;
             graphAppearance.groups = new Color(204, 204, 204);
