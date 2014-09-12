@@ -38,7 +38,6 @@ import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.plugins.data_types.BehaviorStatus;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
-import org.finroc.tools.finstruct.propertyeditor.PortAccessor;
 
 /**
  * @author Max Reichardt
@@ -308,7 +307,7 @@ public class Ib2cViewClassic extends StandardViewGraphViz {
         }
 
         public void init() {
-            color = numberOfConnectedBehaviorSignals > 0 ? Color.darkGray : new Color(0.5f, 0.5f, 0.5f);
+            color = numberOfConnectedBehaviorSignals > 0 ? new Color(0.5f, 0.5f, 0.5f) /* QT dark gray */ : new Color(0xa0, 0xa0, 0xa4) /* QT gray */;
 
             if (stimulationPort != null) {
                 port = new ConnectingPortAccessor<CoreNumber>(stimulationPort, "");
@@ -368,13 +367,14 @@ public class Ib2cViewClassic extends StandardViewGraphViz {
         public synchronized void portChanged(AbstractPort origin, CoreNumber value) {
             CoreNumber number = (CoreNumber)value;
             float f = Math.max(0f, Math.min(1f, number.floatValue())); // make sure number is between 0 and 1
-            float half = f * 0.5f;
+            float add = f * 0.35f;
+            float substract = f * 0.5f;
             if (stimulationPort != null) {
-                color = new Color(0.5f - half, 0.5f + half, 0.5f - half); // green
+                color = new Color(0.5f - substract, 0.5f + add, 0.5f - substract); // green
             } else if (inhibitionPort != null) {
-                color = new Color(0.5f + half, 0.5f - half, 0.5f - half); // red
+                color = new Color(0.5f + add, 0.5f - substract, 0.5f - substract); // red
             } else if (activityTransferPort != null) {
-                color = new Color(0.5f - half, 0.5f - half, 0.5f + half); // blue - is that good?
+                color = new Color(0.5f - substract, 0.5f - substract, 0.5f + add); // blue - is that good?
             }
             super.triggerRepaint();
         }
