@@ -671,6 +671,9 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         if (!address.startsWith("/")) {
             address = "/" + address;
         }
+        if (address.endsWith("/")) {
+            address = address.substring(0, address.length() - 1);
+        }
         ModelNode node = finstruct.getIoInterface().getChildByQualifiedName("Interfaces" + address, '/');
         if (node != null) {
             pushViewToHistory();
