@@ -343,6 +343,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
 
         // fill right part of split pane
         JScrollPane scrollPane = new JScrollPane(getCurrentView());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         //scrollPane.setBorder(BorderFactory.createLineBorder(Color.gray));
         //scrollPane.setBorder(BorderFactory.createMatteBorder(2, 2, 2, 2, Color.gray));
         //scrollPane.setBorder(BorderFactory.createMatteBorder(4, 4, 4, 4, getCurrentView().getBackground()));
