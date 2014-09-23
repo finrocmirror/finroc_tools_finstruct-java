@@ -53,6 +53,7 @@ public class PaintableViewer extends PropertyEditComponent<PaintablePortData> {
 
         @Override
         protected WidgetUI createWidgetUI() {
+            super.showCoordinates = true;
             return new ViewerUI();
         }
 
