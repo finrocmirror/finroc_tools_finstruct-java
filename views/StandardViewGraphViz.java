@@ -851,7 +851,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 }
             }
             if (connectionPanel != null) {
-                connectionPanel.expandOnly(leftTree, expand);
+                connectionPanel.expand(leftTree, expand, true);
             }
         }
     }

@@ -288,15 +288,42 @@ public class FinstructConnectionPanel extends ConnectionPanel {
      * Expand provided node in all visible trees
      *
      * @param node Node to expand
+     * @param scrollToExpandedNode Scroll tree to expanded node?
      */
-    public void expand(ModelNode node) {
-        if (node.isNodeAncestor((ModelNode)leftTree.getModel().getRoot())) {
-            leftTree.expandToElement(node);
-        }
+    public void expand(ModelNode node, boolean scrollToExpandedNode) {
+        expand(false, node, scrollToExpandedNode);
         if (showRightTree) {
-            if (node.isNodeAncestor((ModelNode)rightTree.getModel().getRoot())) {
-                rightTree.expandToElement(node);
+            expand(true, node, scrollToExpandedNode);
+        }
+    }
+
+    /**
+     * Expand provided node in all visible trees
+     *
+     * @param leftTree Left tree (or rather right one?)
+     * @param node Node to expand
+     * @param scrollToExpandedNode Scroll tree to expanded node?
+     */
+    public void expand(boolean leftTree, ModelNode node, boolean scrollToExpandedNode) {
+        MJTree<PortWrapperTreeNode> tree = leftTree ? super.leftTree : rightTree;
+        if ((tree.getModel().getRoot() instanceof ModelNode) && node.isNodeAncestor((ModelNode)tree.getModel().getRoot())) {
+            tree.expandToElement(node);
+            if (scrollToExpandedNode) {
+                tree.scrollPathToVisible(tree.getTreePathFor(node));
             }
+        }
+    }
+
+    /**
+     * Expand provided nodes in all visible trees
+     *
+     * @param leftTree Left tree (or rather right one?)
+     * @param nodes Nodes to expand
+     * @param scrollToExpandedNode Scroll tree to expanded node?
+     */
+    public void expand(boolean leftTree, Collection<ModelNode> nodes, boolean scrollToExpandedNode) {
+        for (ModelNode node : nodes) {
+            expand(leftTree, node, scrollToExpandedNode);
         }
     }
 

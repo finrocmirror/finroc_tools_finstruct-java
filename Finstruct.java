@@ -372,13 +372,13 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
             if (getCurrentView() != null && getCurrentView().getRootElement() == null) {
                 ModelNode elementToShow = finstruct.getIoInterface().getElementToShowInitially();
                 if (elementToShow != null) {
-                    connectionPanel.expandOnly(true, elementToShow);
+                    connectionPanel.expand(true, elementToShow, false);
                     showElement(elementToShow);
                 }
             }
             if (getCurrentView() != null) {
                 for (RemoteFrameworkElement elementToShow : finstruct.getIoInterface().getAndClearElementsToShowInitially()) {
-                    connectionPanel.expand(elementToShow.getParent());
+                    connectionPanel.expand(elementToShow.getParent(), false);
                 }
             }
             return;
