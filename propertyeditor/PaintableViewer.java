@@ -78,6 +78,7 @@ public class PaintableViewer extends PropertyEditComponent<PaintablePortData> {
                             zoom = Math.min(zoomX, zoomY);
                             translationX = -b.getCenterX();
                             translationY = -b.getCenterY();
+                            updateRulers();
                             repaint();
                         }
                     } else {
