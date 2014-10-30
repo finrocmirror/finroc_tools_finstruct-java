@@ -64,6 +64,9 @@ public abstract class FinstructView extends MPanel {
     Finstruct finstruct;
     FinstructWindow finstructWindow;
 
+    /** Has view been initialized? (Only to be accessed by FinstructWindow class) */
+    boolean viewInitialized;
+
     /** Default graphics2d object for drawing to screen and to bitmaps */
     private final Graphics2D BITMAP_GRAPHICS_2D = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB).createGraphics();
 

@@ -41,13 +41,13 @@ import java.util.TreeMap;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BorderFactory;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -328,30 +328,26 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         return Collections.unmodifiableSortedMap(registeredViewTypes);
     }
 
-    /**
-     * Changes view
-     *
-     * @param view View to change to
-     * @param restoreRoot call setRootElement with old root on new View?
-     */
     @Override
-    protected void changeView(FinstructView view, boolean restoreRoot) {
-        super.changeView(view, restoreRoot);
-
+    protected void changeViewRootComponent(JComponent rootComponent) {
         // fill left part of split pane
         splitPane.setLeftComponent(getCurrentView().initLeftPanel(connectionPanel));
 
         // fill right part of split pane
-        JScrollPane scrollPane = new JScrollPane(getCurrentView());
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         //scrollPane.setBorder(BorderFactory.createLineBorder(Color.gray));
         //scrollPane.setBorder(BorderFactory.createMatteBorder(2, 2, 2, 2, Color.gray));
         //scrollPane.setBorder(BorderFactory.createMatteBorder(4, 4, 4, 4, getCurrentView().getBackground()));
         //scrollPane.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         //scrollPane.setBorder(BorderFactory.createLoweredSoftBevelBorder());
-        scrollPane.setBorder(new CompoundBorder(BorderFactory.createEtchedBorder(), BorderFactory.createEmptyBorder(1, 1, 1, 1)));
+        if (rootComponent instanceof JSplitPane) {
+            rootComponent.setBorder(BorderFactory.createEmptyBorder());
+            //((JComponent)((JSplitPane)rootComponent).getLeftComponent()).setBorder(BorderFactory.createEmptyBorder());
+            ((JComponent)((JSplitPane)rootComponent).getLeftComponent()).setBorder(new CompoundBorder(BorderFactory.createEtchedBorder(), BorderFactory.createEmptyBorder(1, 1, 1, 1)));
+        } else {
+            rootComponent.setBorder(new CompoundBorder(BorderFactory.createEtchedBorder(), BorderFactory.createEmptyBorder(1, 1, 1, 1)));
+        }
         //scrollPane.setBorder(BorderFactory.createEtchedBorder());
-        splitPane.setRightComponent(scrollPane);
+        splitPane.setRightComponent(rootComponent);
     }
 
     @Override

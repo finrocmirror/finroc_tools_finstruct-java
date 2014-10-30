@@ -49,6 +49,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JList;
 import javax.swing.JMenu;
@@ -57,6 +58,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -168,6 +170,12 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     /** Any view instances that were created in this window */
     private final HashMap < Class <? extends FinstructView > , FinstructView > viewInstances = new HashMap < Class <? extends FinstructView > , FinstructView > ();
 
+    /** Right Panel */
+    private FinstructRightPanel rightPanel = new FinstructRightPanel();
+
+    /** Is right panel set to be visible? */
+    private boolean rightPanelVisible;
+
     public FinstructWindow(Finstruct f) {
         finstruct = f;
 
@@ -247,6 +255,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
      * @param restoreRoot call setRootElement with old root on new View?
      */
     protected void changeView(FinstructView view, boolean restoreRoot) {
+        view.viewInitialized = false;
         view.finstruct = (finstruct != null) ? finstruct : (Finstruct)this;
         view.finstructWindow = this;
 
@@ -293,11 +302,8 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         toolBar.revalidate();
         toolBar.getParent().repaint();
 
-        if (!(this instanceof Finstruct)) {
-            getContentPane().removeAll();
-            getContentPane().add(toolBar, BorderLayout.PAGE_START);
-            getContentPane().add(new JScrollPane(getCurrentView()), BorderLayout.CENTER);
-        }
+        view.viewInitialized = true;
+        setRightPanelVisible(rightPanelVisible);
 
         // update menu
         /*if (!miAutoView.isSelected()) {
@@ -834,6 +840,52 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     @Override
     public String toString() {
         return "Finstruct Window '" + getTitle() + "'";
+    }
+
+    /**
+     * @return Right panel (independent of whether it is visible)
+     */
+    public FinstructRightPanel getRightPanel() {
+        return rightPanel;
+    }
+
+    /**
+     * Sets whether right is visible
+     * (typically called by view classes)
+     *
+     * @param visible Whether right panel should be visible
+     */
+    public void setRightPanelVisible(boolean visible) {
+        rightPanelVisible = visible;
+        if (!currentView.viewInitialized) {
+            return;
+        }
+
+        JScrollPane scrollPane = new JScrollPane(getCurrentView());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        if (rightPanelVisible) {
+            JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, scrollPane, rightPanel);
+            splitPane.setDividerSize(5);
+            //splitPane.setDividerLocation(1.0);
+            splitPane.setResizeWeight(0.75);
+            changeViewRootComponent(splitPane);
+        } else {
+            changeViewRootComponent(scrollPane);
+        }
+    }
+
+    /**
+     * Changes root component of current view
+     * (called e.g. when right panel visibility is changes; may be overridden)
+     *
+     * @param rootComponent New root component
+     */
+    protected void changeViewRootComponent(JComponent rootComponent) {
+        getContentPane().removeAll();
+        getContentPane().add(toolBar, BorderLayout.PAGE_START);
+        getContentPane().add(rootComponent, BorderLayout.CENTER);
+        this.validate();
+        this.repaint();
     }
 
     /**

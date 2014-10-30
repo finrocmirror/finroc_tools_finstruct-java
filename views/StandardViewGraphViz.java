@@ -152,7 +152,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
     private JSpinner rankSep = new JSpinner(new SpinnerNumberModel(RANK_SEP_DEFAULT, 0.05, 2.0, 0.05));
 
     /** Diverse toolbar switches */
-    protected enum DiverseSwitches { antialiasing, lineBreaks }
+    protected enum DiverseSwitches { antialiasing, lineBreaks, constructionPanel }
 
     /** Zoom factor */
     private float zoom = 1.0f;
@@ -1376,6 +1376,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             nodeSep.getEditor().getComponent(0).addKeyListener(getFinstruct());
             rankSep.getEditor().getComponent(0).addKeyListener(getFinstruct());
         }
+        toolBar.addSeparator();
+        toolBar.addToggleButton(new MAction(DiverseSwitches.constructionPanel, "tools-wikimedia-public_domain.png", "Show Construction Panel", this), true);
     }
 
     @SuppressWarnings("rawtypes")
@@ -1390,6 +1392,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 repaint();
             } else if (e == DiverseSwitches.lineBreaks) {
                 relayout(true);
+            } else if (e == DiverseSwitches.constructionPanel) {
+                getFinstructWindow().setRightPanelVisible(toolBar.isSelected(DiverseSwitches.constructionPanel));
             }
         } else if (ae.getSource() == zoomIn) {
             setZoom(zoom * 1.33);
