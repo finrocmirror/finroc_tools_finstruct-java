@@ -323,6 +323,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         } catch (Exception e) {
             logDomain.log(LogLevel.LL_ERROR, getLogDescription(), e);
         }*/
+        getFinstructWindow().getRightPanel().setRootElement(getRootElement());
     }
 
     /**
@@ -1394,6 +1395,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 relayout(true);
             } else if (e == DiverseSwitches.constructionPanel) {
                 getFinstructWindow().setRightPanelVisible(toolBar.isSelected(DiverseSwitches.constructionPanel));
+                if (toolBar.isSelected(DiverseSwitches.constructionPanel)) {
+                    getFinstructWindow().getRightPanel().setRootElement(getRootElement());
+                }
             }
         } else if (ae.getSource() == zoomIn) {
             setZoom(zoom * 1.33);

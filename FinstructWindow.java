@@ -173,9 +173,6 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     /** Right Panel */
     private FinstructRightPanel rightPanel = new FinstructRightPanel();
 
-    /** Is right panel set to be visible? */
-    private boolean rightPanelVisible;
-
     public FinstructWindow(Finstruct f) {
         finstruct = f;
 
@@ -303,7 +300,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         toolBar.getParent().repaint();
 
         view.viewInitialized = true;
-        setRightPanelVisible(rightPanelVisible);
+        setRightPanelVisible(view.rightPanelVisible);
 
         // update menu
         /*if (!miAutoView.isSelected()) {
@@ -856,14 +853,14 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
      * @param visible Whether right panel should be visible
      */
     public void setRightPanelVisible(boolean visible) {
-        rightPanelVisible = visible;
+        currentView.rightPanelVisible = visible;
         if (!currentView.viewInitialized) {
             return;
         }
 
         JScrollPane scrollPane = new JScrollPane(getCurrentView());
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        if (rightPanelVisible) {
+        if (currentView.rightPanelVisible) {
             JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, scrollPane, rightPanel);
             splitPane.setDividerSize(5);
             //splitPane.setDividerLocation(1.0);
