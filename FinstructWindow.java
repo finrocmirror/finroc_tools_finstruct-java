@@ -171,7 +171,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     private final HashMap < Class <? extends FinstructView > , FinstructView > viewInstances = new HashMap < Class <? extends FinstructView > , FinstructView > ();
 
     /** Right Panel */
-    private FinstructRightPanel rightPanel = new FinstructRightPanel();
+    private FinstructRightPanel rightPanel = new FinstructRightPanel(this);
 
     public FinstructWindow(Finstruct f) {
         finstruct = f;
@@ -952,6 +952,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         if (currentView != null) {
             currentView.destroy();
         }
+        rightPanel.destroy();
         periodicViewCheckTimer.stop();
     }
 

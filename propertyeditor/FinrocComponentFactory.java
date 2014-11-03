@@ -440,7 +440,7 @@ public class FinrocComponentFactory implements ComponentFactory {
         }
     }
 
-    public class CoreBooleanAdapter extends PropertyAccessorAdapter<CoreBoolean, Boolean> {
+    public static class CoreBooleanAdapter extends PropertyAccessorAdapter<CoreBoolean, Boolean> {
 
         public CoreBooleanAdapter(PropertyAccessor<CoreBoolean> wrapped) {
             super(wrapped, Boolean.class);
