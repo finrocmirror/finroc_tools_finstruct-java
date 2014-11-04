@@ -23,28 +23,17 @@ package org.finroc.tools.finstruct.propertyeditor;
 
 import java.awt.Component;
 import java.util.ArrayList;
-import java.util.EventObject;
 import java.util.List;
 
 import javax.swing.DefaultCellEditor;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.event.CellEditorListener;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableCellEditor;
-import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableModel;
 
 import org.finroc.core.datatype.CoreBoolean;
-import org.finroc.tools.finstruct.propertyeditor.FinrocComponentFactory.CoreBooleanAdapter;
-import org.finroc.tools.finstruct.propertyeditor.FinrocComponentFactory.CoreSerializableAdapter;
-import org.finroc.tools.gui.util.propertyeditor.BooleanEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComponentFactory;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
-import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.rrlib.serialization.BinarySerializable;
 import org.rrlib.serialization.EnumValue;
 import org.rrlib.serialization.Serialization;
@@ -76,6 +65,9 @@ public class PropertyEditorTableModel /*extends DefaultCellEditor*/ implements T
 
     /** Listener list */
     private ArrayList<TableModelListener> listeners = new ArrayList<TableModelListener>();
+
+    /** Property set listener list */
+    private ArrayList<PropertySetListener> propertySetListeners = new ArrayList<PropertySetListener>();
 
     /** Default table cell renderer */
     private DefaultTableCellRenderer defaultRenderer = new DefaultTableCellRenderer();
@@ -171,6 +163,9 @@ public class PropertyEditorTableModel /*extends DefaultCellEditor*/ implements T
     public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
         try {
             properties.get(rowIndex).set(aValue);
+            for (PropertySetListener listener : propertySetListeners) {
+                listener.propertySet(properties.get(rowIndex));
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -187,6 +182,27 @@ public class PropertyEditorTableModel /*extends DefaultCellEditor*/ implements T
     public void removeTableModelListener(TableModelListener l) {
         listeners.remove(l);
     }
+
+    public interface PropertySetListener {
+
+        /**
+         * Called whenever a property is set by the table
+         *
+         * @param property Property that was set
+         */
+        public void propertySet(PropertyAccessor property);
+    }
+
+    public void addPropertySetListener(PropertySetListener l) {
+        if (!propertySetListeners.contains(l)) {
+            propertySetListeners.add(l);
+        }
+    }
+
+    public void removePropertySetListener(PropertySetListener l) {
+        propertySetListeners.remove(l);
+    }
+
 //
 //  @Override
 //  public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {

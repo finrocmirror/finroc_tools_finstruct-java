@@ -91,7 +91,7 @@ import org.rrlib.serialization.rtti.DataTypeBase;
  *
  * Panel on the right side of finstruct graph views
  */
-public class FinstructRightPanel extends JPanel implements TreeSelectionListener, ActionListener, TreeModelListener, Comparator<Object>, PortAccessor.Listener {
+public class FinstructRightPanel extends JPanel implements TreeSelectionListener, ActionListener, TreeModelListener, Comparator<Object>, PortAccessor.Listener, PropertyEditorTableModel.PropertySetListener {
 
     /** UID */
     private static final long serialVersionUID = -6762519933079911025L;
@@ -281,8 +281,14 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
 
         RemoteRuntime runtime = RemoteRuntime.find(element);
         if (runtime != null) {
-            // TODO: tansform to asynchronous call in order to increase GUI responsiveness
+            // TODO: transform to asynchronous call in order to increase GUI responsiveness (furthermore, we can be sure that all subelements have been added)
             selectedComponentStaticParameterList = (StaticParameterList)runtime.getAdminInterface().getAnnotation(element.getRemoteHandle(), StaticParameterList.TYPE);
+            if (selectedComponentStaticParameterList != null) {
+                for (int i = 0; i < selectedComponentStaticParameterList.size(); i++) {
+                    selectedComponentStaticParameterList.get(i).resetChanged();
+                    //System.out.println(i + ":" + selectedComponentStaticParameterList.get(i).hasChanged());
+                }
+            }
 
             // initialize GUI elements
             componentPropertyPanelText.setText("<html><b>" + simpleHtmlEscape(selectedComponent.getName()) + "</b><br>" + (((element.getFlags() & FrameworkElementFlags.FINSTRUCTED) != 0) ? "(Created via Finstruct/XML)" : "(Created in C++ code)") + "</html>"); // TODO: if create action is known, we can show info about component type etc.
@@ -332,6 +338,26 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
         splitPane.setDividerLocation(dividerLocation);
     }
 
+    @SuppressWarnings("rawtypes")
+    @Override
+    public void propertySet(PropertyAccessor property) {
+        if (selectedComponentStaticParameterList != null) {
+            boolean changed = false;
+            for (int i = 0; i < selectedComponentStaticParameterList.size(); i++) {
+                changed |= selectedComponentStaticParameterList.get(i).hasChanged();
+                selectedComponentStaticParameterList.get(i).resetChanged();
+            }
+            if (changed) {
+                RemoteRuntime runtime = RemoteRuntime.find(rootElement);
+                if (runtime != null) {
+                    runtime.getAdminInterface().setAnnotation(selectedComponent.getRemoteHandle(), selectedComponentStaticParameterList);
+                } else {
+                    Finstruct.showErrorMessage("Cannot set static parameter: connection to remote runtime lost", false, false);
+                }
+            }
+        }
+    }
+
     /**
      * Called whenever componentPropertySelection combo box value changes.
      * Displays selected properties.
@@ -348,6 +374,7 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
 
         ArrayList<PropertyAccessor> propertyEditList = getComponentProperties(selectedItem, false);
         PropertyEditorTableModel tableModel = new PropertyEditorTableModel("Name", propertyEditList, new FinrocComponentFactory(rootElement), new StandardComponentFactory());
+        tableModel.addPropertySetListener(this);
         componentProperties.setModel(tableModel);
         ((DefaultCellEditor)componentProperties.getDefaultEditor(Object.class)).setClickCountToStart(1);
     }
