@@ -832,6 +832,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 } else {
                     expandInTree(true, getModelElement());
                     lastClick = System.currentTimeMillis();
+                    if (isRightPanelVisible() && getModelElement() instanceof RemoteFrameworkElement) {
+                        getFinstructWindow().getRightPanel().showElement((RemoteFrameworkElement)getModelElement());
+                    }
                 }
             }
         }
@@ -1469,7 +1472,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
      *
      * @param ms Milliseconds to wait until refreshing
      */
-    private void refreshViewAfter(int ms) {
+    public void refreshViewAfter(int ms) {
         Timer timer = new Timer(ms, this);
         timer.setRepeats(false);
         timer.start();

@@ -262,4 +262,11 @@ public abstract class FinstructView extends MPanel {
     public FontMetrics getCurrentFontMetrics() {
         return currentFontMetrics;
     }
+
+    /**
+     * @return Is right panel set to be visible?
+     */
+    public boolean isRightPanelVisible() {
+        return rightPanelVisible;
+    }
 }

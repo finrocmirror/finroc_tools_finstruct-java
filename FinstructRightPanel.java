@@ -26,58 +26,34 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.Graphics2D;
-import java.awt.GraphicsEnvironment;
-import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
-import javax.crypto.AEADBadTagException;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultCellEditor;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JFrame;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-import javax.swing.Timer;
-import javax.swing.UIManager;
-import javax.swing.UIManager.LookAndFeelInfo;
-import javax.swing.border.CompoundBorder;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
-import javax.swing.table.DefaultTableModel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
@@ -85,63 +61,43 @@ import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
-import org.finroc.core.RuntimeEnvironment;
-import org.finroc.core.RuntimeSettings;
+import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.datatype.CoreString;
 import org.finroc.core.parameter.ConstructorParameters;
 import org.finroc.core.parameter.StaticParameterList;
-import org.finroc.core.plugin.ConnectionListener;
-import org.finroc.core.plugin.CreateExternalConnectionAction;
-import org.finroc.core.plugin.ExternalConnection;
-import org.finroc.core.plugin.Plugins;
 import org.finroc.core.plugin.RemoteCreateModuleAction;
-import org.finroc.core.port.ThreadLocalCache;
+import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.core.remote.ModelNode;
-import org.finroc.core.remote.PortWrapperTreeNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
-import org.finroc.core.util.Files;
-import org.finroc.plugins.data_types.util.BoundsExtractingGraphics2D;
-import org.finroc.tools.finstruct.dialogs.ParameterEditDialog;
+import org.finroc.core.remote.RemoteType;
+import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 import org.finroc.tools.finstruct.propertyeditor.FinrocComponentFactory;
 import org.finroc.tools.finstruct.propertyeditor.FinrocObjectAccessor;
+import org.finroc.tools.finstruct.propertyeditor.PortAccessor;
 import org.finroc.tools.finstruct.propertyeditor.PropertyEditorTable;
 import org.finroc.tools.finstruct.propertyeditor.PropertyEditorTableModel;
 import org.finroc.tools.finstruct.propertyeditor.StaticParameterAccessor;
-import org.finroc.tools.finstruct.views.ComponentVisualization;
-import org.finroc.tools.finstruct.views.Ib2cViewClassic;
-import org.finroc.tools.finstruct.views.PortView;
-import org.finroc.tools.finstruct.views.Profiling;
+import org.finroc.tools.finstruct.views.AbstractGraphView;
 import org.finroc.tools.finstruct.views.StandardViewGraphViz;
-import org.finroc.tools.gui.ConnectDialog;
-import org.finroc.tools.gui.ConnectionPanel;
-import org.finroc.tools.gui.GUIUiBase;
-import org.finroc.tools.gui.StatusBar;
-import org.finroc.tools.gui.commons.EventRouter;
-import org.finroc.tools.gui.commons.fastdraw.BufferedConvexSVG;
-import org.finroc.tools.gui.commons.fastdraw.SVG;
-import org.finroc.tools.gui.util.gui.IconManager;
-import org.finroc.tools.gui.util.gui.MAction;
-import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MJTree;
-import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
-import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
-import org.finroc.tools.gui.widgets.LED;
-import org.rrlib.logging.Log;
-import org.rrlib.logging.LogLevel;
-import org.rrlib.xml.XMLNode;
+import org.rrlib.serialization.rtti.DataTypeBase;
 
 /**
  * @author Max Reichardt
  *
  * Panel on the right side of finstruct graph views
  */
-public class FinstructRightPanel extends JPanel implements TreeSelectionListener, ActionListener, TreeModelListener {
+public class FinstructRightPanel extends JPanel implements TreeSelectionListener, ActionListener, TreeModelListener, Comparator<Object>, PortAccessor.Listener {
 
     /** UID */
     private static final long serialVersionUID = -6762519933079911025L;
+
+    /** Preferred width of right panel */
+    private static final int PREFERRED_WIDTH = 200;
 
     /** Reference to finstruct window */
     private FinstructWindow parent;
@@ -151,9 +107,6 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
 
     /** Panel containing the component library (tree with libs and CreateModuleActions) */
     private JPanel componentLibraryPanel;
-
-    /** Panel containing component/edge properties */
-    //private JPanel componentPropertyPanel;
 
     /** Tree in component library panel */
     private MJTree<DefaultMutableTreeNode> componentLibraryTree = new MJTree<DefaultMutableTreeNode>(DefaultMutableTreeNode.class, 1);
@@ -186,16 +139,31 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
     private CoreString componentCreateName = new CoreString();
     private ConstructorParameters componentConstructorParameters;
 
+    /** UI elements for component properties */
+    private RemoteFrameworkElement selectedComponent;
+    private StaticParameterList selectedComponentStaticParameterList;
+    private JPanel componentPropertyPanel = new JPanel();
+    private JLabel componentPropertyPanelText = new JLabel();
+    private PropertyEditorTable componentProperties = new PropertyEditorTable();
+    private JButton componentDeleteButton = new JButton("Delete");
+    private JComboBox<Object> componentPropertySelection = new JComboBox<Object>();
+    private final ArrayList<ConnectingPortAccessor<?>> componentPropertyAccessPorts = new ArrayList<ConnectingPortAccessor<?>> ();
+
     /** If this is not null - and an element with this name is added, switches to view of this element */
     private String createdElementToSwitchTo = null;
+
+    /** Empty bottom panel */
+    private JPanel emptyBottomPanel = new JPanel();
 
     public FinstructRightPanel(FinstructWindow parent) {
         this.parent = parent;
 
         bottomScrollPane.setBorder(BorderFactory.createEtchedBorder());
+        emptyBottomPanel.setBorder(BorderFactory.createEtchedBorder());
 
         // Library Panel
         componentLibraryPanel = new JPanel();
+        componentLibraryPanel.setPreferredSize(new Dimension(PREFERRED_WIDTH, 0));
         componentLibraryPanel.setBorder(BorderFactory.createEmptyBorder());
         componentLibraryPanel.setLayout(new BorderLayout());
         JScrollPane topPanel = new JScrollPane(componentLibraryTree);
@@ -241,16 +209,31 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
         componentCreationPanel.setBorder(BorderFactory.createEtchedBorder());
         componentInfoText.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
         componentCreationPanel.setMinimumSize(new Dimension(100, 100));
-        /*componentInfoText.setAlignmentX(Component.LEFT_ALIGNMENT);
-        componentParameters.setAlignmentX(Component.LEFT_ALIGNMENT);
-        componentCreateButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-        componentDescription.setAlignmentX(Component.LEFT_ALIGNMENT);*/
+        componentCreationPanel.setPreferredSize(new Dimension(PREFERRED_WIDTH, 0));
+        componentCreateButton.addActionListener(this);
+
+        // Component property panel
+        componentPropertyPanel.setLayout(new BorderLayout());
+        JPanel componentPropertyTopPanel = new JPanel();
+        componentPropertyTopPanel.setLayout(new BorderLayout());
+        componentPropertyTopPanel.add(componentPropertyPanelText, BorderLayout.CENTER);
+        componentPropertyTopPanel.add(componentDeleteButton, BorderLayout.EAST);
+        componentPropertyTopPanel.add(componentPropertySelection, BorderLayout.SOUTH);
+        componentPropertyPanel.add(componentPropertyTopPanel, BorderLayout.NORTH);
+        componentPropertyPanel.add(new JScrollPane(componentProperties), BorderLayout.CENTER);
+        componentPropertyPanel.setBorder(BorderFactory.createEtchedBorder());
+        componentPropertyPanelText.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
+        componentPropertyPanel.setMinimumSize(new Dimension(100, 100));
+        componentPropertyPanel.setPreferredSize(new Dimension(PREFERRED_WIDTH, 0));
+        componentPropertySelection.addActionListener(this);
+        componentDeleteButton.addActionListener(this);
     }
 
     /**
      * Called when window containing this panel is closed
      */
     public void destroy() {
+        clearBottomPanel();
         if (treeModelListenerRegistered) {
             parent.finstruct.getIoInterface().removeTreeModelListener(this);
         }
@@ -270,13 +253,144 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
     }
 
     /**
+     * Clears and resets all variables related to bottom panel contents
+     * (also removes any created ports)
+     */
+    private void clearBottomPanel() {
+        for (ConnectingPortAccessor<?> componentPropertyAccessPort : componentPropertyAccessPorts) {
+            componentPropertyAccessPort.delete();
+        }
+        splitPane.setBottomComponent(emptyBottomPanel);
+        componentPropertyAccessPorts.clear();
+        bottomScrollPane.setViewportView(null);
+        componentConstructorParameters = null;
+        createdElementToSwitchTo = null;
+        selectedComponent = null;
+        selectedComponentStaticParameterList = null;
+    }
+
+    /**
      * Show properties of specified element in bottom view
      *
      * @param element Element whose properties to show
      */
-    private void showElement(RemoteFrameworkElement element) {
-        // TODO Auto-generated method stub
+    public void showElement(RemoteFrameworkElement element) {
+        int dividerLocation = splitPane.getDividerLocation();
+        clearBottomPanel();
+        selectedComponent = element;
 
+        RemoteRuntime runtime = RemoteRuntime.find(element);
+        if (runtime != null) {
+            // TODO: tansform to asynchronous call in order to increase GUI responsiveness
+            selectedComponentStaticParameterList = (StaticParameterList)runtime.getAdminInterface().getAnnotation(element.getRemoteHandle(), StaticParameterList.TYPE);
+
+            // initialize GUI elements
+            componentPropertyPanelText.setText("<html><b>" + simpleHtmlEscape(selectedComponent.getName()) + "</b><br>" + (((element.getFlags() & FrameworkElementFlags.FINSTRUCTED) != 0) ? "(Created via Finstruct/XML)" : "(Created in C++ code)") + "</html>"); // TODO: if create action is known, we can show info about component type etc.
+
+            // init combo box
+            String lastComboBoxSelection = (componentPropertySelection.getSelectedItem() == null) ? null : componentPropertySelection.getSelectedItem().toString();
+            ArrayList<Object> comboBoxElements = new ArrayList<Object>();
+            comboBoxElements.add("All");
+            int parameterCount = selectedComponentStaticParameterList != null ? selectedComponentStaticParameterList.size() : 0;
+            for (int i = 0; i < element.getChildCount(); i++) {
+                if (element.getChildAt(i) instanceof RemoteFrameworkElement) {
+                    RemoteFrameworkElement childElement = (RemoteFrameworkElement)element.getChildAt(i);
+                    if (AbstractGraphView.isParameters(childElement)) {
+                        parameterCount += childElement.getChildCount();
+                    } else if (AbstractGraphView.isInterface(childElement)) {
+                        comboBoxElements.add(childElement);
+                    }
+                }
+            }
+            Object selectedItem = null;
+            if (parameterCount > 0) {
+                selectedItem = "Parameters";
+                comboBoxElements.add(selectedItem);
+            }
+            Collections.sort(comboBoxElements, this);
+            if (lastComboBoxSelection != null) {
+                for (Object comboBoxElement : comboBoxElements) {
+                    if (comboBoxElement.toString().equals(lastComboBoxSelection)) {
+                        selectedItem = comboBoxElement;
+                        break;
+                    }
+                }
+            }
+            if (selectedItem == null) {
+                selectedItem = comboBoxElements.size() > 1 ? comboBoxElements.get(1) : comboBoxElements.get(0); // Only select 'All' if there's no other choice
+            }
+            componentPropertySelection.setModel(new DefaultComboBoxModel<Object>(comboBoxElements.toArray()));
+            componentPropertySelection.setSelectedItem(selectedItem);
+
+            // Create property accessor list
+            showComponentProperties(selectedItem);
+
+            // complete view initialization
+            splitPane.setBottomComponent(componentPropertyPanel);
+            this.validate();
+        }
+        splitPane.setDividerLocation(dividerLocation);
+    }
+
+    /**
+     * Called whenever componentPropertySelection combo box value changes.
+     * Displays selected properties.
+     *
+     * @param selectedItem Selected property group
+     */
+    @SuppressWarnings("rawtypes")
+    private void showComponentProperties(Object selectedItem) {
+        // Clear any old port accessors
+        for (ConnectingPortAccessor<?> componentPropertyAccessPort : componentPropertyAccessPorts) {
+            componentPropertyAccessPort.delete();
+        }
+        componentPropertyAccessPorts.clear();
+
+        ArrayList<PropertyAccessor> propertyEditList = getComponentProperties(selectedItem, false);
+        PropertyEditorTableModel tableModel = new PropertyEditorTableModel("Name", propertyEditList, new FinrocComponentFactory(rootElement), new StandardComponentFactory());
+        componentProperties.setModel(tableModel);
+        ((DefaultCellEditor)componentProperties.getDefaultEditor(Object.class)).setClickCountToStart(1);
+    }
+
+    /**
+     * Retrieves all component properties accessors of specified property group
+     *
+     * @param selectedItem Selected property group
+     * @return List with property accessors
+     */
+    @SuppressWarnings("rawtypes")
+    private ArrayList<PropertyAccessor> getComponentProperties(Object selectedItem, boolean prefix) {
+        ArrayList<PropertyAccessor> result = new ArrayList<PropertyAccessor>();
+        if (selectedItem.toString().equals("All")) {
+            for (int i = 1; i < componentPropertySelection.getModel().getSize(); i++) {
+                result.addAll(getComponentProperties(componentPropertySelection.getModel().getElementAt(i), true));
+            }
+        } else if (selectedItem instanceof RemoteFrameworkElement) {
+            RemoteFrameworkElement interfaceElement = (RemoteFrameworkElement)selectedItem;
+            for (int i = 0; i < interfaceElement.getChildCount(); i++) {
+                if (interfaceElement.getChildAt(i) instanceof RemotePort) {
+                    RemotePort port = (RemotePort)interfaceElement.getChildAt(i);
+                    DataTypeBase type = port.getPort().getDataType();
+                    if (FinrocTypeInfo.isCCType(type) || FinrocTypeInfo.isStdType(type) || ((type instanceof RemoteType) && ((RemoteType)type).isAdaptable())) {
+                        ConnectingPortAccessor portAccess = new ConnectingPortAccessor((RemotePort)interfaceElement.getChildAt(i), prefix ? interfaceElement.getParent().getQualifiedName('/') : interfaceElement.getQualifiedName('/'));
+                        componentPropertyAccessPorts.add(portAccess);
+                        result.add(portAccess);
+                        portAccess.setListener(this);
+                        portAccess.setAutoUpdate(true);
+                        portAccess.init();
+                    }
+                }
+            }
+        } else if (selectedItem.toString().equals("Parameters")) {
+            if (selectedComponentStaticParameterList != null) {
+                result.addAll(StaticParameterAccessor.createForList(selectedComponentStaticParameterList, prefix ? "Parameters/" : ""));
+            }
+            ModelNode parameters = selectedComponent.getChildByName("Parameters");
+            if (parameters != null) {
+                result.addAll(getComponentProperties(parameters, prefix));
+            }
+        }
+        return result;
     }
 
     /**
@@ -403,11 +517,10 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
     @SuppressWarnings("rawtypes")
     @Override
     public void valueChanged(TreeSelectionEvent e) {
-        bottomScrollPane.setViewportView(null);
-        componentConstructorParameters = null;
-        createdElementToSwitchTo = null;
+        clearBottomPanel();
         List<DefaultMutableTreeNode> selectedElements = componentLibraryTree.getSelectedObjects();
         DefaultMutableTreeNode selectedElement = selectedElements.size() == 0 ? null : selectedElements.get(0);
+        int dividerLocation = splitPane.getDividerLocation();
         if (selectedElement != null) {
             if (selectedElement.getUserObject() instanceof SharedLibrary) {
 
@@ -452,6 +565,7 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
                 this.validate();
             }
         }
+        splitPane.setDividerLocation(dividerLocation);
     }
 
     @Override
@@ -488,25 +602,41 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
                     // wait for creation and possibly open dialog for editing parameters
                     String error = runtime.getAdminInterface().createModule(selectedCreateAction, componentCreateName.toString(), ((RemoteFrameworkElement)rootElement).getRemoteHandle(), componentConstructorParameters);
                     if (error.length() > 0) {
-                        Finstruct.showErrorMessage("Error creating module: " + error, false, false);
+                        Finstruct.showErrorMessage("Error creating component: " + error, false, false);
                     } else {
                         createdElementToSwitchTo = componentCreateName.toString();
                     }
                 } catch (Exception exception) {
-                    Finstruct.showErrorMessage("Exception creating module: " + exception.getMessage(), false, false);
+                    Finstruct.showErrorMessage("Exception creating component: " + exception.getMessage(), false, false);
                 }
             } else {
-                Finstruct.showErrorMessage("Cannot create module: connection to remote runtime lost", false, false);
+                Finstruct.showErrorMessage("Cannot create component: connection to remote runtime lost", false, false);
+            }
+        } else if (e.getSource() == componentPropertySelection) {
+            showComponentProperties(componentPropertySelection.getSelectedItem());
+        } else if (e.getSource() == componentDeleteButton) {
+            RemoteRuntime runtime = RemoteRuntime.find(rootElement);
+            if (runtime != null) {
+                runtime.getAdminInterface().deleteElement(selectedComponent.getRemoteHandle());
+                clearBottomPanel();
+                if (parent.getCurrentView() instanceof StandardViewGraphViz) {
+                    ((StandardViewGraphViz)parent.getCurrentView()).refreshViewAfter(500);
+                }
+            } else {
+                Finstruct.showErrorMessage("Cannot delete component: connection to remote runtime lost", false, false);
             }
         }
     }
 
     @Override
     public void treeNodesInserted(TreeModelEvent e) {
-        if (createdElementToSwitchTo != null && e.getTreePath().getLastPathComponent() == parent) {
+        if (createdElementToSwitchTo != null && e.getTreePath().getLastPathComponent() == rootElement) {
             for (Object o : e.getChildren()) {
                 if (o instanceof RemoteFrameworkElement && o.toString().equals(createdElementToSwitchTo)) {
                     showElement((RemoteFrameworkElement)o);
+                    if (parent.getCurrentView() instanceof StandardViewGraphViz) {
+                        ((StandardViewGraphViz)parent.getCurrentView()).relayout(false);
+                    }
                     return;
                 }
             }
@@ -601,4 +731,15 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
 
 
     }*/
+
+    // To string comparison for property selection combo box
+    @Override
+    public int compare(Object o1, Object o2) {
+        return o1.toString().compareTo(o2.toString());
+    }
+
+    @Override
+    public void portChanged() {
+        componentProperties.repaint();
+    }
 }

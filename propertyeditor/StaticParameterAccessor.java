@@ -42,8 +42,11 @@ public class StaticParameterAccessor implements PropertyAccessor {
     /** Wrapped parameter */
     protected final StaticParameterBase wrapped;
 
-    public StaticParameterAccessor(StaticParameterBase wrapped) {
+    protected final String namePrefix;
+
+    public StaticParameterAccessor(StaticParameterBase wrapped, String namePrefix) {
         this.wrapped = wrapped;
+        this.namePrefix = namePrefix;
     }
 
     @Override
@@ -71,7 +74,7 @@ public class StaticParameterAccessor implements PropertyAccessor {
 
     @Override
     public String getName() {
-        return wrapped.getName();
+        return namePrefix + wrapped.getName();
     }
 
     @Override
@@ -81,14 +84,18 @@ public class StaticParameterAccessor implements PropertyAccessor {
 
     /**
      * @param spl Static parameter list
+     * @param namePrefix Prefix prepended to name of each parameter name
      * @return List of accessors for list
      */
-    public static List < PropertyAccessor<? >> createForList(StaticParameterList spl) {
+    public static List < PropertyAccessor<? >> createForList(StaticParameterList spl, String namePrefix) {
         ArrayList < PropertyAccessor<? >> result = new ArrayList < PropertyAccessor<? >> ();
         for (int i = 0; i < spl.size(); i++) {
-            result.add(new StaticParameterAccessor(spl.get(i)));
+            result.add(new StaticParameterAccessor(spl.get(i), namePrefix));
         }
         return result;
+    }
+    public static List < PropertyAccessor<? >> createForList(StaticParameterList spl) {
+        return createForList(spl, "");
     }
 
     @Override
