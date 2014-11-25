@@ -86,6 +86,7 @@ import org.finroc.tools.finstruct.dialogs.ParameterEditDialog;
 import org.finroc.tools.finstruct.graphviz.Graph;
 import org.finroc.tools.finstruct.util.MouseHandler;
 import org.finroc.tools.finstruct.util.MouseHandlerManager;
+import org.finroc.tools.gui.util.Graphics2DWrapper;
 import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.gui.MAction;
@@ -177,6 +178,18 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
     /** Don't perform line breaks below this vertex label width */
     private static final int MIN_VERTEX_LABEL_WIDTH = 20;
+
+    /** Graphics2D Filter that can e.g. be assigned to vertices in order to draw them in grayscale */
+    public static final Graphics2DWrapper PAINTING_FILTER_GRAYSCALE = new Graphics2DWrapper() {
+
+        @Override
+        public void setColor(Color c) {
+            int alpha = c.getAlpha();
+            int y = (c.getRed() + c.getGreen() + c.getBlue()) / 3;
+            super.setColor(new Color(y, y, y, alpha));
+        }
+
+    };
 
     static {
         boolean ok = false;
@@ -522,7 +535,12 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
             // draw vertices
             for (Vertex v : vertices) {
-                v.paint(g2d);
+                if (v.getCustomPaintingFilter() == null) {
+                    v.paint(g2d);
+                } else {
+                    v.getCustomPaintingFilter().setWrapped(g2d);
+                    v.paint(v.getCustomPaintingFilter());
+                }
             }
 
             // draw connection line
@@ -591,6 +609,20 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
         /** Timestamp when user last clicked on this element (for double-click) */
         private long lastClick;
+
+        /**
+         * Custom painting filter for this vertex.
+         * If this variable is set, its setWrapped() method will be called with the
+         * current painting context (Graphics2D) whenever this vertex is drawn.
+         * By overriding e.g. setColor() this node can be drawn e.g. in grayscale.
+         *
+         * As this class has many subclasses, this mechanism is an elegant of drawing
+         * all kinds of vertices in a different way in certain view.
+         * This could also be realized with filters for buffered images that are used on
+         * intermediate image buffers. This solution, however, preserves vector graphics
+         * in pdf output.
+         */
+        private Graphics2DWrapper customPaintingFilter;
 
         public Vertex(ModelNode fe) {
             super(fe);
@@ -857,6 +889,20 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             if (connectionPanel != null) {
                 connectionPanel.expand(leftTree, expand, true);
             }
+        }
+
+        /**
+         * @return Custom painting filter for this vertex (null if none has been set)
+         */
+        public Graphics2DWrapper getCustomPaintingFilter() {
+            return customPaintingFilter;
+        }
+
+        /**
+         * @param customPaintingFilter Custom painting filter for this vertex (passing null removes any filter from this vertex)
+         */
+        public void setCustomPaintingFilter(Graphics2DWrapper customPaintingFilter) {
+            this.customPaintingFilter = customPaintingFilter;
         }
     }
 
