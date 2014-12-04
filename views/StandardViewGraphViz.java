@@ -610,6 +610,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         /** Timestamp when user last clicked on this element (for double-click) */
         private long lastClick;
 
+        /** Node name/description */
+        private final String name;
+
         /**
          * Custom painting filter for this vertex.
          * If this variable is set, its setWrapped() method will be called with the
@@ -626,9 +629,18 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
         public Vertex(ModelNode fe) {
             super(fe);
+            this.name = fe.getName();
             gvVertex = new org.finroc.tools.finstruct.graphviz.Vertex();
             reset();
-            gvVertex.setAttributeQuoted("description", fe.getName());
+            gvVertex.setAttributeQuoted("description", this.name);
+        }
+
+        public Vertex(String description) {
+            super(null);
+            this.name = description;
+            gvVertex = new org.finroc.tools.finstruct.graphviz.Vertex();
+            reset();
+            gvVertex.setAttributeQuoted("description", this.name);
         }
 
         /**
@@ -660,7 +672,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         public void reset() {
             super.reset();
             boolean lineBreaks = toolBar.isSelected(DiverseSwitches.lineBreaks);
-            String elementName = getModelElement().getName();
+            String elementName = name;
             if (elementName.length() > MAX_VERTEX_LABEL_LENGTH) {
                 elementName = elementName.substring(0, MAX_VERTEX_LABEL_LENGTH) + " ...";
             }
@@ -846,6 +858,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
         @Override
         public void mouseReleased(MouseEvent event, MouseHandler over) {
+            if (getModelElement() == null) {
+                return;
+            }
             if (inConnectionMode()) {
                 if (over != null && over != this && (over instanceof Vertex)) {
                     Vertex v = (Vertex)over;
@@ -864,7 +879,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 } else {
                     expandInTree(true, getModelElement());
                     lastClick = System.currentTimeMillis();
-                    if (isRightPanelVisible() && getModelElement() instanceof RemoteFrameworkElement) {
+                    if (isRightPanelVisible() && isConnectedToRootNode() && getModelElement() instanceof RemoteFrameworkElement) {
                         getFinstructWindow().getRightPanel().showElement((RemoteFrameworkElement)getModelElement());
                     }
                 }
@@ -938,6 +953,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
         protected int floodedFlags;
 
         protected Edge(Vertex src, Vertex dest) {
+            super(src, dest);
             gvEdge = new org.finroc.tools.finstruct.graphviz.Edge(src.gvVertex, dest.gvVertex);
         }
 
@@ -1131,21 +1147,23 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             final ArrayList<AbstractPort> remoteEdgeDestinations = new ArrayList<AbstractPort>();
 
             // all forward edges
-            ArrayList<RemotePort> remotePorts = getSource().getModelElement().getPortsBelow(null);
-            for (RemotePort remotePort : remotePorts) {
-                NetPort np = remotePort.getPort().asNetPort();
-                if (np != null) {
-                    boolean added = false;
-                    remoteEdgeDestinations.clear();
-                    int reverseIndex = np.getRemoteEdgeDestinations(remoteEdgeDestinations);
-                    for (int i = 0; i < reverseIndex; i++) {
-                        AbstractPort port = remoteEdgeDestinations.get(i);
-                        for (RemotePort remoteDestPort : RemotePort.get(port)) {
-                            if (remoteDestPort.isNodeAncestor(getDestination().getModelElement())) {
-                                destPorts.add(remoteDestPort);
-                                if (!added) {
-                                    srcPorts.add(remotePort);
-                                    added = true;
+            if (getSource().getModelElement() != null) {
+                ArrayList<RemotePort> remotePorts = getSource().getModelElement().getPortsBelow(null);
+                for (RemotePort remotePort : remotePorts) {
+                    NetPort np = remotePort.getPort().asNetPort();
+                    if (np != null) {
+                        boolean added = false;
+                        remoteEdgeDestinations.clear();
+                        int reverseIndex = np.getRemoteEdgeDestinations(remoteEdgeDestinations);
+                        for (int i = 0; i < reverseIndex; i++) {
+                            AbstractPort port = remoteEdgeDestinations.get(i);
+                            for (RemotePort remoteDestPort : RemotePort.get(port)) {
+                                if (remoteDestPort.isNodeAncestor(getDestination().getModelElement())) {
+                                    destPorts.add(remoteDestPort);
+                                    if (!added) {
+                                        srcPorts.add(remotePort);
+                                        added = true;
+                                    }
                                 }
                             }
                         }
@@ -1154,21 +1172,23 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
 
             // reverse network edges
-            remotePorts = getDestination().getModelElement().getPortsBelow(null);
-            for (RemotePort remotePort : remotePorts) {
-                NetPort np = remotePort.getPort().asNetPort();
-                if (np != null) {
-                    remoteEdgeDestinations.clear();
-                    int reverseIndex = np.getRemoteEdgeDestinations(remoteEdgeDestinations);
-                    for (int i = reverseIndex; i < remoteEdgeDestinations.size(); i++) {
-                        AbstractPort port = remoteEdgeDestinations.get(i);
-                        for (RemotePort remoteSourcePort : RemotePort.get(port)) {
-                            if (remoteSourcePort.isNodeAncestor(getSource().getModelElement())) {
-                                if (!srcPorts.contains(remoteSourcePort)) {
-                                    srcPorts.add(remoteSourcePort);
-                                }
-                                if (!destPorts.contains(remotePort)) {
-                                    destPorts.add(remotePort);
+            if (getDestination().getModelElement() != null) {
+                ArrayList<RemotePort> remotePorts = getDestination().getModelElement().getPortsBelow(null);
+                for (RemotePort remotePort : remotePorts) {
+                    NetPort np = remotePort.getPort().asNetPort();
+                    if (np != null) {
+                        remoteEdgeDestinations.clear();
+                        int reverseIndex = np.getRemoteEdgeDestinations(remoteEdgeDestinations);
+                        for (int i = reverseIndex; i < remoteEdgeDestinations.size(); i++) {
+                            AbstractPort port = remoteEdgeDestinations.get(i);
+                            for (RemotePort remoteSourcePort : RemotePort.get(port)) {
+                                if (remoteSourcePort.isNodeAncestor(getSource().getModelElement())) {
+                                    if (!srcPorts.contains(remoteSourcePort)) {
+                                        srcPorts.add(remoteSourcePort);
+                                    }
+                                    if (!destPorts.contains(remotePort)) {
+                                        destPorts.add(remotePort);
+                                    }
                                 }
                             }
                         }
@@ -1665,7 +1685,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 miSaveAllFiles.setText("Save All Files");
                 miHide.setEnabled(rightClickedOn != getRootElement());
                 RemoteRuntime rr = RemoteRuntime.find(getRootElement());
-                if (rr != null) {
+                if (rr != null && isConnectedToRootNode()) {
                     if (rightClickedOn instanceof RemoteFrameworkElement) {
                         try {
                             StaticParameterList parameterList = (StaticParameterList)rr.getAdminInterface().getAnnotation(
