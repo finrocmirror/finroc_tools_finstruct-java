@@ -22,6 +22,7 @@
 package org.finroc.tools.finstruct.propertyeditor;
 
 import java.awt.Dimension;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,14 +46,18 @@ import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.util.propertyeditor.PropertyListAccessor;
 import org.finroc.tools.gui.util.propertyeditor.PropertyListEditor;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
+import org.finroc.plugins.data_types.ContainsStrings;
 import org.finroc.plugins.data_types.PaintablePortData;
 import org.rrlib.serialization.BinarySerializable;
 import org.rrlib.serialization.EnumValue;
 import org.rrlib.serialization.PortDataListImpl;
 import org.rrlib.serialization.Serialization;
 import org.rrlib.serialization.StringInputStream;
+import org.rrlib.serialization.XMLSerializable;
 import org.rrlib.serialization.rtti.Copyable;
 import org.rrlib.serialization.rtti.DataTypeBase;
+import org.rrlib.xml.XMLDocument;
+import org.xml.sax.InputSource;
 
 /**
  * @author Max Reichardt
@@ -80,7 +85,7 @@ public class FinrocComponentFactory implements ComponentFactory {
                 return (type.equals(PortCreationList.class) || DataTypeReference.class.equals(type)
                         || PaintablePortData.class.isAssignableFrom(type) || XML.class.isAssignableFrom(type) || type.isEnum()
                         || type.equals(EnumValue.class) || CoreBoolean.class.isAssignableFrom(type) || type.equals(PortDataListImpl.class)
-                        || (BinarySerializable.class.isAssignableFrom(type) && Serialization.isStringSerializable(type)));
+                        || (BinarySerializable.class.isAssignableFrom(type) && (Serialization.isStringSerializable(type) || Serialization.isXmlSerializable(type))));
             }
         }
         return false;
@@ -131,6 +136,10 @@ public class FinrocComponentFactory implements ComponentFactory {
             DataTypeBase dt = DataTypeBase.findType(acc.getType(), null);
             wpec = new CoreSerializableDefaultEditor(type);
             acc = new CoreSerializableAdapter((PropertyAccessor<BinarySerializable>)acc, type, dt);
+        } else if ((!ContainsStrings.class.isAssignableFrom(type)) && BinarySerializable.class.isAssignableFrom(type) && Serialization.isXmlSerializable(type)) {
+            DataTypeBase dt = DataTypeBase.findType(acc.getType(), null);
+            wpec = new XMLEditor();
+            acc = new CoreSerializableXMLAdapter((PropertyAccessor<BinarySerializable>)acc, type, dt);
         }
 
         if (wpec != null) {
@@ -181,6 +190,47 @@ public class FinrocComponentFactory implements ComponentFactory {
             }
         }
     }
+
+    /**
+     * Allows using CoreSerializables in TextEditor
+     */
+    public static class CoreSerializableXMLAdapter extends PropertyAccessorAdapter<BinarySerializable, XML> {
+
+        /** Expected finroc class of property */
+        //private final Class<?> finrocClass;
+
+        /** Finroc DataType of property - if available */
+        private final DataTypeBase dataType;
+
+        public CoreSerializableXMLAdapter(PropertyAccessor<BinarySerializable> wrapped, Class<?> finrocClass, DataTypeBase dataType) {
+            super(wrapped, XML.class);
+            //this.finrocClass = finrocClass;
+            this.dataType = dataType;
+        }
+
+        @Override
+        public void set(XML s) throws Exception {
+            BinarySerializable buffer = (BinarySerializable)dataType.createInstance();
+            XMLDocument d = new XMLDocument(new InputSource(new StringReader(s.toString())), false);
+            ((XMLSerializable)buffer).deserialize(d.getRootNode());
+            wrapped.set(buffer);
+        }
+
+        @Override
+        public XML get() throws Exception {
+            BinarySerializable cs = wrapped.get();
+            XMLDocument doc = new XMLDocument();
+            doc.addRootNode("value");
+            XML result = new XML();
+            if (cs != null) {
+                //doc.getRootNode().setAttribute("type", dataType.getName());
+                ((XMLSerializable)cs).serialize(doc.getRootNode());
+            }
+            result.set(doc.getRootNode().getXMLDump(true));
+            return result;
+        }
+    }
+
 
     /**
      * Allows using CoreSerializables in TextEditor
