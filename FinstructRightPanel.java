@@ -618,6 +618,11 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
                 Finstruct.showErrorMessage("Cannot load library: connection to remote runtime lost", false, false);
             }
         } else if (e.getSource() == componentCreateButton) {
+            // save any editor values first
+            if (componentParameters.isEditing()) {
+                componentParameters.getCellEditor().stopCellEditing();
+            }
+
             RemoteRuntime runtime = RemoteRuntime.find(rootElement);
             if (runtime != null) {
                 if (!treeModelListenerRegistered) {
@@ -626,7 +631,7 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
                 }
 
                 try {
-                    // wait for creation and possibly open dialog for editing parameters
+                    // wait for creation and show element properties in panel
                     String error = runtime.getAdminInterface().createModule(selectedCreateAction, componentCreateName.toString(), ((RemoteFrameworkElement)rootElement).getRemoteHandle(), componentConstructorParameters);
                     if (error.length() > 0) {
                         Finstruct.showErrorMessage("Error creating component: " + error, false, false);
