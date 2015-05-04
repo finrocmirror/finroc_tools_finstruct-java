@@ -22,12 +22,15 @@
 package org.finroc.tools.finstruct.propertyeditor;
 
 import org.finroc.core.FrameworkElementFlags;
+import org.finroc.core.datatype.Timestamp;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortCreationInfo;
 import org.finroc.core.port.cc.CCPortBase;
 import org.finroc.core.port.std.PortBase;
+import org.finroc.core.port.std.PortDataManager;
 import org.finroc.core.remote.RemotePort;
 import org.rrlib.serialization.BinarySerializable;
+import org.rrlib.serialization.Serialization;
 
 /**
  * @author Max Reichardt
@@ -116,4 +119,16 @@ public class ConnectingPortAccessor<T extends BinarySerializable> extends PortAc
     public T getAutoLocked() {
         return (T)((PortBase)wrapped).getAutoLockedRaw().getObject().getData();
     }
+
+    /**
+     * Gets Port's current value's timestamp
+     *
+     * @param timestampBuffer Timestamp object to store result in
+     */
+    public void getTimestamp(Timestamp timestampBuffer) {
+        PortDataManager portDataManager = ((PortBase)wrapped).getLockedUnsafeRaw();
+        timestampBuffer.copyFrom(portDataManager.getTimestamp());
+        portDataManager.releaseLock();
+    }
+
 }

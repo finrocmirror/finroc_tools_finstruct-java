@@ -24,15 +24,18 @@ package org.finroc.tools.finstruct.views;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.GridBagConstraints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.JLabel;
 import javax.swing.JMenuBar;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import org.finroc.core.datatype.Timestamp;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemotePort;
@@ -44,6 +47,7 @@ import org.finroc.tools.finstruct.propertyeditor.PortAccessor;
 import org.finroc.tools.gui.util.gui.MAction;
 import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MToolBar;
+import org.finroc.tools.gui.util.propertyeditor.ComponentFactory;
 import org.finroc.tools.gui.util.propertyeditor.PropertiesPanel;
 import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
@@ -71,10 +75,10 @@ public class PortView extends FinstructView implements ActionListener {
     private MToolBar toolBar;
 
     /** Properties Panel */
-    private PropertiesPanel propPanel;
+    private PortPanel propPanel;
 
     /** Diverse toolbar switches */
-    private enum DiverseSwitches { autoUpdate, singleUpdate, apply }
+    private enum DiverseSwitches { autoUpdate, singleUpdate, apply, showTimestamps }
 
     /** Is the currently displayed port view drawn disconnected (due to disconnect)? */
     private boolean viewDrawnDisconnected = false;
@@ -148,7 +152,7 @@ public class PortView extends FinstructView implements ActionListener {
                 ports.add(cpa);
             }
         }
-        propPanel = new PropertiesPanel(new FinrocComponentFactory(commonParent), new StandardComponentFactory());
+        propPanel = new PortPanel(new FinrocComponentFactory(commonParent), new StandardComponentFactory());
         propPanel.setOpaque(false);
         propPanel.init(ports, true);
         add(propPanel, BorderLayout.CENTER);
@@ -156,7 +160,7 @@ public class PortView extends FinstructView implements ActionListener {
         assert(components.size() == ports.size());
         for (int i = 0; i < ports.size(); i++) {
             ConnectingPortAccessor<?> cpa = ports.get(i);
-            new ChangeForwarder(cpa, components.get(i));
+            new ChangeForwarder(cpa, components.get(i), propPanel.timestampElements.get(i));
             cpa.init();
         }
 
@@ -170,6 +174,7 @@ public class PortView extends FinstructView implements ActionListener {
         toolBar.addToggleButton(new MAction(DiverseSwitches.autoUpdate, "system-upgrade-ubuntu.png", "Auto Update", this), true);
         toolBar.add(new MAction(DiverseSwitches.singleUpdate, "reload-ubuntu.png", "Single Update", this));
         toolBar.add(new MAction(DiverseSwitches.apply, "gtk-apply-ubuntu.png", "Apply", this));
+        toolBar.addToggleButton(new MAction(DiverseSwitches.showTimestamps, "clock-ubuntu.png", "Show Timestamps", this), true);
     }
 
     @Override
@@ -190,6 +195,10 @@ public class PortView extends FinstructView implements ActionListener {
                 } else if (e == DiverseSwitches.apply && propPanel != null) {
                     for (PropertyEditComponent<?> comp : propPanel.getComponentList()) {
                         comp.applyChanges();
+                    }
+                } else if (e == DiverseSwitches.showTimestamps && propPanel != null) {
+                    for (JLabel label : propPanel.timestampElements) {
+                        label.setVisible(toolBar.isSelected(DiverseSwitches.showTimestamps));
                     }
                 }
             }
@@ -222,6 +231,37 @@ public class PortView extends FinstructView implements ActionListener {
     }
 
     /**
+     * Customized PropertiesPanel for Port view.
+     * Includes optional text field for time stamps
+     */
+    private class PortPanel extends PropertiesPanel {
+
+        /** UID */
+        private static final long serialVersionUID = -6085731965441695840L;
+
+        /** All timestamp fields */
+        private ArrayList<JLabel> timestampElements = new ArrayList<JLabel>();
+
+        /** Gridbag contraints for timestamp */
+        private final GridBagConstraints gbc = new GridBagConstraints();
+
+        public PortPanel(ComponentFactory... componentFactories) {
+            super(componentFactories);
+            gbc.gridx = 2;
+        }
+
+        @Override
+        protected void addComponent(PropertyEditComponent<?> comp, int index, boolean labelAlignmentLeft) {
+            super.addComponent(comp, index, labelAlignmentLeft);
+            gbc.gridy = index;
+            JLabel timestampElement = new JLabel();
+            timestampElement.setVisible(toolBar.isSelected(DiverseSwitches.showTimestamps));
+            timestampElements.add(timestampElement);
+            add(timestampElement, gbc);
+        }
+    }
+
+    /**
      * Forwards port changes to property edit component
      */
     private class ChangeForwarder implements PortAccessor.Listener, Runnable {
@@ -232,12 +272,19 @@ public class PortView extends FinstructView implements ActionListener {
         /** Port to forward events from */
         private final ConnectingPortAccessor<?> port;
 
+        /** Element to display timestamp in */
+        private final JLabel timestampElement;
+
         /** initially true - until first value is retrieved from server */
         protected boolean initialValueRetrieve = true;
 
-        public ChangeForwarder(ConnectingPortAccessor<?> cpa, PropertyEditComponent<?> component) {
+        /** Buffer to store timestamp in */
+        private final Timestamp timestampBuffer = new Timestamp();
+
+        public ChangeForwarder(ConnectingPortAccessor<?> cpa, PropertyEditComponent<?> component, JLabel timestampElement) {
             this.port = cpa;
             this.component = component;
+            this.timestampElement = timestampElement;
             cpa.setListener(this);
         }
 
@@ -255,6 +302,8 @@ public class PortView extends FinstructView implements ActionListener {
             if (aa || upd) {
                 try {
                     component.updateValue();
+                    port.getTimestamp(timestampBuffer);
+                    timestampElement.setText(timestampBuffer.toString());
                 } catch (Exception e) {
                     Log.log(LogLevel.ERROR, this, e);
                 }
