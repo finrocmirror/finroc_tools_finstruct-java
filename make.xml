@@ -1,6 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <targets>
-  <finrocprogram name="finstruct" main-class="org.finroc.tools.finstruct.Finstruct" libs="itext5.jar">
-    <sources>**.java **.png **.txt</sources>
+  <program name="finstruct" main-class="org.finroc.tools.finstruct.Finstruct" libs="itext5.jar">
+    <sources exclude="plugins/**">**.java **.png **.txt</sources>
     <script name="finstruct" main-class="org.finroc.tools.finstruct.Finstruct"/>
-  </finrocprogram>
+  </program>
 </targets>

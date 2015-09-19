@@ -152,6 +152,8 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     public static void main(String[] args) {
         RuntimeSettings.setUseCCPorts(false);
         RuntimeSettings.setMaxCoreRegisterIndexBits(19);
+        Plugins.getInstance().addPrefixForPluginsToLoad("finroc_tools_gui_plugins_");
+        Plugins.getInstance().addPrefixForPluginsToLoad("finroc_tools_finstruct_plugins_");
         RuntimeEnvironment.getInstance().setProgramName("finstruct");
 
         String connect = null;
