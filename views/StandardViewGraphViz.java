@@ -864,8 +864,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             if (inConnectionMode()) {
                 if (over != null && over != this && (over instanceof Vertex)) {
                     Vertex v = (Vertex)over;
-                    expandInTree(true, getModelElement());
-                    expandInTree(false, v.getModelElement());
+                    expandInTree(true, getModelElement(), true);
+                    expandInTree(false, v.getModelElement(), true);
                 }
                 StandardViewGraphViz.this.repaint();
             }
@@ -877,7 +877,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                         getFinstructWindow().showElement(getModelElement());
                     }
                 } else {
-                    expandInTree(true, getModelElement());
+                    expandInTree(true, getModelElement(), false);
                     lastClick = System.currentTimeMillis();
                     if (isRightPanelVisible() && isConnectedToRootNode() && getModelElement() instanceof RemoteFrameworkElement) {
                         getFinstructWindow().getRightPanel().showElement((RemoteFrameworkElement)getModelElement());
@@ -891,8 +891,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
          *
          * @param leftTree in Left tree?
          * @param frameworkElement Framework element
+         * @param collapseOtherNodes Collapse other nodes in tree?
          */
-        private void expandInTree(boolean leftTree, ModelNode frameworkElement) {
+        private void expandInTree(boolean leftTree, ModelNode frameworkElement, boolean collapseOtherNodes) {
             ArrayList<ModelNode> expand = new ArrayList<ModelNode>();
             expand.add(frameworkElement);
             for (int i = 0; i < frameworkElement.getChildCount(); i++) {
@@ -902,7 +903,11 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 }
             }
             if (connectionPanel != null) {
-                connectionPanel.expandOnly(leftTree, expand);
+                if (collapseOtherNodes) {
+                    connectionPanel.expandOnly(leftTree, expand);
+                } else {
+                    connectionPanel.expand(leftTree, expand, true);
+                }
             }
         }
 
