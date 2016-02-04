@@ -463,7 +463,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     public ConnectorIcon getConnectorIcon(PortWrapperTreeNode port, boolean rightTree, IconColor color, boolean brighter) {
         final ConnectorIcon.Type iconType = new ConnectorIcon.Type();
         boolean rpc = FinrocTypeInfo.isMethodType(port.getPort().getDataType(), true);
-        iconType.set(port.isInputPort(), port.getPort().getFlag(FrameworkElementFlags.PROXY), rpc, rightTree, brighter, color, rightTree ? rightBackgroundColor : leftBackgroundColor);
+        iconType.set(port.isInputPort(), port.isProxy(), rpc, rightTree, brighter, color, rightTree ? rightBackgroundColor : leftBackgroundColor);
         return ConnectorIcon.getIcon(iconType, HEIGHT);
     }
 

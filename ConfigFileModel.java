@@ -210,6 +210,11 @@ public class ConfigFileModel extends DefaultTreeModel {
             return true;
         }
 
+        @Override
+        public boolean isProxy() {
+            return false;
+        }
+
         class ConfigEntryPort extends AbstractPort {
 
             AbstractPort.EdgeList<AbstractPort> EMPTY_LIST = new AbstractPort.EdgeList<AbstractPort>();
@@ -246,6 +251,5 @@ public class ConfigFileModel extends DefaultTreeModel {
 
 
         }
-
     }
 }
