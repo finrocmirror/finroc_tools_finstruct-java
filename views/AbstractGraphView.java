@@ -217,7 +217,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
                 if (fe.getChildAt(i) instanceof RemotePort) {
                     RemotePort remotePort = (RemotePort)fe.getChildAt(i);
                     if (!FinrocTypeInfo.isMethodType(remotePort.getPort().getDataType(), true)) {
-                        boolean output = remotePort.getPort().isOutputPort();
+                        boolean output = (remotePort.getFlags() & FrameworkElementFlags.IS_OUTPUT_PORT) != 0;
                         one |= output;
                         all &= output;
                     }
@@ -239,7 +239,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
                 if (fe.getChildAt(i) instanceof RemotePort) {
                     RemotePort remotePort = (RemotePort)fe.getChildAt(i);
                     if (!FinrocTypeInfo.isMethodType(remotePort.getPort().getDataType(), true)) {
-                        boolean input = !remotePort.getPort().isOutputPort();
+                        boolean input = (remotePort.getFlags() & FrameworkElementFlags.IS_OUTPUT_PORT) == 0;
                         one |= input;
                         all &= input;
                     }
