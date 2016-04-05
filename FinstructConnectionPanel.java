@@ -25,11 +25,13 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import javax.swing.JMenuItem;
+import javax.swing.JTree;
 import javax.swing.Timer;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
@@ -473,5 +475,44 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         miOpenInNewWindow.setEnabled(treeNode != null);
 
         miShowPartner.setEnabled(wrapper != null && finstruct.treeToolBar.isSelected(Finstruct.Mode.connect));
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        if (e.getButton() == MouseEvent.BUTTON1) {
+            checkMouseEvent(e);
+        }
+
+        super.mousePressed(e);
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        checkMouseEvent(e);
+    }
+
+    /**
+     * Checks mouse event for view switching.
+     * Interfaces are shown with a MOUSE_CLICKED event.
+     * All other elements are shown with a MOUSE_PRESSED event.
+     * (This an optimization to reduce latency when navigating through the tree - interfaces, however, may be dragged and dropped)
+     *
+     * @param e Event to process
+     */
+    public void checkMouseEvent(MouseEvent e) {
+        if (e.getSource() == leftTree || e.getSource() == rightTree) {
+            JTree tree = (JTree)e.getSource();
+            int row = tree.getRowForLocation(e.getX(), e.getY());
+            if (row >= 0) {
+                Object element = tree.getPathForRow(row).getLastPathComponent();
+                if (element instanceof ModelNode && (!(element instanceof PortWrapperTreeNode))) {
+                    ModelNode node = (ModelNode)element;
+                    if (((!node.isInterface()) && e.getID() == MouseEvent.MOUSE_PRESSED) || (node.isInterface() && e.getID() == MouseEvent.MOUSE_CLICKED)) {
+                        //Log.log(LogLevel.USER, "Setting view root to '" + element.toString() + "'");
+                        finstruct.showElement((ModelNode)element);
+                    }
+                }
+            }
+        }
     }
 }

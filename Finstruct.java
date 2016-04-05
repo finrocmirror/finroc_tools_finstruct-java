@@ -56,8 +56,6 @@ import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.border.CompoundBorder;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
-import javax.swing.event.TreeSelectionEvent;
-import javax.swing.event.TreeSelectionListener;
 
 import org.finroc.core.RuntimeEnvironment;
 import org.finroc.core.RuntimeSettings;
@@ -67,7 +65,6 @@ import org.finroc.core.plugin.ExternalConnection;
 import org.finroc.core.plugin.Plugins;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.remote.ModelNode;
-import org.finroc.core.remote.PortWrapperTreeNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.util.Files;
 import org.finroc.tools.finstruct.views.ComponentVisualization;
@@ -94,7 +91,7 @@ import org.rrlib.xml.XMLNode;
  *
  * Main Window class
  */
-public class Finstruct extends FinstructWindow implements ConnectionListener, WindowListener, ConnectionPanel.Owner, TreeSelectionListener, TreeModelListener {
+public class Finstruct extends FinstructWindow implements ConnectionListener, WindowListener, ConnectionPanel.Owner, TreeModelListener {
 
     /** UID */
     private static final long serialVersionUID = 5790020137768236619L;
@@ -300,7 +297,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         statusBarTimer.setInitialDelay(2000);
         statusBarTimer.start();
 
-        connectionPanel.addSelectionListener(this);
         ioInterface.addTreeModelListener(this);
     }
 
@@ -528,19 +524,6 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     @Override
     public void refreshConnectionPanelModels() {
         EventRouter.fireConnectionEvent(null, ConnectionListener.INTERFACE_UPDATED);
-    }
-
-    @Override
-    public void valueChanged(TreeSelectionEvent e) {
-        if (e.isAddedPath()) {
-            Object sel = e.getPath().getLastPathComponent();
-            if (!(sel instanceof PortWrapperTreeNode)) {
-                if (sel instanceof ModelNode) {
-                    Log.log(LogLevel.DEBUG, this, "Setting view root to " + sel.toString());
-                    showElement((ModelNode)sel);
-                }
-            }
-        }
     }
 
     /**
