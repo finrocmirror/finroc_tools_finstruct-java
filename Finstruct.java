@@ -329,6 +329,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     @Override
     protected void changeViewRootComponent(JComponent rootComponent) {
         // fill left part of split pane
+        int dividerLocation = splitPane.getDividerLocation();
         splitPane.setLeftComponent(getCurrentView().initLeftPanel(connectionPanel));
 
         // fill right part of split pane
@@ -346,6 +347,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         }
         //scrollPane.setBorder(BorderFactory.createEtchedBorder());
         splitPane.setRightComponent(rootComponent);
+        splitPane.setDividerLocation(dividerLocation);
     }
 
     @Override
