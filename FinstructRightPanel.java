@@ -398,7 +398,7 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
                 if (interfaceElement.getChildAt(i) instanceof RemotePort) {
                     RemotePort port = (RemotePort)interfaceElement.getChildAt(i);
                     DataTypeBase type = port.getPort().getDataType();
-                    if (FinrocTypeInfo.isCCType(type) || FinrocTypeInfo.isStdType(type) || ((type instanceof RemoteType) && ((RemoteType)type).isAdaptable())) {
+                    if (type.getJavaClass() != null && (FinrocTypeInfo.isCCType(type) || FinrocTypeInfo.isStdType(type) || ((type instanceof RemoteType) && ((RemoteType)type).isAdaptable()))) {
                         ConnectingPortAccessor portAccess = new ConnectingPortAccessor((RemotePort)interfaceElement.getChildAt(i), prefix ? interfaceElement.getParent().getQualifiedName('/') : interfaceElement.getQualifiedName('/'));
                         componentPropertyAccessPorts.add(portAccess);
                         result.add(portAccess);
