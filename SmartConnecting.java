@@ -293,6 +293,7 @@ public class SmartConnecting {
                     while (element.component != commonParent && element.component.getParent() != commonParent && element.component.getParent() instanceof RemoteFrameworkElement && (!(element.component.getParent() instanceof RemoteRuntime))) {
                         TraceElement newElement = new TraceElement();
                         newElement.component = (RemoteFrameworkElement)element.component.getParent();
+                        trace.add(newElement);
                         element = newElement;
                     }
                 }
@@ -445,7 +446,7 @@ public class SmartConnecting {
                         }
 
                         // Create connection?
-                        if (lastElement.port == null || currentElement.port == null || (!lastElement.port.isConnectedTo(currentElement.port))) {
+                        if (k > 0 && (lastElement.port == null || currentElement.port == null || (!lastElement.port.isConnectedTo(currentElement.port)))) {
                             ConnectAction connectAction = new ConnectAction(lastElement.getPortLink(), currentElement.getPortLink());
                             action.getActions().add(connectAction);
                         }

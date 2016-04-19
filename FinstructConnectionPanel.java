@@ -147,7 +147,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 tempConnectList1.add((RemotePort)node);
             } else {
                 nonPortNodes++;
-                if (nonPortNode instanceof RemoteFrameworkElement) {
+                if (node instanceof RemoteFrameworkElement) {
                     nonPortNode = nonPortNode == null ? (RemoteFrameworkElement)node : nonPortNode;
                 }
             }
@@ -245,7 +245,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
 
         tempConnectList2.clear();
         for (int i = 0; i < tempConnectList1.size(); i++) {
-            tempConnectList2.add((ModelNode)nodes2.get(i));
+            tempConnectList2.add((ModelNode)nodes2.get(Math.min(i, nodes2.size() - 1)));
         }
 
         try {
