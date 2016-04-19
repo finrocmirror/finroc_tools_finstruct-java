@@ -164,7 +164,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     private final JPopupMenu popupMenu = new JPopupMenu();
 
     /** List component for popup menu above */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @SuppressWarnings({ "rawtypes" })
     private final JList addressList = new JList();
 
     /** Any view instances that were created in this window */

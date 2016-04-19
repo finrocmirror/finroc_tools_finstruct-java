@@ -27,12 +27,8 @@ import javax.swing.tree.DefaultTreeModel;
 import org.finroc.core.FinrocAnnotation;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.parameter.ConfigFile;
-import org.finroc.core.parameter.ParameterInfo;
-import org.finroc.core.port.AbstractPort;
-import org.finroc.core.port.PortCreationInfo;
 import org.finroc.core.remote.HasUid;
 import org.finroc.core.remote.ModelNode;
-import org.finroc.core.remote.PortWrapperTreeNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemoteRuntime;
 import org.rrlib.logging.Log;
@@ -180,76 +176,21 @@ public class ConfigFileModel extends DefaultTreeModel {
         return null;
     }
 
-    class ConfigEntryWrapper extends DefaultMutableTreeNode implements PortWrapperTreeNode, HasUid {
+    class ConfigEntryWrapper extends DefaultMutableTreeNode implements HasUid {
 
         /** UID */
         private static final long serialVersionUID = 4774894712960992454L;
-
-        private ConfigEntryPort port;
 
         private String uid;
 
         private ConfigEntryWrapper(String uid, String name) {
             super(name);
             this.uid = uid;
-            port = new ConfigEntryPort(name);
         }
 
         @Override
         public String getUid() {
             return uid;
-        }
-
-        @Override
-        public AbstractPort getPort() {
-            return port;
-        }
-
-        @Override
-        public boolean isInputPort() {
-            return true;
-        }
-
-        @Override
-        public boolean isProxy() {
-            return false;
-        }
-
-        class ConfigEntryPort extends AbstractPort {
-
-            AbstractPort.EdgeList<AbstractPort> EMPTY_LIST = new AbstractPort.EdgeList<AbstractPort>();
-
-            public ConfigEntryPort(String name) {
-                super(new PortCreationInfo(name, nodeContainer, ParameterInfo.TYPE));
-                this.initLists(EMPTY_LIST, EMPTY_LIST);
-            }
-
-            @Override
-            protected void initialPushTo(AbstractPort target, boolean reverse) {
-            }
-
-            @Override
-            public void notifyDisconnect() {
-            }
-
-            @Override
-            protected void setMaxQueueLengthImpl(int length) {
-            }
-
-            @Override
-            protected int getMaxQueueLengthImpl() {
-                return 0;
-            }
-
-            @Override
-            protected void clearQueueImpl() {
-            }
-
-            @Override
-            public void forwardData(AbstractPort other) {
-            }
-
-
         }
     }
 }

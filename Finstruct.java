@@ -81,7 +81,6 @@ import org.finroc.tools.gui.util.gui.IconManager;
 import org.finroc.tools.gui.util.gui.MAction;
 import org.finroc.tools.gui.util.gui.MActionEvent;
 import org.finroc.tools.gui.util.gui.MToolBar;
-import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
 import org.rrlib.logging.Log;
 import org.rrlib.logging.LogLevel;
 import org.rrlib.xml.XMLNode;
@@ -100,7 +99,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     public enum Mode { navigate, connect, paramconnect }
 
     /** Interface of connected runtimes */
-    protected InterfaceTreeModel ioInterface = new InterfaceTreeModel();
+    protected FinstructInterfaceTreeModel ioInterface = new FinstructInterfaceTreeModel();
 
     /** Menu items */
     private JMenuItem miDisconnectDiscard, miExit;
@@ -541,7 +540,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     /**
      * @return Interface of connected runtimes
      */
-    public InterfaceTreeModel getIoInterface() {
+    public FinstructInterfaceTreeModel getIoInterface() {
         return ioInterface;
     }
 
@@ -557,6 +556,13 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
      */
     public FinstructSettings getSettings() {
         return settings;
+    }
+
+    /**
+     * @return Whether to allow direct connecting of ports across group boundaries
+     */
+    public boolean allowDirectConnectingAcrossGroupBoundaries() {
+        return true; // TODO
     }
 
     @Override public void treeNodesInserted(TreeModelEvent e) {}

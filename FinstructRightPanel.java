@@ -81,6 +81,7 @@ import org.finroc.tools.finstruct.propertyeditor.PropertyEditorTableModel;
 import org.finroc.tools.finstruct.propertyeditor.StaticParameterAccessor;
 import org.finroc.tools.finstruct.views.AbstractGraphView;
 import org.finroc.tools.finstruct.views.StandardViewGraphViz;
+import org.finroc.tools.gui.util.ElementFilter;
 import org.finroc.tools.gui.util.gui.MJTree;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
@@ -91,7 +92,7 @@ import org.rrlib.serialization.rtti.DataTypeBase;
  *
  * Panel on the right side of finstruct graph views
  */
-public class FinstructRightPanel extends JPanel implements TreeSelectionListener, ActionListener, TreeModelListener, Comparator<Object>, PortAccessor.Listener, PropertyEditorTableModel.PropertySetListener {
+public class FinstructRightPanel extends JPanel implements ElementFilter<Object>, TreeSelectionListener, ActionListener, TreeModelListener, Comparator<Object>, PortAccessor.Listener, PropertyEditorTableModel.PropertySetListener {
 
     /** UID */
     private static final long serialVersionUID = -6762519933079911025L;
@@ -109,7 +110,7 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
     private JPanel componentLibraryPanel;
 
     /** Tree in component library panel */
-    private MJTree<DefaultMutableTreeNode> componentLibraryTree = new MJTree<DefaultMutableTreeNode>(DefaultMutableTreeNode.class, 1);
+    private MJTree<DefaultMutableTreeNode> componentLibraryTree = new MJTree<DefaultMutableTreeNode>(this, 1);
 
     /** Horizontal Split pane */
     private JSplitPane splitPane;
@@ -773,5 +774,10 @@ public class FinstructRightPanel extends JPanel implements TreeSelectionListener
     @Override
     public void portChanged() {
         componentProperties.repaint();
+    }
+
+    @Override
+    public boolean acceptElement(Object element) {
+        return element instanceof DefaultMutableTreeNode;
     }
 }
