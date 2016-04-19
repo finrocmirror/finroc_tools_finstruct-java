@@ -102,7 +102,7 @@ public class SmartConnecting {
             if ((!sourcePort.getFlag(FrameworkElementFlags.SHARED)) && (!destinationPort.getFlag(FrameworkElementFlags.SHARED))) {
                 return "Neither port is shared ('" + sourcePort.getQualifiedLink() + "' and '" + destinationPort.getQualifiedLink() + "')";
             }
-            if (!((sourceRuntime.getAdminInterface() == null && destinationPort.getFlag(FrameworkElementFlags.SHARED)) || (destinationRuntime.getAdminInterface() == null && sourcePort.getFlag(FrameworkElementFlags.SHARED)))) {
+            if (!((sourceRuntime.getAdminInterface() != null && destinationPort.getFlag(FrameworkElementFlags.SHARED)) || (destinationRuntime.getAdminInterface() != null && sourcePort.getFlag(FrameworkElementFlags.SHARED)))) {
                 return "One non-shared port needs admin interface";
             }
 
