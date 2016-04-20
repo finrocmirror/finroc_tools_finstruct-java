@@ -24,16 +24,21 @@ package org.finroc.tools.finstruct;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JTree;
+import javax.swing.Popup;
+import javax.swing.PopupFactory;
 import javax.swing.Timer;
+import javax.swing.border.LineBorder;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 
@@ -91,6 +96,13 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     public static final Color rootViewColor = new Color(211, 211, 211);
     public static final Color inactiveTextColor = new Color(160, 160, 160);
 
+    /** Tooltip-related */
+    private Popup toolTip;
+    private final Timer toolTipTimer = new Timer(1000, this);
+    private Object toolTipTreeNode = null;
+    private Point toolTipLocation = null;
+    private String toolTipText = null;
+
     /**
      * @param owner Parent of connection panel
      * @param treeFont Font to use for tree
@@ -103,6 +115,8 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         miOpenInNewWindow = new JMenuItem("Open in new Window");
         miOpenInNewWindow.addActionListener(this);
         popupMenu.add(miOpenInNewWindow, 0);
+        toolTipTimer.setRepeats(false);
+        toolTipTimer.addActionListener(this);
     }
 
     @Override
@@ -114,17 +128,31 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             return ((o1 instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)o1).getAnnotation(ParameterInfo.TYPE) != null ||
                     (o2 instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)o2).getAnnotation(ParameterInfo.TYPE) != null);
         } else if (o1 instanceof RemotePort && o2 instanceof RemotePort) {
-            RemotePort p1 = (RemotePort)o1, p2 = (RemotePort)o2;
-            if (finstruct.allowDirectConnectingAcrossGroupBoundaries()) {
-                return SmartConnecting.mayConnectDirectly(p1, p2, true).length() == 0 && (!p1.isConnectedTo(p2));
-            }
-            tempConnectList1.clear();
-            tempConnectList2.clear();
-            tempConnectList1.add(p1);
-            tempConnectList2.add(p2);
-            return SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries()).length() == 0; // TODO: this can be optimized
+            return canConnectPorts((RemotePort)o1, (RemotePort)o2).length() == 0;
         }
         return false;
+    }
+
+    /**
+     * Can the two ports be connected?
+     *
+     * @param p1 Port 1
+     * @param p2 Port 2
+     * @return "" if they can be connected. Otherwise the reason why not.
+     */
+    private String canConnectPorts(RemotePort p1, RemotePort p2) {
+        if (p1.isConnectedTo(p2)) {
+            return "Ports are connected already";
+        }
+
+        if (finstruct.allowDirectConnectingAcrossGroupBoundaries()) {
+            return SmartConnecting.mayConnectDirectly(p1, p2, true);
+        }
+        tempConnectList1.clear();
+        tempConnectList2.clear();
+        tempConnectList1.add(p1);
+        tempConnectList2.add(p2);
+        return SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries()); // TODO: this can be optimized
     }
 
     /**
@@ -135,16 +163,16 @@ public class FinstructConnectionPanel extends ConnectionPanel {
      * @return Any non-port node in 'nodes'.
      */
     private RemoteFrameworkElement processSourceNodesToConnect(ArrayList<RemotePort> portResultList, List<Object> nodes) {
+        portResultList.clear();
         if (nodes.size() == 0) {
             return null;
         }
         int portNodes = 0, nonPortNodes = 0;
         RemoteFrameworkElement nonPortNode = null;
-        tempConnectList1.clear();
         for (Object node : nodes) {
             if (node instanceof RemotePort) {
                 portNodes++;
-                tempConnectList1.add((RemotePort)node);
+                portResultList.add((RemotePort)node);
             } else {
                 nonPortNodes++;
                 if (node instanceof RemoteFrameworkElement) {
@@ -157,11 +185,11 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         }
 
         if (nonPortNode != null) {
-            tempConnectList1.clear();
+            portResultList.clear();
             if (nonPortNode.isInterface()) {
                 for (int i = 0; i < nonPortNode.getChildCount(); i++) {
                     if (nonPortNode.getChildAt(i) instanceof RemotePort) {
-                        tempConnectList1.add((RemotePort)nonPortNode.getChildAt(i));
+                        portResultList.add((RemotePort)nonPortNode.getChildAt(i));
                     }
                 }
             }
@@ -171,12 +199,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    protected List<Object> hypotheticalConnection(Object tn) {
-        if (tn == null) {
-            return null;
-        }
+    protected Object hypotheticalConnectionImplementation(Object tn) {
         if (getRightTree() instanceof ConfigFileModel) {
-            return super.hypotheticalConnection(tn);
+            return super.hypotheticalConnectionImplementation(tn);
         }
 
         MJTree<Object> selTree = selectionFromRight ? rightTree : leftTree;
@@ -184,21 +209,22 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         // scan nodes to connect
         RemoteFrameworkElement nonPortNode = processSourceNodesToConnect(tempConnectList1, selTree.getSelectedObjects());
         if (tempConnectList1.size() == 0) {
-            return null;
+            return nonPortNode != null && nonPortNode.isInterface() ? "Selected interface in other tree is empty" : "Only ports and interfaces can be connected (dragged)";
         }
 
         if (nonPortNode != null) {
             // only connect to other non-port nodes
             if (tn instanceof RemotePort) {
-                return null;
+                return "Interfaces cannot be connected to ports (you may try the other way round)";
             }
 
             tempConnectList2.clear();
             for (int i = 0; i < tempConnectList1.size(); i++) {
                 tempConnectList2.add((ModelNode)tn);
             }
-            if (SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries()).length() > 0) {
-                return null;
+            String reason = SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries());
+            if (reason.length() > 0) {
+                return reason;
             }
             ArrayList<Object> result = new ArrayList<Object>();
             result.add(tn);
@@ -206,16 +232,28 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         }
 
         if (tn instanceof RemotePort) {
-            // Standard hypotheticalConnection from base class
-            return super.hypotheticalConnection(tn);
+            if (tempConnectList1.size() == 1) {
+                // Optimized implementation for only one selected port
+                String reason = canConnectPorts(tempConnectList1.get(0), (RemotePort)tn);
+                if (reason.length() > 0) {
+                    return reason;
+                }
+                ArrayList<Object> result = new ArrayList<Object>();
+                result.add(tn);
+                return result;
+            }
+
+            // Standard hypotheticalConnectionImplementation from base class
+            return super.hypotheticalConnectionImplementation(tn);
         } else {
             // Connect all ports to non-port tree node
             tempConnectList2.clear();
             for (int i = 0; i < tempConnectList1.size(); i++) {
                 tempConnectList2.add((ModelNode)tn);
             }
-            if (SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries()).length() > 0) {
-                return null;
+            String reason = SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries());
+            if (reason.length() > 0) {
+                return reason;
             }
             ArrayList<Object> result = new ArrayList<Object>();
             result.addAll(tempConnectList2);
@@ -392,8 +430,96 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
+    public void mouseDragged(MouseEvent e) {
+        super.mouseDragged(e);
+        MJTree<Object> otherTree = selectionFromRight ? leftTree : rightTree;
+        MJTree<Object> selTree = selectionFromRight ? rightTree : leftTree;
+        Object element = super.getTreeNodeFromPos(otherTree);
+
+        String tooltip = null;
+        if (element == null || showRightTree == false || getRightTree() instanceof ConfigFileModel || selTree.getSelectionCount() == 0 || otherTree.getSelectedObjects().contains(element)) {
+            tooltip = null;
+        } else {
+            Object result = hypotheticalConnectionImplementation(element);
+            if (result != null && result.getClass().equals(String.class)) {
+                tooltip = result.toString();
+            }
+        }
+
+        setToolTip(e.getLocationOnScreen(), element, tooltip);
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+        super.mouseReleased(e);
+        setToolTip(e.getLocationOnScreen(), null, null);
+    }
+
+    /**
+     * Set custom tool tip
+     *
+     * @param locationOnScreen Location on screen
+     * @param element Element that tool tip is displayed for (display of tool tip will be delayed by 1 second on new element)
+     * @param text Text to display (null will hide tooltip)
+     */
+    public void setToolTip(Point locationOnScreen, Object element, String text) {
+        if (text == null) {
+            toolTipTimer.stop();
+            if (toolTip != null) {
+                toolTip.hide();
+                toolTip = null;
+            }
+        } else if (element != toolTipTreeNode) {
+            toolTipTimer.stop();
+            if (toolTip != null) {
+                toolTip.hide();
+                toolTip = null;
+            }
+
+            toolTipLocation = locationOnScreen;
+            toolTipTimer.start();
+            toolTipText = text;
+        } else if (toolTip == null) {
+            toolTipLocation = locationOnScreen;
+            toolTipText = text;
+            if (!toolTipTimer.isRunning()) {
+                toolTipTimer.start();
+            }
+        } else if (!text.equals(toolTipText)) {
+            if (toolTip != null) {
+                toolTip.hide();
+                toolTip = null;
+            }
+
+            toolTipText = text;
+            toolTipLocation = locationOnScreen;
+            showToolTip(locationOnScreen, toolTipText);
+        }
+        toolTipTreeNode = element;
+    }
+
+    /**
+     * Shows tool tip
+     *
+     * @param locationOnScreen Location on screen
+     * @param text Text where to display
+     */
+    public void showToolTip(Point locationOnScreen, String text) {
+        if (toolTip != null) {
+            toolTip.hide();
+            toolTip = null;
+        }
+
+        JLabel label = new JLabel(text);
+        label.setBackground(Color.WHITE);
+        label.setOpaque(true);
+        label.setBorder(new LineBorder(Color.black));
+        toolTip = PopupFactory.getSharedInstance().getPopup(this, label, locationOnScreen.x, locationOnScreen.y);
+        toolTip.show();
+    }
+
+    @Override
     protected void setToolTipText(MJTree<Object> tree, Object element) {
-        //tree.setToolTipText("");
     }
 
     @Override
@@ -484,6 +610,10 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 repaint();
                 finstruct.refreshView();
                 return;
+            } else if (e.getSource() == toolTipTimer) {
+                if (toolTipText != null) {
+                    showToolTip(toolTipLocation, toolTipText);
+                }
             } else if (e.getSource() == miOpenInNewWindow) {
                 MJTree<Object> ptree = popupOnRight ? rightTree : leftTree;
                 Object tnp = getTreeNodeFromPos(ptree);
