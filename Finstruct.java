@@ -41,6 +41,7 @@ import java.util.TreeMap;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BorderFactory;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -104,6 +105,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
     /** Menu items */
     private JMenuItem miDisconnectDiscard, miExit;
     private JMenu miConnectMenu;
+    private JCheckBoxMenuItem miAllowDirectConnecting;
 
     /** Status bar */
     protected StatusBar statusBar;
@@ -255,6 +257,11 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         fileMenu.addSeparator();
         miExit = createMenuEntry("Exit", fileMenu, KeyEvent.VK_X);
         //miTest = createMenuEntry("Test", menuFile, KeyEvent.VK_F16);
+
+        // settings menu
+        miAllowDirectConnecting = new JCheckBoxMenuItem("Allow direct connecting of ports across component boundaries (deprecated)");
+        miAllowDirectConnecting.setMnemonic(KeyEvent.VK_A);
+        getSettingsMenu().add(miAllowDirectConnecting);
         menuBar.setVisible(true);
 
         // Status bar
@@ -562,7 +569,7 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
      * @return Whether to allow direct connecting of ports across group boundaries
      */
     public boolean allowDirectConnectingAcrossGroupBoundaries() {
-        return true; // TODO
+        return miAllowDirectConnecting.isSelected();
     }
 
     @Override public void treeNodesInserted(TreeModelEvent e) {}

@@ -127,6 +127,9 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
     /** Bookmark menu */
     private JMenu bookmarkMenu;
 
+    /** Settings menu */
+    private JMenu settingsMenu;
+
     /** File menu items */
     private JMenuItem miSaveView, miSaveWindow, miSaveViewPdf;
 
@@ -260,7 +263,7 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         for (int i = menuBar.getComponentCount() - 1; i >= 0; i--) {
             if (menuBar.getComponent(i) instanceof JMenu) {
                 String name = ((JMenu)menuBar.getComponent(i)).getText();
-                if (name.equals("File") || name.equals("View") || name.equals("Edit") || name.equals("Bookmarks")) {
+                if (name.equals("File") || name.equals("View") || name.equals("Edit") || name.equals("Bookmarks") || name.equals("Settings")) {
                     continue;
                 }
             }
@@ -883,6 +886,18 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         getContentPane().add(rootComponent, BorderLayout.CENTER);
         this.validate();
         this.repaint();
+    }
+
+    /**
+     * @return Settings menu (lazily created with calling this)
+     */
+    public JMenuItem getSettingsMenu() {
+        if (settingsMenu == null) {
+            settingsMenu = new JMenu("Settings");
+            settingsMenu.setMnemonic(KeyEvent.VK_S);
+            menuBar.add(settingsMenu);
+        }
+        return settingsMenu;
     }
 
     /**
