@@ -23,7 +23,6 @@
 package org.finroc.tools.finstruct;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -52,16 +51,6 @@ import org.finroc.tools.finstruct.actions.FinstructAction;
  * Due to the complexity, this concern is separated in a separated class.
  */
 public class SmartConnecting {
-
-    public void connect(Collection<RemotePort> portSet1, Collection<RemotePort> portSet2) {
-
-    }
-
-    public void connect(Collection<RemotePort> portSet, RemoteFrameworkElement toInterface) {
-
-    }
-
-
 
     /**
      * Checks whether remote ports can be connected directly (ignoring component boundaries)
@@ -95,7 +84,7 @@ public class SmartConnecting {
         }
 
         if (sourcePort.getDataType() != destinationPort.getDataType()) {
-            return "Ports have different types ('" + sourcePort.getQualifiedLink() + "' has type '" + sourcePort.getDataType().getName() + "' and '" + destinationPort.getQualifiedLink() + "' has type '" + destinationPort.getDataType().getName() + "'";
+            return "Ports have different types ('" + sourcePort.getQualifiedLink() + "' has type '" + sourcePort.getDataType().getName() + "' and '" + destinationPort.getQualifiedLink() + "' has type '" + destinationPort.getDataType().getName() + "')";
         }
 
         if (sourceRuntime != destinationRuntime) {
@@ -270,6 +259,8 @@ public class SmartConnecting {
                     element2.component = (RemoteFrameworkElement)element2.interface_.getParent();
                 } else if (nodes2.get(i) instanceof RemoteFrameworkElement) {
                     element2.component = (RemoteFrameworkElement)nodes2.get(i);
+                } else {
+                    throw new Exception("Can only connect to remote ports, interfaces, and components");
                 }
 
                 // Find common parent
@@ -282,7 +273,7 @@ public class SmartConnecting {
                 if (element2.port != null || (element2.interface_ != null && (element2.interface_.isInputOnlyInterface() || element2.interface_.isOutputOnlyInterface()))) {
                     boolean port2IsOutput = (element2.port != null && element2.port.getFlag(FrameworkElementFlags.IS_OUTPUT_PORT)) || (element2.port == null && element2.interface_.isOutputOnlyInterface());
                     if (port2IsOutput != port2IsOutputDesired) {
-                        throw new Exception("Ports have unsuitable data flow directions");
+                        throw new Exception("Unsuitable data flow directions");
                     }
                 }
 
@@ -385,7 +376,7 @@ public class SmartConnecting {
                                     throw new Exception("Interface selection ambiguous for component " + currentElement.component.getQualifiedName('/'));
                                 }
                             } else {
-                                throw new Exception("Component '" + currentElement.component.getQualifiedName('/') + "' has not editable interfaces");
+                                throw new Exception("Component '" + currentElement.component.getQualifiedName('/') + "' has no editable interfaces");
                             }
                         }
 
@@ -467,11 +458,14 @@ public class SmartConnecting {
                     action.getActions().add(connectAction);
                 }
             }
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            caughtException = new Exception("Internal Error (see console)");
         } catch (Exception e) {
             caughtException = e;
         }
 
-        if (action.getActions().size() == 0) {
+        if (caughtException == null && action.getActions().size() == 0) {
             caughtException = new Exception("Nothing to do");
         }
 
