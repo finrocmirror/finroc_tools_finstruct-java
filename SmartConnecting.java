@@ -474,7 +474,7 @@ public class SmartConnecting {
         if (caughtException == null) {
             // Set description
             String appendix = addControllerRun || controllerRun ? (" (" + (controllerRun ? "Controller" : "Sensor") + " interface" + (crossedComponentInterfaces.size() > 1 ? "s" : "") + ")") : "";
-            action.setAlternativeDescription((crossedComponentInterfaces.size() == 0 ? "Connect directly" : ("Connect via " + crossedComponentInterfaces.size() + " interfaces")) + appendix);
+            action.setAlternativeDescription((crossedComponentInterfaces.size() == 0 ? "Connect directly" : ("Connect via " + crossedComponentInterfaces.size() + " interface" + (crossedComponentInterfaces.size() > 1 ? "s" : ""))) + appendix);
             result.add(action);
         }
         if (addControllerRun && (!controllerRun)) {

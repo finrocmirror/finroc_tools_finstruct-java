@@ -140,6 +140,13 @@ public class CompositeAction extends FinstructAction {
         alternativeDescription = newDescription;
     }
 
+    /**
+     * @return Description for popup dialog
+     */
+    public String getAlternativeDescription() {
+        return alternativeDescription;
+    }
+
 
     /** All actions in composite action in the order they will be executed */
     private final ArrayList<FinstructAction> actions = new ArrayList<FinstructAction>();

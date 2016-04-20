@@ -292,6 +292,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
 
             CompositeAction action = actions.get(0);
             if (actions.size() > 1) {
+                for (CompositeAction a : actions) {
+                    a.setAlternativeDescription(a.getAlternativeDescription() + " (creates " + createConnectionPortCreationString(a) + ")");
+                }
                 Object choice = JOptionPane.showInputDialog(finstruct, actions.size() == 1 ? "Connection crosses component boundaries" : "There are multiple connect options", "Choose connect option", JOptionPane.QUESTION_MESSAGE, null, actions.toArray(new Object[0]), action);
                 if (choice instanceof CompositeAction) {
                     action = (CompositeAction)choice;
@@ -300,14 +303,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 }
             } else if (action.getActions().get(0) instanceof AddPortsToInterfaceAction) {
                 // count ports that are created
-                int portsCreated = 0, interfaceCount = 0;
-                for (FinstructAction subAction : action.getActions()) {
-                    if (subAction instanceof AddPortsToInterfaceAction) {
-                        interfaceCount++;
-                        portsCreated += ((AddPortsToInterfaceAction)subAction).getNewPortCount();
-                    }
-                }
-                int choice = JOptionPane.showConfirmDialog(finstruct, "This will create " + portsCreated  + " port" + (portsCreated > 1 ? "s" : "") + " in " + interfaceCount + " component interface" + (interfaceCount > 1 ? "s" : "") + ". Continue?", "Create Ports?", JOptionPane.YES_NO_OPTION);
+                int choice = JOptionPane.showConfirmDialog(finstruct, "This will create " + createConnectionPortCreationString(action) + ". Continue?", "Create Ports?", JOptionPane.YES_NO_OPTION);
                 if (choice == JOptionPane.NO_OPTION) {
                     return;
                 }
@@ -318,6 +314,24 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             e.printStackTrace();
             Finstruct.showErrorMessage(e.getMessage(), false, false);
         }
+    }
+
+    /**
+     * @param action Action to check
+     * @return Port creation statistics string for action
+     */
+    private String createConnectionPortCreationString(CompositeAction action) {
+        int portsCreated = 0, interfaceCount = 0;
+        for (FinstructAction subAction : action.getActions()) {
+            if (subAction instanceof AddPortsToInterfaceAction) {
+                interfaceCount++;
+                portsCreated += ((AddPortsToInterfaceAction)subAction).getNewPortCount();
+            }
+        }
+        if (portsCreated == 0) {
+            return "No additional ports are created";
+        }
+        return portsCreated  + " port" + (portsCreated > 1 ? "s" : "") + " in " + interfaceCount + " component interface" + (interfaceCount > 1 ? "s" : "");
     }
 
     @Override
