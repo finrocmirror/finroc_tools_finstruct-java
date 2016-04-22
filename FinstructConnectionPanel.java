@@ -125,8 +125,8 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             return false;
         }
         if (getRightTree() instanceof ConfigFileModel) {
-            return ((o1 instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)o1).getAnnotation(ParameterInfo.TYPE) != null ||
-                    (o2 instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)o2).getAnnotation(ParameterInfo.TYPE) != null);
+            return (((o1 instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)o1).getAnnotation(ParameterInfo.TYPE) != null && o2.getClass() == ConfigFileModel.ConfigEntryWrapper.class) ||
+                    ((o2 instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)o2).getAnnotation(ParameterInfo.TYPE) != null && o1.getClass() == ConfigFileModel.ConfigEntryWrapper.class));
         } else if (o1 instanceof RemotePort && o2 instanceof RemotePort) {
             return canConnectPorts((RemotePort)o1, (RemotePort)o2).length() == 0;
         }
@@ -310,6 +310,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             }
 
             action.execute();
+            timer.restart();
         } catch (Exception e) {
             e.printStackTrace();
             Finstruct.showErrorMessage(e.getMessage(), false, false);
