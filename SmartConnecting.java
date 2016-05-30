@@ -346,15 +346,22 @@ public class SmartConnecting {
                                 int maxScore = -1;
                                 for (RemoteFrameworkElement candidate : currentElement.component.getEditableInterfaces()) {
                                     int score = 0;
-                                    boolean directionOk = (outputPorts && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_OUTPUTS)) || ((!outputPorts) && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_INPUTS));
-                                    score += (outputPorts && candidate.isOutputOnlyInterface()) || ((!outputPorts) && candidate.isInputOnlyInterface()) ? 1 : 0;
+                                    boolean rpcType = FinrocTypeInfo.isMethodType(element1.port.getDataType(), true);
+                                    boolean rpcPortInDataInterface = rpcType && (!element1.interface_.getFlag(FrameworkElementFlags.INTERFACE_FOR_RPC_PORTS));
+                                    boolean checkForRpcType = rpcType && (!rpcPortInDataInterface);
+
+                                    boolean directionOk = (outputPorts && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_OUTPUTS)) || ((!outputPorts) && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_INPUTS)) || rpcType;
+                                    if (!rpcType) {
+                                        score += (outputPorts && candidate.isOutputOnlyInterface()) || ((!outputPorts) && candidate.isInputOnlyInterface()) ? 1 : 0;
+                                    } else if (rpcPortInDataInterface) {
+                                        score += lastElement.interface_.getName().contains("Output") && candidate.getName().contains("Output") || lastElement.interface_.getName().contains("Input") && candidate.getName().contains("Input") ? 1 : 0;
+                                    }
                                     boolean typeCheck1 = (sensorData == controllerData) || candidate.getFlag(FrameworkElementFlags.SENSOR_DATA) == candidate.getFlag(FrameworkElementFlags.CONTROLLER_DATA) || candidate.isControllerInterface() && controllerData || candidate.isSensorInterface() && sensorData;
                                     score += (sensorData != controllerData) && ((sensorData && candidate.isSensorInterface()) || (controllerData && candidate.isControllerInterface())) ? 2 : 0;
-                                    boolean rpcType = FinrocTypeInfo.isMethodType(element1.port.getDataType(), true);
-                                    boolean typeCheck2 = (rpcType && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_RPC_PORTS)) || ((!rpcType) && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_DATA_PORTS));
-                                    score += (rpcType && candidate.isRpcOnlyInterface()) || ((!rpcType) && (candidate.getFlags() & (FrameworkElementFlags.INTERFACE_FOR_DATA_PORTS | FrameworkElementFlags.INTERFACE_FOR_RPC_PORTS)) == FrameworkElementFlags.INTERFACE_FOR_DATA_PORTS) ? 1 : 0;
+                                    boolean typeCheck2 = (checkForRpcType && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_RPC_PORTS)) || ((!checkForRpcType) && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_DATA_PORTS));
+                                    score += (checkForRpcType && candidate.isRpcOnlyInterface()) || ((!checkForRpcType) && (candidate.getFlags() & (FrameworkElementFlags.INTERFACE_FOR_DATA_PORTS | FrameworkElementFlags.INTERFACE_FOR_RPC_PORTS)) == FrameworkElementFlags.INTERFACE_FOR_DATA_PORTS) ? 1 : 0;
                                     if (directionOk && typeCheck1 && typeCheck2 && score >= maxScore) {
-                                        if (score >= maxScore) {
+                                        if (score > maxScore) {
                                             interfaceCandidates.clear();
                                         }
                                         interfaceCandidates.add(candidate);
@@ -390,17 +397,17 @@ public class SmartConnecting {
                         if (childElement != null) {
                             // Check port
                             if (!(childElement instanceof RemotePort)) {
-                                throw new Exception("Existing element with name '" + lastElement.portName + "' is no port");
+                                throw new Exception("Relevant interface has element with same name which is no port '" + lastElement.portName + "'");
                             }
                             RemotePort port = (RemotePort)childElement;
                             if (port.getFlag(FrameworkElementFlags.IS_OUTPUT_PORT) != outputPorts) {
-                                throw new Exception("Existing port '" + port.getQualifiedName('/') + "' has wrong direction");
+                                throw new Exception("Relevant interface has port with same name and wrong direction '" + port.getQualifiedLink() + "'");
                             }
                             if (!(port.getFlag(FrameworkElementFlags.EMITS_DATA) && port.getFlag(FrameworkElementFlags.ACCEPTS_DATA)) && k > 0) {
-                                throw new Exception("Existing port '" + port.getQualifiedName('/') + "' must be a proxy");
+                                throw new Exception("Relevant interface has port with same name which is no proxy '" + port.getQualifiedLink() + "'");
                             }
                             if (port.getDataType() != outwardTrace1.get(0).port.getDataType()) {
-                                throw new Exception("Existing port '" + port.getQualifiedName('/') + "' needs same data type");
+                                throw new Exception("Relevant interface has port with same name and wrong data type '" + port.getQualifiedLink() + "'");
                             }
                             currentElement.port = port;
                             currentElement.portName = port.getName();

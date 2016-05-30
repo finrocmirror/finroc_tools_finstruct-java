@@ -104,7 +104,9 @@ public class CompositeAction extends FinstructAction {
         CompositeAction undoAction = new CompositeAction("Undo " + menuDescription);
         undoAction.tryUndoExecutedActionsOnError = false;
         for (FinstructAction action : executedActions) {
-            undoAction.actions.add(0, action.getUndoAction());
+            if (action.checkSuccess().length() == 0) {
+                undoAction.actions.add(0, action.getUndoAction());
+            }
         }
         return undoAction;
     }
