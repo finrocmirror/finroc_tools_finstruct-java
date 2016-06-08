@@ -55,7 +55,7 @@ public class EnumEditor extends PropertyEditComponent<EnumValue> {
         } catch (Exception e) {
             Log.log(LogLevel.ERROR, this, e);
         }
-        jcmb.setPreferredSize(new Dimension(TEXTFIELDWIDTH, jcmb.getPreferredSize().height));
+        jcmb.setMinimumSize(new Dimension(TEXTFIELDWIDTH, jcmb.getPreferredSize().height));
         add(jcmb, BorderLayout.WEST);
         jcmb.setEnabled(isModifiable());
     }
