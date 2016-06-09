@@ -117,6 +117,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         popupMenu.add(miOpenInNewWindow, 0);
         toolTipTimer.setRepeats(false);
         toolTipTimer.addActionListener(this);
+
+        miRemoveConnections.setText("Remove visible connections (from port)");
+        miRemoveAllConnections.setText("Remove all connections (from port)");
     }
 
     @Override
@@ -390,6 +393,11 @@ public class FinstructConnectionPanel extends ConnectionPanel {
 
     @Override
     protected void removeConnections(Object object) {
+        removeConnections(object, false);
+    }
+
+    protected void removeConnections(Object object, boolean visibleConnectionsOnly) {
+
         ThreadLocalCache.get();
         if (object != null) {
             if (getRightTree() instanceof ConfigFileModel) {
@@ -420,10 +428,21 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 List<Object> partners = getConnectionPartners(port, true);
                 NetPort np1 = port.getPort().asNetPort();
                 AdminClient ac = RemoteRuntime.find(np1).getAdminInterface();
+                MJTree<Object> otherTree = popupOnRight ? leftTree : rightTree;
+
                 if (ac != null) {
-                    ac.disconnectAll(np1);
+                    if (visibleConnectionsOnly) {
+                        for (Object partner : partners) {
+                            if (otherTree.isVisible(partner) && (partner instanceof RemotePort)) {
+                                ac.disconnect(np1, ((RemotePort)partner).getPort().asNetPort());
+                            }
+                        }
+                    } else {
+                        ac.disconnectAll(np1);
+                    }
                     timer.restart();
                 }
+
 
                 // Remove any network connections in reverse direction
                 for (Object partner : partners) {
@@ -432,7 +451,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                     int reverseIndex = partnerNetPort.getRemoteEdgeDestinations(result);
                     for (int i = 0; i < reverseIndex; i++) {
                         AdminClient partnerClient = RemoteRuntime.find(partnerNetPort).getAdminInterface();
-                        if (partnerClient != null && ac != partnerClient && result.get(i) == np1.getPort()) {
+                        if (partnerClient != null && ac != partnerClient && result.get(i) == np1.getPort() && ((!visibleConnectionsOnly) || otherTree.isVisible(partner))) {
                             partnerClient.networkConnect(partnerNetPort, "", RemoteRuntime.find(np1).uuid, ((RemotePort)port).getRemoteHandle(), ((HasUid)port).getUid(), true);
                             timer.restart();
                         }
@@ -620,6 +639,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        MJTree<Object> ptree = popupOnRight ? rightTree : leftTree;
         try {
             if (e.getSource() == timer) {
                 repaint();
@@ -630,14 +650,12 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                     showToolTip(toolTipLocation, toolTipText);
                 }
             } else if (e.getSource() == miOpenInNewWindow) {
-                MJTree<Object> ptree = popupOnRight ? rightTree : leftTree;
                 Object tnp = getTreeNodeFromPos(ptree);
                 FinstructWindow fw = new FinstructWindow(finstruct);
                 fw.showElement((ModelNode)tnp);
                 fw.pack();
                 fw.setVisible(true);
             } else if (e.getSource() == miShowPartner) {
-                MJTree<Object> ptree = popupOnRight ? rightTree : leftTree;
                 MJTree<Object> otherTree = popupOnRight ? leftTree : rightTree;
                 Object portWrapper = getTreeNodeFromPos(ptree);
                 List<Object> partners = getConnectionPartners(portWrapper, true);
@@ -649,6 +667,18 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                     TreePath tp = otherTree.getTreePathFor(partner);
                     otherTree.scrollPathToVisible(tp);
                 }
+                return;
+            } else if (e.getSource() == miRemoveConnections) {
+                // Remove visible connections
+                Object tnp = getTreeNodeFromPos(ptree);
+                removeConnections(tnp, true);
+                repaint();
+                return;
+            } else if (e.getSource() == miRemoveAllConnections) {
+                // Remove visible connections
+                Object tnp = getTreeNodeFromPos(ptree);
+                removeConnections(tnp, false);
+                repaint();
                 return;
             }
             super.actionPerformed(e);
@@ -760,6 +790,16 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         miOpenInNewWindow.setEnabled(treeNode instanceof ModelNode);
 
         miShowPartner.setEnabled(finstruct.treeToolBar.isSelected(Finstruct.Mode.connect));
+        miRemoveAllConnections.setEnabled(miRemoveConnections.isEnabled());
+
+        // Check whether port has any visible connections
+        List<Object> partners = getConnectionPartners(treeNode, true);
+        MJTree<Object> otherTree = popupOnRight ? leftTree : rightTree;
+        boolean hasVisibleConnections = false;
+        for (Object partner : partners) {
+            hasVisibleConnections |= otherTree.isVisible(partner);
+        }
+        miRemoveConnections.setEnabled(hasVisibleConnections);
     }
 
     @Override
