@@ -50,6 +50,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTree;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
 import javax.swing.event.TreeSelectionEvent;
@@ -248,9 +249,9 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
     public void setRootElement(ModelNode root) {
         rootElement = root;
         createdElementToSwitchTo = null;
-        componentLibraryTree.storeExpandedElements();
-        componentLibraryTree.setModel(generateCreateActionModel(root));
-        componentLibraryTree.restoreExpandedElements();
+        if (root instanceof RemoteFrameworkElement) {
+            new PanelUpdateThread((RemoteFrameworkElement)rootElement).start();
+        }
     }
 
     /**
@@ -424,7 +425,7 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
     /**
      * shared library info
      */
-    class SharedLibrary implements Comparable<SharedLibrary> {
+    static class SharedLibrary implements Comparable<SharedLibrary> {
         String name; // full library name
         String shortName; // library name without prefix
         boolean loaded; // Is this a loaded library?
@@ -444,7 +445,7 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
         }
     }
 
-    class SharedLibraryCategoryAndName {
+    static class SharedLibraryCategoryAndName {
         String name;
         SharedLibraryCategory category;
         public SharedLibraryCategoryAndName(String name, SharedLibraryCategory category) {
@@ -460,67 +461,79 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
      * @param element (root) element to create action tree model for
      * @return Generated tree model
      */
-    private TreeModel generateCreateActionModel(ModelNode element) {
+    private static TreeModel generateCreateActionModel(RemoteFrameworkElement element) {
         RemoteRuntime runtime = RemoteRuntime.find(element);
         if (runtime != null) {
-            ArrayList<RemoteCreateModuleAction> createActions = runtime.getAdminInterface().getRemoteModuleTypes();
-            List<String> loadableLibraries = runtime.getAdminInterface().getModuleLibraries();
-            //DefaultMutableTreeNode root = new DefaultMutableTreeNode("Create Actions");
-            DefaultMutableTreeNode root = new DefaultMutableTreeNode("Component Repository");
+            try {
+                ArrayList<RemoteCreateModuleAction> createActions = runtime.getAdminInterface().getRemoteModuleTypes();
+                if (createActions.size() == 0) {
+                    DefaultMutableTreeNode root = new DefaultMutableTreeNode();
+                    root.add(new DefaultMutableTreeNode("Error obtaining create actions from Finroc Runtime"));
+                    return new DefaultTreeModel(root);
+                }
+                List<String> loadableLibraries = runtime.getAdminInterface().getModuleLibraries();
 
-            DefaultMutableTreeNode[] categoryNodes = new DefaultMutableTreeNode[SharedLibraryCategory.values().length];
-            @SuppressWarnings("unchecked")
-            HashMap<String, SharedLibrary>[] categoryMaps = new HashMap[SharedLibraryCategory.values().length];
-            for (int i = 0; i < categoryNodes.length; i++) {
-                categoryNodes[i] = new DefaultMutableTreeNode(SharedLibraryCategory.values()[i].toString().replace('_', ' '));
-                categoryMaps[i] = new HashMap<String, SharedLibrary>();
-            }
+                //DefaultMutableTreeNode root = new DefaultMutableTreeNode("Create Actions");
+                DefaultMutableTreeNode root = new DefaultMutableTreeNode("Component Repository");
 
-            // Add all existing components
-            for (RemoteCreateModuleAction action : createActions) {
-                SharedLibraryCategoryAndName categoryAndName = getSharedLibraryCategoryAndName(action.groupName);
-                HashMap<String, SharedLibrary> categoryMap = categoryMaps[categoryAndName.category.ordinal()];
-                SharedLibrary library = categoryMap.get(categoryAndName.name);
-                if (library == null) {
-                    library = new SharedLibrary();
-                    library.name = action.groupName;
+                DefaultMutableTreeNode[] categoryNodes = new DefaultMutableTreeNode[SharedLibraryCategory.values().length];
+                @SuppressWarnings("unchecked")
+                HashMap<String, SharedLibrary>[] categoryMaps = new HashMap[SharedLibraryCategory.values().length];
+                for (int i = 0; i < categoryNodes.length; i++) {
+                    categoryNodes[i] = new DefaultMutableTreeNode(SharedLibraryCategory.values()[i].toString().replace('_', ' '));
+                    categoryMaps[i] = new HashMap<String, SharedLibrary>();
+                }
+
+                // Add all existing components
+                for (RemoteCreateModuleAction action : createActions) {
+                    SharedLibraryCategoryAndName categoryAndName = getSharedLibraryCategoryAndName(action.groupName);
+                    HashMap<String, SharedLibrary> categoryMap = categoryMaps[categoryAndName.category.ordinal()];
+                    SharedLibrary library = categoryMap.get(categoryAndName.name);
+                    if (library == null) {
+                        library = new SharedLibrary();
+                        library.name = action.groupName;
+                        library.shortName = categoryAndName.name;
+                        library.loaded = true;
+                        categoryMap.put(categoryAndName.name, library);
+                    }
+                    library.actions.add(action);
+                }
+
+                // Add all loadable libraries
+                for (String loadableLibrary : loadableLibraries) {
+                    SharedLibraryCategoryAndName categoryAndName = getSharedLibraryCategoryAndName(loadableLibrary);
+                    HashMap<String, SharedLibrary> categoryMap = categoryMaps[categoryAndName.category.ordinal()];
+                    SharedLibrary library = new SharedLibrary();
+                    library.name = loadableLibrary;
                     library.shortName = categoryAndName.name;
-                    library.loaded = true;
+                    library.loaded = false;
                     categoryMap.put(categoryAndName.name, library);
                 }
-                library.actions.add(action);
-            }
 
-            // Add all loadable libraries
-            for (String loadableLibrary : loadableLibraries) {
-                SharedLibraryCategoryAndName categoryAndName = getSharedLibraryCategoryAndName(loadableLibrary);
-                HashMap<String, SharedLibrary> categoryMap = categoryMaps[categoryAndName.category.ordinal()];
-                SharedLibrary library = new SharedLibrary();
-                library.name = loadableLibrary;
-                library.shortName = categoryAndName.name;
-                library.loaded = false;
-                categoryMap.put(categoryAndName.name, library);
-            }
-
-            for (int i = 0; i < categoryNodes.length; i++) {
-                ArrayList<SharedLibrary> libraries = new ArrayList<SharedLibrary>(categoryMaps[i].values());
-                Collections.sort(libraries);
-                for (SharedLibrary sharedLibrary : libraries) {
-                    DefaultMutableTreeNode node = new DefaultMutableTreeNode(sharedLibrary);
-                    categoryNodes[i].add(node);
-                    Collections.sort(sharedLibrary.actions);
-                    for (RemoteCreateModuleAction action : sharedLibrary.actions) {
-                        node.add(new DefaultMutableTreeNode(action));
+                for (int i = 0; i < categoryNodes.length; i++) {
+                    ArrayList<SharedLibrary> libraries = new ArrayList<SharedLibrary>(categoryMaps[i].values());
+                    Collections.sort(libraries);
+                    for (SharedLibrary sharedLibrary : libraries) {
+                        DefaultMutableTreeNode node = new DefaultMutableTreeNode(sharedLibrary);
+                        categoryNodes[i].add(node);
+                        Collections.sort(sharedLibrary.actions);
+                        for (RemoteCreateModuleAction action : sharedLibrary.actions) {
+                            node.add(new DefaultMutableTreeNode(action));
+                        }
+                    }
+                    if (libraries.size() > 0) {
+                        root.add(categoryNodes[i]);
                     }
                 }
-                if (libraries.size() > 0) {
-                    root.add(categoryNodes[i]);
-                }
+                return new DefaultTreeModel(root);
+
+            } catch (Exception e) {
             }
-            return new DefaultTreeModel(root);
         }
 
-        return new DefaultTreeModel(new DefaultMutableTreeNode("No remote element selected"));
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode();
+        root.add(new DefaultMutableTreeNode("Error obtaining create actions from Finroc Runtime"));
+        return new DefaultTreeModel(root);
     }
 
 
@@ -529,7 +542,7 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
      * @param name Library name
      * @return Category, this library belongs to
      */
-    private SharedLibraryCategoryAndName getSharedLibraryCategoryAndName(String name) {
+    private static SharedLibraryCategoryAndName getSharedLibraryCategoryAndName(String name) {
         if (name.startsWith("rrlib_")) {
             return new SharedLibraryCategoryAndName(name.substring("rrlib_".length()), SharedLibraryCategory.RRLibs);
         } else if (name.startsWith("finroc_libraries_")) {
@@ -600,13 +613,11 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == libraryLoadButton) {
             RemoteRuntime runtime = RemoteRuntime.find(rootElement);
-            if (runtime != null) {
+            if (runtime != null && rootElement instanceof RemoteFrameworkElement) {
                 try {
                     TreePath selectedPath = componentLibraryTree.getSelectionPath();
                     runtime.getAdminInterface().loadModuleLibrary(selectedLibrary.name);
-                    componentLibraryTree.storeExpandedElements();
-                    componentLibraryTree.setModel(generateCreateActionModel(rootElement));
-                    componentLibraryTree.restoreExpandedElements();
+                    new PanelUpdateThread((RemoteFrameworkElement)rootElement).run();  // note that we are calling run() here to execute update synchronously
                     TreePath newSelectedPath = componentLibraryTree.findPath(selectedPath.getPath());
                     if (newSelectedPath != null) {
                         componentLibraryTree.expandPath(newSelectedPath);
@@ -780,4 +791,37 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
     public boolean acceptElement(Object element) {
         return element instanceof DefaultMutableTreeNode;
     }
+
+    /**
+     * Separate thread that for updating all panel elements whose updates block
+     */
+    private class PanelUpdateThread extends Thread {
+
+        /** Contains result after calling completed */
+        TreeModel createActionModelResult = null;
+
+        /** Element on which this update task was called on */
+        final RemoteFrameworkElement rootElement;
+
+        public PanelUpdateThread(RemoteFrameworkElement rootElement) {
+            this.rootElement = rootElement;
+        }
+
+        public void run() {
+            if (createActionModelResult == null) {
+                createActionModelResult = generateCreateActionModel(rootElement);
+                if (!SwingUtilities.isEventDispatchThread()) {
+                    SwingUtilities.invokeLater(this);
+                }
+            }
+            if (createActionModelResult != null && SwingUtilities.isEventDispatchThread()) {
+                if (rootElement == FinstructRightPanel.this.rootElement) {
+                    componentLibraryTree.storeExpandedElements();
+                    componentLibraryTree.setModel(createActionModelResult);
+                    componentLibraryTree.restoreExpandedElements();
+                }
+            }
+        }
+    }
+
 }

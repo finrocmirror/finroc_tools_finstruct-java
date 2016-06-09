@@ -565,19 +565,12 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
         if (getCurrentView() == null || currentView.getRootElement() == null) {
             return;
         }
-        RemoteRuntime rr = RemoteRuntime.find(currentView.getRootElement());
-        if (rr == null) {
-            start.setEnabled(false);
-            pause.setEnabled(false);
-            return;
-        }
-        try {
-            AdministrationService.ExecutionStatus executing = rr.getAdminInterface().isExecuting(((RemoteFrameworkElement)currentView.getRootElement()).getRemoteHandle());
-            start.setEnabled(executing == AdministrationService.ExecutionStatus.PAUSED || executing == AdministrationService.ExecutionStatus.BOTH);
-            pause.setEnabled(executing == AdministrationService.ExecutionStatus.RUNNING || executing == AdministrationService.ExecutionStatus.BOTH);
-        } catch (Exception e) {
-            start.setEnabled(false);
-            pause.setEnabled(false);
+        ModelNode rootElement = currentView.getRootElement();
+        RemoteRuntime rr = RemoteRuntime.find(rootElement);
+        start.setEnabled(false);
+        pause.setEnabled(false);
+        if (rr != null && rootElement instanceof RemoteFrameworkElement) {
+            new StartStopUpdateThread((RemoteFrameworkElement)rootElement).start();
         }
     }
 
@@ -1328,6 +1321,37 @@ public class FinstructWindow extends JFrame implements ActionListener, WindowLis
                         break;
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Separate thread that updates start/stop buttons asynchronously so that view changing does not block (annoying with hanging connections)
+     */
+    private class StartStopUpdateThread extends Thread {
+
+        /** Contains result after calling completed */
+        AdministrationService.ExecutionStatus result = null;
+
+        /** Element on which this update task was called on */
+        final RemoteFrameworkElement rootElement;
+
+        public StartStopUpdateThread(RemoteFrameworkElement rootElement) {
+            this.rootElement = rootElement;
+        }
+
+        public void run() {
+            if (result != null) {
+                assert(SwingUtilities.isEventDispatchThread());
+                if (rootElement == currentView.getRootElement()) {
+                    start.setEnabled(result == AdministrationService.ExecutionStatus.PAUSED || result == AdministrationService.ExecutionStatus.BOTH);
+                    pause.setEnabled(result == AdministrationService.ExecutionStatus.RUNNING || result == AdministrationService.ExecutionStatus.BOTH);
+                }
+            } else {
+                try {
+                    result = RemoteRuntime.find(rootElement).getAdminInterface().isExecuting(((RemoteFrameworkElement)currentView.getRootElement()).getRemoteHandle());
+                    SwingUtilities.invokeLater(this);
+                } catch (Exception e) {}
             }
         }
     }
