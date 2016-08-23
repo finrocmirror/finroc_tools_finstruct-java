@@ -22,6 +22,7 @@
 package org.finroc.tools.finstruct.propertyeditor;
 
 import java.awt.Dimension;
+import java.awt.GraphicsEnvironment;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,8 +36,8 @@ import org.finroc.core.portdatabase.SerializationHelper;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.core.remote.RemoteType;
+import org.finroc.core.remote.RemoteTypes;
 import org.finroc.tools.gui.util.propertyeditor.BooleanEditor;
-import org.finroc.tools.gui.util.propertyeditor.ComboBoxEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComponentFactory;
 import org.finroc.tools.gui.util.propertyeditor.FieldAccessorFactory;
 import org.finroc.tools.gui.util.propertyeditor.PropertiesPanel;
@@ -46,8 +47,11 @@ import org.finroc.tools.gui.util.propertyeditor.PropertyEditComponent;
 import org.finroc.tools.gui.util.propertyeditor.PropertyListAccessor;
 import org.finroc.tools.gui.util.propertyeditor.PropertyListEditor;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
+import org.finroc.tools.gui.util.propertyeditor.gui.DataTypeEditor;
 import org.finroc.plugins.data_types.ContainsStrings;
 import org.finroc.plugins.data_types.PaintablePortData;
+import org.rrlib.finroc_core_utils.jc.ArrayWrapper;
+import org.rrlib.finroc_core_utils.jc.container.SafeConcurrentlyIterableList;
 import org.rrlib.serialization.BinarySerializable;
 import org.rrlib.serialization.EnumValue;
 import org.rrlib.serialization.PortDataListImpl;
@@ -103,23 +107,30 @@ public class FinrocComponentFactory implements ComponentFactory {
         } else*/
         if (type.equals(PortCreationList.class)) {
             wpec = new PropertyListEditor(panel, new FinrocComponentFactory(commonParent), new StandardComponentFactory());
-            wpec.setPreferredSize(new Dimension(800, 200));
+            wpec.setPreferredSize(new Dimension(GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds().width, 200));
             acc = new PortCreationListAdapter((PropertyAccessor<PortCreationList>)acc);
         } else if (DataTypeReference.class.equals(type)) {
             RemoteRuntime rr = RemoteRuntime.find(commonParent);
-            ArrayList<String> types = new ArrayList<String>();
+            ArrayList<DataTypeReference> types = new ArrayList<DataTypeReference>();
             if (rr == null) { // use local data types
                 for (short i = 0; i < DataTypeBase.getTypeCount(); i++) {
                     DataTypeBase dt = DataTypeBase.getType(i);
                     if (dt != null) {
-                        types.add(dt.getName());
+                        types.add(new DataTypeReference(dt));
                     }
                 }
             } else {
-                types.addAll(rr.getRemoteTypes().getRemoteTypeNames());
+                SafeConcurrentlyIterableList<RemoteTypes.Entry> remoteTypes = rr.getRemoteTypes().getTypes();
+                ArrayWrapper<RemoteTypes.Entry> iterable = remoteTypes.getIterable();
+                for (int i = 0, n = iterable.size(); i < n; i++) {
+                    RemoteTypes.Entry entry = iterable.get(i);
+                    if (entry != null && entry.getLocalDataType() != null) {
+                        types.add(new DataTypeReference(entry.getLocalDataType()));
+                    }
+                }
             }
-            wpec = new ComboBoxEditor<String>(types.toArray(new String[0]));
-            acc = new CoreSerializableAdapter((PropertyAccessor<BinarySerializable>)acc, type, DataTypeReference.TYPE);
+            wpec = new DataTypeEditor(types.toArray(new DataTypeReference[0]), null, panel);
+            //acc = new CoreSerializableAdapter((PropertyAccessor<BinarySerializable>)acc, type, DataTypeReference.TYPE);
         } else if (PaintablePortData.class.isAssignableFrom(type)) {
             wpec = new PaintableViewer();
         } else if (XML.class.isAssignableFrom(type)) {
