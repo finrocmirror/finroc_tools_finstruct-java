@@ -50,6 +50,7 @@ import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.finroc.tools.gui.util.propertyeditor.gui.DataTypeEditor;
 import org.finroc.plugins.data_types.ContainsStrings;
 import org.finroc.plugins.data_types.PaintablePortData;
+import org.finroc.plugins.data_types.TaskProfile;
 import org.rrlib.finroc_core_utils.jc.ArrayWrapper;
 import org.rrlib.finroc_core_utils.jc.container.SafeConcurrentlyIterableList;
 import org.rrlib.serialization.BinarySerializable;
@@ -87,7 +88,7 @@ public class FinrocComponentFactory implements ComponentFactory {
             Class<?> type = dt.getJavaClass();
             if (type != null) {
                 return (type.equals(PortCreationList.class) || DataTypeReference.class.equals(type)
-                        || PaintablePortData.class.isAssignableFrom(type) || XML.class.isAssignableFrom(type) || type.isEnum()
+                        || PaintablePortData.class.isAssignableFrom(type) || XML.class.isAssignableFrom(type) || type.isEnum() || type.equals(TaskProfile.List.class)
                         || type.equals(EnumValue.class) || CoreBoolean.class.isAssignableFrom(type) || type.equals(PortDataListImpl.class)
                         || (BinarySerializable.class.isAssignableFrom(type) && (Serialization.isStringSerializable(type) || Serialization.isXmlSerializable(type))));
             }
@@ -140,6 +141,8 @@ public class FinrocComponentFactory implements ComponentFactory {
         } else if (CoreBoolean.class.isAssignableFrom(type)) {
             wpec = new BooleanEditor();
             acc = new CoreBooleanAdapter((PropertyAccessor<CoreBoolean>)acc);
+        } else if (type.equals(TaskProfile.List.class)) {
+            wpec = new TaskProfileViewer(RemoteRuntime.find(commonParent));
         } else if (type.equals(PortDataListImpl.class)) {
             wpec = new CoreSerializableDefaultEditor(type);
             acc = new PortDataListAdapter((PropertyAccessor<PortDataListImpl>)acc);
