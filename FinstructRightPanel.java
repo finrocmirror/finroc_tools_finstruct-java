@@ -64,15 +64,14 @@ import javax.swing.tree.TreeSelectionModel;
 
 import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.datatype.CoreString;
-import org.finroc.core.parameter.ConstructorParameters;
 import org.finroc.core.parameter.StaticParameterList;
-import org.finroc.core.plugin.RemoteCreateModuleAction;
 import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteCreateAction;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
-import org.finroc.core.remote.RemoteType;
+import org.finroc.core.remote.RemoteStaticParameterList;
 import org.finroc.tools.finstruct.propertyeditor.ConnectingPortAccessor;
 import org.finroc.tools.finstruct.propertyeditor.FinrocComponentFactory;
 import org.finroc.tools.finstruct.propertyeditor.FinrocObjectAccessor;
@@ -86,6 +85,9 @@ import org.finroc.tools.gui.util.ElementFilter;
 import org.finroc.tools.gui.util.gui.MJTree;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
 import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
+import org.rrlib.logging.Log;
+import org.rrlib.logging.LogLevel;
+import org.rrlib.serialization.Register;
 import org.rrlib.serialization.rtti.DataTypeBase;
 
 /**
@@ -132,18 +134,18 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
     private JButton libraryLoadButton = new JButton("Load Library");
 
     /** UI elements for component creation panel */
-    private RemoteCreateModuleAction selectedCreateAction;
+    private RemoteCreateAction selectedCreateAction;
     private JPanel componentCreationPanel = new JPanel();
     private JLabel componentInfoText = new JLabel(); //"", SwingConstants.CENTER);
     private PropertyEditorTable componentParameters = new PropertyEditorTable();
     private JButton componentCreateButton = new JButton("Create");
     private JLabel componentDescription = new JLabel(); //"", SwingConstants.CENTER);
     private CoreString componentCreateName = new CoreString();
-    private ConstructorParameters componentConstructorParameters;
+    private RemoteStaticParameterList componentConstructorParameters;
 
     /** UI elements for component properties */
     private RemoteFrameworkElement selectedComponent;
-    private StaticParameterList selectedComponentStaticParameterList;
+    private RemoteStaticParameterList selectedComponentStaticParameterList;
     private JPanel componentPropertyPanel = new JPanel();
     private JLabel componentPropertyPanelText = new JLabel();
     private PropertyEditorTable componentProperties = new PropertyEditorTable();
@@ -284,12 +286,11 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
         RemoteRuntime runtime = RemoteRuntime.find(element);
         if (runtime != null) {
             // TODO: transform to asynchronous call in order to increase GUI responsiveness (furthermore, we can be sure that all subelements have been added)
-            selectedComponentStaticParameterList = (StaticParameterList)runtime.getAdminInterface().getAnnotation(element.getRemoteHandle(), StaticParameterList.TYPE);
-            if (selectedComponentStaticParameterList != null) {
-                for (int i = 0; i < selectedComponentStaticParameterList.size(); i++) {
-                    selectedComponentStaticParameterList.get(i).resetChanged();
-                    //System.out.println(i + ":" + selectedComponentStaticParameterList.get(i).hasChanged());
-                }
+            selectedComponentStaticParameterList = new RemoteStaticParameterList();
+            try {
+                selectedComponentStaticParameterList.deserialize(runtime.getAdminInterface().getAnnotation(element.getRemoteHandle(), StaticParameterList.TYPE.getName(), runtime));
+            } catch (Exception e) {
+                Log.log(LogLevel.ERROR, e);
             }
 
             // initialize GUI elements
@@ -352,7 +353,7 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
             if (changed) {
                 RemoteRuntime runtime = RemoteRuntime.find(rootElement);
                 if (runtime != null) {
-                    runtime.getAdminInterface().setAnnotation(selectedComponent.getRemoteHandle(), selectedComponentStaticParameterList);
+                    runtime.getAdminInterface().setAnnotation(selectedComponent.getRemoteHandle(), StaticParameterList.TYPE.getName(), selectedComponentStaticParameterList);
                 } else {
                     Finstruct.showErrorMessage("Cannot set static parameter: connection to remote runtime lost", false, false);
                 }
@@ -400,7 +401,7 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
                 if (interfaceElement.getChildAt(i) instanceof RemotePort) {
                     RemotePort port = (RemotePort)interfaceElement.getChildAt(i);
                     DataTypeBase type = port.getPort().getDataType();
-                    if (type.getJavaClass() != null && (FinrocTypeInfo.isCCType(type) || FinrocTypeInfo.isStdType(type) || ((type instanceof RemoteType) && ((RemoteType)type).isAdaptable()))) {
+                    if (type.getJavaClass() != null && (FinrocTypeInfo.isCCType(type) || FinrocTypeInfo.isStdType(type))) {
                         ConnectingPortAccessor portAccess = new ConnectingPortAccessor((RemotePort)interfaceElement.getChildAt(i), prefix ? interfaceElement.getParent().getQualifiedName('/') : interfaceElement.getQualifiedName('/'));
                         componentPropertyAccessPorts.add(portAccess);
                         result.add(portAccess);
@@ -429,7 +430,7 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
         String name; // full library name
         String shortName; // library name without prefix
         boolean loaded; // Is this a loaded library?
-        ArrayList<RemoteCreateModuleAction> actions = new ArrayList<RemoteCreateModuleAction>(); // Create actions in this library (temporary)
+        ArrayList<RemoteCreateAction> actions = new ArrayList<RemoteCreateAction>(); // Create actions in this library (temporary)
 
         @Override
         public int compareTo(SharedLibrary o) {
@@ -465,7 +466,7 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
         RemoteRuntime runtime = RemoteRuntime.find(element);
         if (runtime != null) {
             try {
-                ArrayList<RemoteCreateModuleAction> createActions = runtime.getAdminInterface().getRemoteModuleTypes();
+                Register<RemoteCreateAction> createActions = runtime.getCreateActions();
                 if (createActions.size() == 0) {
                     DefaultMutableTreeNode root = new DefaultMutableTreeNode();
                     root.add(new DefaultMutableTreeNode("Error obtaining create actions from Finroc Runtime"));
@@ -485,13 +486,14 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
                 }
 
                 // Add all existing components
-                for (RemoteCreateModuleAction action : createActions) {
-                    SharedLibraryCategoryAndName categoryAndName = getSharedLibraryCategoryAndName(action.groupName);
+                for (int i = 0, n = createActions.size(); i < n; i++) {
+                    RemoteCreateAction action = createActions.get(i);
+                    SharedLibraryCategoryAndName categoryAndName = getSharedLibraryCategoryAndName(action.getGroupName());
                     HashMap<String, SharedLibrary> categoryMap = categoryMaps[categoryAndName.category.ordinal()];
                     SharedLibrary library = categoryMap.get(categoryAndName.name);
                     if (library == null) {
                         library = new SharedLibrary();
-                        library.name = action.groupName;
+                        library.name = action.getGroupName();
                         library.shortName = categoryAndName.name;
                         library.loaded = true;
                         categoryMap.put(categoryAndName.name, library);
@@ -517,7 +519,7 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
                         DefaultMutableTreeNode node = new DefaultMutableTreeNode(sharedLibrary);
                         categoryNodes[i].add(node);
                         Collections.sort(sharedLibrary.actions);
-                        for (RemoteCreateModuleAction action : sharedLibrary.actions) {
+                        for (RemoteCreateAction action : sharedLibrary.actions) {
                             node.add(new DefaultMutableTreeNode(action));
                         }
                     }
@@ -573,20 +575,20 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
                 splitPane.setBottomComponent(bottomScrollPane);
                 this.validate();
 
-            } else if (selectedElement.getUserObject() instanceof RemoteCreateModuleAction) {
+            } else if (selectedElement.getUserObject() instanceof RemoteCreateAction) {
 
                 // show creation info
-                selectedCreateAction = (RemoteCreateModuleAction)selectedElement.getUserObject();
-                componentInfoText.setText("<html><b>" + simpleHtmlEscape(selectedCreateAction.name) + "</b></html>");
+                selectedCreateAction = (RemoteCreateAction)selectedElement.getUserObject();
+                componentInfoText.setText("<html><b>" + simpleHtmlEscape(selectedCreateAction.getName()) + "</b></html>");
 
                 // unique component name by default
-                componentCreateName.set(selectedCreateAction.name);
+                componentCreateName.set(selectedCreateAction.getName());
                 int i = 0;
                 while (rootElement.getChildByName(componentCreateName.toString()) != null) {
                     i++;
-                    componentCreateName.set(selectedCreateAction.name + " (" + i + ")");
+                    componentCreateName.set(selectedCreateAction.getName() + " (" + i + ")");
                 }
-                componentConstructorParameters = selectedCreateAction.parameters != null ? selectedCreateAction.parameters.instantiate() : null;
+                componentConstructorParameters = selectedCreateAction.getParameters() != null ? selectedCreateAction.getParameters().instantiate() : null;
 
                 // Create property accessor list
                 ArrayList<PropertyAccessor> propertyEditList = new ArrayList<PropertyAccessor>();
@@ -616,7 +618,7 @@ public class FinstructRightPanel extends JPanel implements ElementFilter<Object>
             if (runtime != null && rootElement instanceof RemoteFrameworkElement) {
                 try {
                     TreePath selectedPath = componentLibraryTree.getSelectionPath();
-                    runtime.getAdminInterface().loadModuleLibrary(selectedLibrary.name);
+                    runtime.loadModuleLibrary(selectedLibrary.name);
                     new PanelUpdateThread((RemoteFrameworkElement)rootElement).run();  // note that we are calling run() here to execute update synchronously
                     TreePath newSelectedPath = componentLibraryTree.findPath(selectedPath.getPath());
                     if (newSelectedPath != null) {

@@ -259,8 +259,9 @@ public class Finstruct extends FinstructWindow implements ConnectionListener, Wi
         //miTest = createMenuEntry("Test", menuFile, KeyEvent.VK_F16);
 
         // settings menu
-        miAllowDirectConnecting = new JCheckBoxMenuItem("Allow direct connecting of ports across component boundaries (deprecated)");
+        miAllowDirectConnecting = new JCheckBoxMenuItem("Allow direct connecting of ports across component boundaries");
         miAllowDirectConnecting.setMnemonic(KeyEvent.VK_A);
+        miAllowDirectConnecting.setEnabled(true);
         getSettingsMenu().add(miAllowDirectConnecting);
         menuBar.setVisible(true);
 

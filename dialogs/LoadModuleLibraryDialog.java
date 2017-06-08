@@ -52,7 +52,7 @@ public class LoadModuleLibraryDialog extends MDialog implements MouseListener {
 
     /** Buttons */
     private JButton load, cancel;
-    private JList list;
+    private JList<String> list;
     private String selected;
 
     /** Double-Click-detection */
@@ -78,7 +78,7 @@ public class LoadModuleLibraryDialog extends MDialog implements MouseListener {
         main.setBorder(new EmptyBorder(10, 10, 10, 10));
 
         // create components
-        list = new JList(moduleLibraries.toArray());
+        list = new JList<String>(moduleLibraries.toArray(new String[0]));
         //list.setPreferredSize(new Dimension(350, 550));
         list.setBorder(BorderFactory.createLineBorder(Color.BLACK));
         list.addMouseListener(this);

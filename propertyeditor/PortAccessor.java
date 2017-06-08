@@ -92,8 +92,7 @@ public class PortAccessor<T> implements PropertyAccessor<T>, PortListener {
     @SuppressWarnings("unchecked")
     @Override
     public Class<T> getType() {
-        return (wrapped.getDataType().getJavaClass() == null && (wrapped.getDataType().getType() == DataTypeBase.Classification.LIST || wrapped.getDataType().getType() == DataTypeBase.Classification.PTR_LIST)) ?
-               (Class<T>)PortDataListImpl.class : (Class<T>)wrapped.getDataType().getJavaClass();
+        return (wrapped.getDataType().getJavaClass() == null && (wrapped.getDataType().getTypeTraits() == DataTypeBase.IS_LIST_TYPE)) ? (Class<T>)PortDataListImpl.class : (Class<T>)wrapped.getDataType().getJavaClass();
     }
 
     @SuppressWarnings("unchecked")
@@ -127,7 +126,7 @@ public class PortAccessor<T> implements PropertyAccessor<T>, PortListener {
             if (ap.getFlag(FrameworkElementFlags.NETWORK_ELEMENT)) {
                 CCPortDataManager c = ThreadLocalCache.get().getUnusedInterThreadBuffer(DataTypeBase.findType(newValue.getClass(), ap.getDataType()));
                 Serialization.deepCopy(newValue, c.getObject().getData());
-                RemoteRuntime.find(RemotePort.get(ap)[0]).getAdminInterface().setRemotePortValue(ap.asNetPort(), c.getObject(), errorPrinter);
+                RemoteRuntime.find(RemotePort.get(ap)[0]).getAdminInterface().setRemotePortValue(RemotePort.get(ap)[0], c.getObject(), errorPrinter);
             } else {
                 CCPortDataManagerTL c = ThreadLocalCache.get().getUnusedBuffer(DataTypeBase.findType(newValue.getClass(), ap.getDataType()));
                 Serialization.deepCopy(newValue, c.getObject().getData());
@@ -138,7 +137,7 @@ public class PortAccessor<T> implements PropertyAccessor<T>, PortListener {
                                      ((newValue instanceof PortDataListImpl) ? ((PortDataListImpl)newValue).getElementType().getListType() : DataTypeBase.findType(newValue.getClass(), ap.getDataType())));
             Serialization.deepCopy(newValue, result.getObject().getData(), null);
             if (ap.getFlag(FrameworkElementFlags.NETWORK_ELEMENT)) {
-                RemoteRuntime.find(RemotePort.get(ap)[0]).getAdminInterface().setRemotePortValue(ap.asNetPort(), result.getObject(), errorPrinter);
+                RemoteRuntime.find(RemotePort.get(ap)[0]).getAdminInterface().setRemotePortValue(RemotePort.get(ap)[0], result.getObject(), errorPrinter);
             } else {
                 ((PortBase)wrapped).publish(result);
             }

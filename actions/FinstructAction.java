@@ -29,6 +29,10 @@ import java.awt.event.ActionListener;
 
 import javax.swing.Timer;
 
+import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteRuntime;
+import org.finroc.tools.finstruct.Finstruct;
+
 
 /**
  * @author Max Reichardt
@@ -183,6 +187,18 @@ public abstract class FinstructAction implements ActionListener {
             return fullLink;
         }
     }
+
+    /**
+     * Finds remote runtime for element with specified link (qualified name)
+     *
+     * @param link Link
+     * @return Runtime for specified link. Null if no such runtime exists.
+     */
+    public static RemoteRuntime findRemoteRuntime(String link) {
+        ModelNode element = Finstruct.getInstance().getIoInterface().getChildByQualifiedName(link, LINK_SEPARATOR, true);
+        return RemoteRuntime.find(element);
+    }
+
 
     /**
      * Must only be called after action was successfully executed.

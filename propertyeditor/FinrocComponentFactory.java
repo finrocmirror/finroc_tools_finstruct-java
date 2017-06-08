@@ -31,12 +31,10 @@ import org.finroc.core.datatype.CoreBoolean;
 import org.finroc.core.datatype.DataTypeReference;
 import org.finroc.core.datatype.PortCreationList;
 import org.finroc.core.datatype.XML;
-import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.core.portdatabase.SerializationHelper;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.core.remote.RemoteType;
-import org.finroc.core.remote.RemoteTypes;
 import org.finroc.tools.gui.util.propertyeditor.BooleanEditor;
 import org.finroc.tools.gui.util.propertyeditor.ComponentFactory;
 import org.finroc.tools.gui.util.propertyeditor.FieldAccessorFactory;
@@ -50,11 +48,10 @@ import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.finroc.tools.gui.util.propertyeditor.gui.DataTypeEditor;
 import org.finroc.plugins.data_types.ContainsStrings;
 import org.finroc.plugins.data_types.PaintablePortData;
-import org.rrlib.finroc_core_utils.jc.ArrayWrapper;
-import org.rrlib.finroc_core_utils.jc.container.SafeConcurrentlyIterableList;
 import org.rrlib.serialization.BinarySerializable;
 import org.rrlib.serialization.EnumValue;
 import org.rrlib.serialization.PortDataListImpl;
+import org.rrlib.serialization.Register;
 import org.rrlib.serialization.Serialization;
 import org.rrlib.serialization.StringInputStream;
 import org.rrlib.serialization.XMLSerializable;
@@ -83,7 +80,7 @@ public class FinrocComponentFactory implements ComponentFactory {
      * (e.g. a component for displaying and possibly editing is available)
      */
     public static boolean isTypeSupported(DataTypeBase dt) {
-        if (FinrocTypeInfo.isCCType(dt) || FinrocTypeInfo.isStdType(dt) || ((dt instanceof RemoteType) && ((RemoteType)dt).isAdaptable())) {
+        if ((dt.getTypeTraits() & DataTypeBase.IS_DATA_TYPE) != 0) {
             Class<?> type = dt.getJavaClass();
             if (type != null) {
                 return (type.equals(PortCreationList.class) || DataTypeReference.class.equals(type)
@@ -111,25 +108,24 @@ public class FinrocComponentFactory implements ComponentFactory {
             acc = new PortCreationListAdapter((PropertyAccessor<PortCreationList>)acc);
         } else if (DataTypeReference.class.equals(type)) {
             RemoteRuntime rr = RemoteRuntime.find(commonParent);
-            ArrayList<DataTypeReference> types = new ArrayList<DataTypeReference>();
+            ArrayList<Object> types = new ArrayList<Object>();
             if (rr == null) { // use local data types
                 for (short i = 0; i < DataTypeBase.getTypeCount(); i++) {
                     DataTypeBase dt = DataTypeBase.getType(i);
                     if (dt != null) {
-                        types.add(new DataTypeReference(dt));
+                        types.add(dt);
                     }
                 }
             } else {
-                SafeConcurrentlyIterableList<RemoteTypes.Entry> remoteTypes = rr.getRemoteTypes().getTypes();
-                ArrayWrapper<RemoteTypes.Entry> iterable = remoteTypes.getIterable();
-                for (int i = 0, n = iterable.size(); i < n; i++) {
-                    RemoteTypes.Entry entry = iterable.get(i);
-                    if (entry != null && entry.getLocalDataType() != null) {
-                        types.add(new DataTypeReference(entry.getLocalDataType()));
+                Register<RemoteType> remoteTypes = rr.getRemoteTypes();
+                for (int i = 0, n = remoteTypes.size(); i < n; i++) {
+                    RemoteType entry = remoteTypes.get(i);
+                    if (entry != null) {
+                        types.add(entry);
                     }
                 }
             }
-            wpec = new DataTypeEditor(types.toArray(new DataTypeReference[0]), null, panel);
+            wpec = new DataTypeEditor(types.toArray(new Object[0]), null, panel);
             //acc = new CoreSerializableAdapter((PropertyAccessor<BinarySerializable>)acc, type, DataTypeReference.TYPE);
         } else if (PaintablePortData.class.isAssignableFrom(type)) {
             wpec = new PaintableViewer();

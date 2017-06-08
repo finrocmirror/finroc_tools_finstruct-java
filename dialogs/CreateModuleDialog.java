@@ -26,6 +26,7 @@ import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -47,28 +48,29 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
 
-import org.finroc.core.parameter.StaticParameterList;
-import org.finroc.core.plugin.RemoteCreateModuleAction;
+import org.finroc.core.remote.RemoteCreateAction;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemoteRuntime;
+import org.finroc.core.remote.RemoteStaticParameterList;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.util.FilteredList;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
+import org.rrlib.serialization.Register;
 
 /**
  * @author Max Reichardt
  *
  * Create Module Dialog
  */
-public class CreateModuleDialog extends MGridBagDialog implements ActionListener, CaretListener, ListSelectionListener, FilteredList.Filter<RemoteCreateModuleAction>, ListDataListener, TreeModelListener {
+public class CreateModuleDialog extends MGridBagDialog implements ActionListener, CaretListener, ListSelectionListener, FilteredList.Filter<RemoteCreateAction>, ListDataListener, TreeModelListener {
 
     /** UID */
     private static final long serialVersionUID = -349194234472122705L;
 
     /** Dialog components */
     private JTextField filter, name;
-    private JComboBox group;
-    private FilteredList<RemoteCreateModuleAction> jlist;
+    private JComboBox<Object> group;
+    private FilteredList<RemoteCreateAction> jlist;
     private JButton next, cancel, create, load;
 
     /** Parent framework element */
@@ -108,7 +110,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
         setTitle("Create Module");
 
         // create components
-        jlist = new FilteredList<RemoteCreateModuleAction>(this);
+        jlist = new FilteredList<>(this);
         name = new JTextField();
         name.addCaretListener(this);
         addComponent("Module name", name, 0, false);
@@ -119,7 +121,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
         BorderLayout bl = new BorderLayout();
         bl.setHgap(4);
         library.setLayout(bl);
-        group = new JComboBox();
+        group = new JComboBox<>();
         group.addActionListener(jlist);
         library.add(group, BorderLayout.CENTER);
         load = new JButton("Load...");
@@ -141,7 +143,8 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
         addComponent("", buttons, 4, false);
 
         // get create module actions
-        updateCreateModuleActions(RemoteRuntime.find(parent).getAdminInterface().getRemoteModuleTypes());
+        Register<RemoteCreateAction> createActions = RemoteRuntime.find(parent).getCreateActions();
+        updateCreateModuleActions(createActions);
 
         // show dialog
         getRootPane().setDefaultButton(create);
@@ -155,30 +158,33 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
      *
      * @param createModuleActions Current create module actions
      */
-    public void updateCreateModuleActions(List<RemoteCreateModuleAction> createModuleActions) {
+    public void updateCreateModuleActions(Register<RemoteCreateAction> createModuleActions) {
         if (createModuleActions == null) {
             return;
         }
         SortedSet<Object> groups = new TreeSet<Object>();
+        ArrayList<RemoteCreateAction> actions = new ArrayList<>(createModuleActions.size());
         groups.add("all");
-        for (RemoteCreateModuleAction rcma : createModuleActions) {
-            groups.add(rcma.groupName);
+        for (int i = 0, n = createModuleActions.size(); i < n; i++) {
+            RemoteCreateAction action = createModuleActions.get(i);
+            groups.add(action.getGroupName());
+            actions.add(action);
         }
-        group.setModel(new DefaultComboBoxModel(groups.toArray()));
+        group.setModel(new DefaultComboBoxModel<Object>(groups.toArray()));
         updateButtonState();
-        jlist.setElements(createModuleActions);
+        jlist.setElements(actions);
     }
 
     @Override
-    public int accept(RemoteCreateModuleAction rcma) {
+    public int accept(RemoteCreateAction rcma) {
         String f = filter.getText();
         String g = group.getSelectedItem().toString();
         if ("all".equals(g)) {
             g = null;
         }
-        if (g == null || rcma.groupName.equals(g)) {
-            if (rcma.name.toLowerCase().contains(f.toLowerCase())) {
-                if (rcma.name.toLowerCase().startsWith(f.toLowerCase())) {
+        if (g == null || rcma.getGroupName().equals(g)) {
+            if (rcma.getName().toLowerCase().contains(f.toLowerCase())) {
+                if (rcma.getName().toLowerCase().startsWith(f.toLowerCase())) {
                     return 0;
                 } else {
                     return 1;
@@ -204,16 +210,16 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
             if (libs != null && libs.size() > 0) {
                 String load = new LoadModuleLibraryDialog((JFrame)getOwner()).show(libs);
                 if (load != null) {
-                    updateCreateModuleActions(rr.getAdminInterface().loadModuleLibrary(load));
+                    updateCreateModuleActions(rr.loadModuleLibrary(load));
                 }
             } else {
                 Finstruct.showErrorMessage("There don't appear to be any more modules to load", false, false);
             }
         } else if (e.getSource() == next || e.getSource() == create) {
-            RemoteCreateModuleAction rcma = jlist.getSelectedValue();
-            StaticParameterList spl = null;
+            RemoteCreateAction rcma = jlist.getSelectedValue();
+            RemoteStaticParameterList spl = null;
             if (e.getSource() == next) {
-                spl = rcma.parameters.instantiate();
+                spl = rcma.getParameters().instantiate();
                 ParameterEditDialog ped = new ParameterEditDialog(this);
                 setVisible(false);
                 ped.show(spl, parent);
@@ -263,7 +269,7 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
         if (jlist.getSelectedValue() == null) {
             return;
         } else if (name.getText().equals(autoSetName)) {
-            autoSetName = jlist.getSelectedValue().name;
+            autoSetName = jlist.getSelectedValue().getName();
             name.setText(autoSetName);
         } else {
             autoSetName = "";
@@ -274,10 +280,11 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
      * Updates button state
      */
     private void updateButtonState() {
-        RemoteCreateModuleAction rcma = jlist.getSelectedValue();
+        RemoteCreateAction rcma = jlist.getSelectedValue();
         boolean b = rcma != null && name.getText().length() > 0;
-        create.setEnabled(b && rcma.parameters.size() == 0);
-        next.setEnabled(b && rcma.parameters.size() > 0);
+        boolean hasParameters = b && rcma.getParameters() != null && rcma.getParameters().size() > 0;
+        create.setEnabled(b && (!hasParameters));
+        next.setEnabled(b && hasParameters);
     }
 
     @Override
@@ -305,7 +312,11 @@ public class CreateModuleDialog extends MGridBagDialog implements ActionListener
                     treeModel.removeTreeModelListener(this);
 
                     // possibly show edit dialog
-                    new ParameterEditDialog(this).show(createdModule, false, false);
+                    try {
+                        new ParameterEditDialog(this).show(createdModule, false, false);
+                    } catch (Exception exception) {
+                        Finstruct.showErrorMessage(exception, true);
+                    }
                     close();
                     return;
                 }

@@ -42,13 +42,12 @@ import javax.swing.event.MenuListener;
 
 import org.finroc.core.Annotatable;
 import org.finroc.core.FrameworkElementFlags;
-import org.finroc.core.port.AbstractPort;
-import org.finroc.core.port.net.NetPort;
-import org.finroc.core.portdatabase.FinrocTypeInfo;
 import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteConnector;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
+import org.finroc.core.remote.RemoteUriConnector;
 import org.finroc.plugins.data_types.StdStringList;
 import org.finroc.tools.finstruct.FinstructConnectionPanel;
 import org.finroc.tools.finstruct.FinstructView;
@@ -57,6 +56,7 @@ import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.propertyeditor.gui.PropertiesDialog;
 import org.rrlib.logging.Log;
 import org.rrlib.logging.LogLevel;
+import org.rrlib.serialization.rtti.DataTypeBase;
 import org.rrlib.xml.XMLNode;
 
 /**
@@ -216,7 +216,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             for (int i = 0; i < fe.getChildCount(); i++) {
                 if (fe.getChildAt(i) instanceof RemotePort) {
                     RemotePort remotePort = (RemotePort)fe.getChildAt(i);
-                    if (!FinrocTypeInfo.isMethodType(remotePort.getPort().getDataType(), true)) {
+                    if ((remotePort.getDataType().getTypeTraits() & DataTypeBase.IS_RPC_TYPE) == 0) {
                         boolean output = (remotePort.getFlags() & FrameworkElementFlags.IS_OUTPUT_PORT) != 0;
                         one |= output;
                         all &= output;
@@ -238,7 +238,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             for (int i = 0; i < fe.getChildCount(); i++) {
                 if (fe.getChildAt(i) instanceof RemotePort) {
                     RemotePort remotePort = (RemotePort)fe.getChildAt(i);
-                    if (!FinrocTypeInfo.isMethodType(remotePort.getPort().getDataType(), true)) {
+                    if ((remotePort.getDataType().getTypeTraits() & DataTypeBase.IS_RPC_TYPE) == 0) {
                         boolean input = (remotePort.getFlags() & FrameworkElementFlags.IS_OUTPUT_PORT) == 0;
                         one |= input;
                         all &= input;
@@ -401,35 +401,40 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
      */
     @SuppressWarnings("unchecked")
     public Collection<E> getEdges(final ModelNode root, Collection<V> allVertices) {
-        final TreeMap<E, E> result = new TreeMap<E, E>();
-        final HashMap<ModelNode, V> lookup = new HashMap<ModelNode, V>();
-        final ArrayList<AbstractPort> remoteEdgeDestinations = new ArrayList<AbstractPort>();
+        final TreeMap<E, E> result = new TreeMap<>();
+        final HashMap<ModelNode, V> lookup = new HashMap<>();
+        final ArrayList<RemoteConnector> remoteConnectors = new ArrayList<>();
         for (V v : allVertices) {
             lookup.put(v.getModelElement(), v);
         }
         for (RemotePort port : root.getPortsBelow(null)) {
-            NetPort np = port.getPort().asNetPort();
-            remoteEdgeDestinations.clear();
-            int reverseIndex = np.getRemoteEdgeDestinations(remoteEdgeDestinations);
-            for (int i = 0; i < remoteEdgeDestinations.size(); i++) {
-                AbstractPort destPort = remoteEdgeDestinations.get(i);
-                boolean reverseEdge = (i >= reverseIndex);
-                GetParentResult src = getParentInGraph(lookup, port);
-                for (RemotePort destTemp : RemotePort.get(destPort)) {
-                    GetParentResult dest = getParentInGraph(lookup, destTemp);
-                    if (src.parent != null && dest.parent != null && src.parent != dest.parent) {
-                        GetParentResult src2 = reverseEdge ? dest : src;
-                        GetParentResult dest2 = reverseEdge ? src : dest;
-                        E eNew = createEdgeInstance(src2.parent, dest2.parent);
-                        eNew.source = src2.parent;
-                        eNew.destination = dest2.parent;
-                        E e = result.get(eNew);
-                        if (e == null) {
-                            e = eNew;
-                            result.put(eNew, eNew);
+            //NetPort np = port.getPort().asNetPort();
+            remoteConnectors.clear();
+            RemoteRuntime remoteRuntime = RemoteRuntime.find(port);
+            remoteRuntime.getConnectors(remoteConnectors, port);
+            //int reverseIndex = np.getRemoteEdgeDestinations(remoteConnectors);
+            for (int i = 0; i < remoteConnectors.size(); i++) {
+                RemoteConnector connector = remoteConnectors.get(i);
+                if (port.getRemoteHandle() == connector.getOwnerPortHandle() && remoteRuntime == connector.getOwnerRuntime()) { // avoid processing connectors twice: as both ports of relevant edges are below graph, only process when 'port' is owner port
+                    boolean reverseEdge = (connector instanceof RemoteUriConnector) && ((RemoteUriConnector)connector).getCurrentPartner() == port;
+                    GetParentResult src = getParentInGraph(lookup, port);
+                    RemotePort destinationPort = connector.getPartnerPort(port, remoteRuntime);
+                    for (RemotePort destTemp : RemotePort.get(destinationPort.getPort())) {
+                        GetParentResult dest = getParentInGraph(lookup, destTemp);
+                        if (src.parent != null && dest.parent != null && src.parent != dest.parent) {
+                            GetParentResult src2 = reverseEdge ? dest : src;
+                            GetParentResult dest2 = reverseEdge ? src : dest;
+                            E eNew = createEdgeInstance(src2.parent, dest2.parent);
+                            eNew.source = src2.parent;
+                            eNew.destination = dest2.parent;
+                            E e = result.get(eNew);
+                            if (e == null) {
+                                e = eNew;
+                                result.put(eNew, eNew);
+                            }
+                            e.dataTypeFlags |= src2.dataTypeFlags | dest2.dataTypeFlags;
+                            e.addConnection(port, destTemp);
                         }
-                        e.dataTypeFlags |= src2.dataTypeFlags | dest2.dataTypeFlags;
-                        e.addConnection(port, destTemp);
                     }
                 }
             }

@@ -23,6 +23,7 @@
 package org.finroc.tools.finstruct;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -32,15 +33,21 @@ import java.util.Set;
 import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.datatype.DataTypeReference;
 import org.finroc.core.datatype.PortCreationList;
-import org.finroc.core.portdatabase.FinrocTypeInfo;
+import org.finroc.core.port.AbstractPort;
+import org.finroc.core.remote.Definitions;
+import org.finroc.core.remote.Definitions.TypeConversionRating;
 import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteConnectOptions;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
+import org.finroc.core.remote.RemoteType;
 import org.finroc.tools.finstruct.actions.AddPortsToInterfaceAction;
 import org.finroc.tools.finstruct.actions.CompositeAction;
 import org.finroc.tools.finstruct.actions.ConnectAction;
 import org.finroc.tools.finstruct.actions.FinstructAction;
+import org.rrlib.serialization.Register;
+import org.rrlib.serialization.rtti.DataTypeBase;
 
 /**
  * @author Max Reichardt
@@ -52,56 +59,146 @@ import org.finroc.tools.finstruct.actions.FinstructAction;
  */
 public class SmartConnecting {
 
+//    public static final String CAN_CONNECT = "Yes";
+//    public static final String CAN_CONNECT_IMPLICIT_CAST = "Yes - Implicit Cast";
+//    public static final String CAN_CONNECT_EXPLICIT_CAST = "Yes - Explicit Cast";
+
+    /**
+     * Result of mayConnect* methods
+     * Used like a struct -> public fields.
+     */
+    public static class MayConnectResult {
+
+        /** Connection rating */
+        public Definitions.TypeConversionRating rating;
+
+        /** If there is no suitable combination to connect source nodes to partner nodes: contains hint/reason why not (as may be displayed as tool tip atop tree node) */
+        public String impossibleHint;
+
+        /**
+         * @return Whether connecting is possible
+         */
+        public boolean isConnectingPossible() {
+            return rating != Definitions.TypeConversionRating.IMPOSSIBLE;
+        }
+
+        public MayConnectResult(String impossibleHint) {
+            rating = TypeConversionRating.IMPOSSIBLE;
+            this.impossibleHint = impossibleHint;
+        }
+
+        public MayConnectResult(TypeConversionRating rating) {
+            this.rating = rating;
+            this.impossibleHint = null;
+        }
+    }
+
+    /**
+     * Result of getStreamableTypes method
+     */
+    public static class StreamableType implements Comparable<StreamableType> {
+
+        /** Rating of connection */
+        public Definitions.TypeConversionRating rating;
+
+        /** Name of type (in both runtimes) */
+        public String name;
+
+        @Override
+        public int compareTo(StreamableType o) {
+            int c = Integer.compare(o.rating.ordinal(), rating.ordinal());
+            return c != 0 ? c : name.compareTo(o.name);
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
     /**
      * Checks whether remote ports can be connected directly (ignoring component boundaries)
      *
      * @param sourcePort First remote port
      * @param destinationPort Second remote port
      * @param alsoCheckReverse If false, only checks one direction (from source to destination). If true, checks both directions.
-     * @return Empty string if connecting is possible. If connecting is not possible, reason for this.
+     * @return Result: if and how connecting is possible
      */
-    public static String mayConnectDirectly(RemotePort sourcePort, RemotePort destinationPort, boolean alsoCheckReverse) {
+    public static MayConnectResult mayConnectDirectly(RemotePort sourcePort, RemotePort destinationPort, boolean alsoCheckReverse) {
+        MayConnectResult result = new MayConnectResult(Definitions.TypeConversionRating.IMPOSSIBLE);
+        boolean forwardPossible = true, reversePossible = alsoCheckReverse;
         RemoteRuntime sourceRuntime = RemoteRuntime.find(sourcePort);
         if (sourceRuntime == null) {
-            return "No runtime found for '" + sourcePort.getQualifiedLink() + "'";
+            result.impossibleHint = "No runtime found for '" + sourcePort.getQualifiedLink() + "'";
+            return result;
         }
         RemoteRuntime destinationRuntime = RemoteRuntime.find(destinationPort);
         if (destinationRuntime == null) {
-            return "No runtime found for '" + destinationPort.getQualifiedLink() + "'";
+            result.impossibleHint = "No runtime found for '" + destinationPort.getQualifiedLink() + "'";
+            return result;
         }
 
         if (alsoCheckReverse) {
             if (!(sourcePort.getFlag(FrameworkElementFlags.EMITS_DATA) || destinationPort.getFlag(FrameworkElementFlags.EMITS_DATA))) {
-                return "Neither port emits data ('" + sourcePort.getQualifiedLink() + "' and '" + destinationPort.getQualifiedLink() + "')";
+                result.impossibleHint = "Neither port emits data ('" + sourcePort.getQualifiedLink() + "' and '" + destinationPort.getQualifiedLink() + "')";
+                return result;
             }
             if (!(sourcePort.getFlag(FrameworkElementFlags.ACCEPTS_DATA) || destinationPort.getFlag(FrameworkElementFlags.ACCEPTS_DATA))) {
-                return "Neither port accepts data ('" + sourcePort.getQualifiedLink() + "' and '" + destinationPort.getQualifiedLink() + "')";
+                result.impossibleHint = "Neither port accepts data ('" + sourcePort.getQualifiedLink() + "' and '" + destinationPort.getQualifiedLink() + "')";
+                return result;
             }
+            if (!(sourcePort.getFlag(FrameworkElementFlags.ACCEPTS_DATA) || sourcePort.getFlag(FrameworkElementFlags.EMITS_DATA))) {
+                result.impossibleHint = sourcePort.getQualifiedLink() + " neither emits nor accepts data";
+                return result;
+            }
+            if (!(destinationPort.getFlag(FrameworkElementFlags.ACCEPTS_DATA) || destinationPort.getFlag(FrameworkElementFlags.EMITS_DATA))) {
+                result.impossibleHint = destinationPort.getQualifiedLink() + " neither emits nor accepts data";
+                return result;
+            }
+            forwardPossible = sourcePort.getFlag(FrameworkElementFlags.EMITS_DATA) && destinationPort.getFlag(FrameworkElementFlags.ACCEPTS_DATA);
+            reversePossible = destinationPort.getFlag(FrameworkElementFlags.EMITS_DATA) && sourcePort.getFlag(FrameworkElementFlags.ACCEPTS_DATA);
         } else if (!sourcePort.getFlag(FrameworkElementFlags.EMITS_DATA)) {
-            return "Source port (" + sourcePort.getQualifiedLink() + ") does not emit data";
+            result.impossibleHint = "Source port (" + sourcePort.getQualifiedLink() + ") does not emit data";
+            return result;
         } else if (!destinationPort.getFlag(FrameworkElementFlags.ACCEPTS_DATA)) {
-            return "Destination port (" + sourcePort.getQualifiedLink() + ") does not accept data";
-        }
-
-        if (sourcePort.getDataType() != destinationPort.getDataType()) {
-            return "Ports have different types ('" + sourcePort.getQualifiedLink() + "' has type '" + sourcePort.getDataType().getName() + "' and '" + destinationPort.getQualifiedLink() + "' has type '" + destinationPort.getDataType().getName() + "')";
+            result.impossibleHint = "Destination port (" + sourcePort.getQualifiedLink() + ") does not accept data";
+            return result;
         }
 
         if (sourceRuntime != destinationRuntime) {
             if ((!sourcePort.getFlag(FrameworkElementFlags.SHARED)) && (!destinationPort.getFlag(FrameworkElementFlags.SHARED))) {
-                return "Neither port is shared ('" + sourcePort.getQualifiedLink() + "' and '" + destinationPort.getQualifiedLink() + "')";
-            }
-            if (!((sourceRuntime.getAdminInterface() != null && destinationPort.getFlag(FrameworkElementFlags.SHARED)) || (destinationRuntime.getAdminInterface() != null && sourcePort.getFlag(FrameworkElementFlags.SHARED)))) {
-                return "One non-shared port needs admin interface";
+                result.impossibleHint = "Neither port is shared ('" + sourcePort.getQualifiedLink() + "' and '" + destinationPort.getQualifiedLink() + "')";
+                return result;
             }
 
             ModelNode commonParent = findCommonParent(sourcePort, destinationPort);
             if (commonParent == Finstruct.getInstance().getIoInterface().getRoot()) {
-                return "Ports need to be connected to the same protocol/interface. Are parts connected to each other.";
+                result.impossibleHint = "Ports need to be connected to the same protocol/interface. Are parts connected to each other?";
+                return result;
             }
+
+            if (forwardPossible) {
+                result.rating = getInterRuntimeTypeConversionRating(sourceRuntime, sourcePort.getDataType(), destinationRuntime, destinationPort.getDataType());
+            } else {
+                result.rating = getBestRating(result.rating, getInterRuntimeTypeConversionRating(destinationRuntime, destinationPort.getDataType(), sourceRuntime, sourcePort.getDataType()));
+            }
+
+        } else {
+            result.rating = getBestRating(forwardPossible ? sourceRuntime.getTypeConversionRating(sourcePort.getDataType(), destinationPort.getDataType()) : Definitions.TypeConversionRating.IMPOSSIBLE,
+                                          reversePossible ? sourceRuntime.getTypeConversionRating(sourcePort.getDataType(), destinationPort.getDataType()) : Definitions.TypeConversionRating.IMPOSSIBLE);
         }
 
-        return "";
+        if (result.rating == Definitions.TypeConversionRating.IMPOSSIBLE) {
+            if (forwardPossible && reversePossible) {
+                result.impossibleHint = "Types " + sourcePort.getDataType().getName() + " and " + destinationPort.getDataType().getName() + " cannot be converted to each other in either way";
+            } else if (forwardPossible) {
+                result.impossibleHint = "Type " + sourcePort.getDataType().getName() + " cannot be converted to " + destinationPort.getDataType().getName();
+            } else if (reversePossible) {
+                result.impossibleHint = "Type " + destinationPort.getDataType().getName() + " cannot be converted to " + sourcePort.getDataType().getName();
+            }
+        }
+        result.impossibleHint = "";
+        return result;
     }
 
     /**
@@ -112,17 +209,153 @@ public class SmartConnecting {
      * @param nodes1 First collection (only ports)
      * @param nodes2 Second collection (possibly containing interface and components)
      * @param allowDirectConnecting Allow direct connecting across component boundaries?
-     * @return Empty string if connecting is possible. If connecting is not possible, reason for this.
+     * @return Result: if and how connecting is possible
      */
-    public static String mayConnect(List<RemotePort> nodes1, List<ModelNode> nodes2, boolean allowDirectConnecting) {
+    public static MayConnectResult mayConnect(List<RemotePort> nodes1, List<ModelNode> nodes2, boolean allowDirectConnecting) {
+        MayConnectResult result = new MayConnectResult(Definitions.TypeConversionRating.IMPOSSIBLE);
         try {
             // TODO: can be optimized
-            getConnectActionImplementation(nodes1, nodes2, allowDirectConnecting, false, false);
+            List<CompositeAction> actions = getConnectActionImplementation(nodes1, nodes2, allowDirectConnecting, false, false);
+            for (CompositeAction compositeAction : actions) {
+                Definitions.TypeConversionRating minRating = Definitions.TypeConversionRating.NO_CONVERSION;
+                for (FinstructAction action : compositeAction.getActions()) {
+                    if (action instanceof ConnectAction) {
+                        Definitions.TypeConversionRating actionRating = ((ConnectAction)action).getConversionRating();
+                        if (actionRating.ordinal() < minRating.ordinal()) {
+                            minRating = actionRating;
+                        }
+                    }
+                }
+                if (minRating.ordinal() > result.rating.ordinal()) {
+                    result.rating = minRating;
+                }
+            }
         } catch (Exception e) {
-            return e.getMessage();
+            result.impossibleHint = e.getMessage();
         }
-        return "";
+        return result;
     }
+
+    /**
+     * Infer direction in which remote ports ought to be connected.
+     *
+     * @param port1 First port
+     * @param port2 Second port
+     * @return Returns TO_TARGET if port2 should be destination port - otherwise TO_SOURCE. In doubt, returns TO_TARGET.
+     */
+    public static AbstractPort.ConnectDirection inferConnectDirection(RemotePort port1, RemotePort port2) {
+        ModelNode commonParent = SmartConnecting.findCommonParent(port1, port2);
+
+        // Inner-group connection to group's interface port
+        if (port1.getParent() != null && port1.getParent().isInterface() && port1.getParent().getParent() == commonParent) {
+            return port1.getFlag(FrameworkElementFlags.IS_OUTPUT_PORT) ? AbstractPort.ConnectDirection.TO_SOURCE : AbstractPort.ConnectDirection.TO_TARGET;
+        }
+        if (port2.getParent() != null && port2.getParent().isInterface() && port2.getParent().getParent() == commonParent) {
+            return port2.getFlag(FrameworkElementFlags.IS_OUTPUT_PORT) ? AbstractPort.ConnectDirection.TO_TARGET : AbstractPort.ConnectDirection.TO_SOURCE;
+        }
+
+        // Standard case
+        return port1.getFlag(FrameworkElementFlags.IS_OUTPUT_PORT) ? AbstractPort.ConnectDirection.TO_TARGET : AbstractPort.ConnectDirection.TO_SOURCE;
+    }
+
+    /**
+     * If two ports to be connected are in different runtime environments, returns type conversion rating of best conversion option
+     *
+     * @param sourceRuntime Source runtime
+     * @param sourceType Source port data type
+     * @param destinationRuntime Destination runtime
+     * @param destinationType Destination port data type
+     * @return List of all streamable types together with connection rating of the best option
+     * @throws Throws exception if runtimes are identical
+     */
+    public static Definitions.TypeConversionRating getInterRuntimeTypeConversionRating(RemoteRuntime sourceRuntime, RemoteType sourceType, RemoteRuntime destinationRuntime, RemoteType destinationType) {
+        if (sourceRuntime == destinationRuntime) {
+            throw new RuntimeException("Runtimes are identical");
+        }
+
+        RemoteType.CachedConversionRatings ratings = sourceRuntime.getTypeConversionRatings(sourceType);
+        Register<RemoteType> types = sourceRuntime.getTypes();
+        Definitions.TypeConversionRating result = Definitions.TypeConversionRating.IMPOSSIBLE;
+        for (int j = 0; j < ratings.size(); j++) {
+            RemoteType interTypeSource = types.get(j);
+            Definitions.TypeConversionRating rating = ratings.getRating(interTypeSource);
+            if (interTypeSource != sourceType && rating.ordinal() > result.ordinal()) {
+                RemoteType interTypeDestination = destinationRuntime.getRemoteType(interTypeSource.getName());
+                if (interTypeDestination != null) {
+                    Definitions.TypeConversionRating rating2 = destinationRuntime.getTypeConversionRating(interTypeDestination, destinationType);
+                    if ((rating == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_TO_GENERIC_TYPE && rating2 == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_FROM_GENERIC_TYPE) ||
+                            (rating == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_FROM_GENERIC_TYPE && rating2 == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_TO_GENERIC_TYPE)) {
+                        rating2 = Definitions.TypeConversionRating.DEPRECATED_CONVERSION;
+                    }
+                    if (rating2.ordinal() > result.ordinal()) {
+                        result = getWorstRating(rating, rating2);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * If two ports to be connected are in different runtime environments, returns types that would be suitable for serialization/deserialization over the network
+     *
+     * @param sourceRuntime Source runtime
+     * @param sourceType Source port data type
+     * @param destinationRuntime Destination runtime
+     * @param destinationType Destination port data type
+     * @return List of all streamable types together with connection rating of the best option
+     * @throws Throws exception if runtimes are identical
+     */
+    public static List<StreamableType> getStreamableTypes(RemoteRuntime sourceRuntime, RemoteType sourceType, RemoteRuntime destinationRuntime, RemoteType destinationType) {
+        if (sourceRuntime == destinationRuntime) {
+            throw new RuntimeException("Runtimes are identical");
+        }
+
+        ArrayList<StreamableType> result = new ArrayList<StreamableType>();
+        RemoteType.CachedConversionRatings ratings = sourceRuntime.getTypeConversionRatings(sourceType);
+        Register<RemoteType> types = sourceRuntime.getTypes();
+        for (int i = 0; i < ratings.size(); i++) {
+            RemoteType interTypeSource = types.get(i);
+            Definitions.TypeConversionRating rating = ratings.getRating(interTypeSource);
+            if (interTypeSource != sourceType && rating != Definitions.TypeConversionRating.IMPOSSIBLE) {
+                RemoteType interTypeDestination = destinationRuntime.getRemoteType(interTypeSource.getName());
+                if (interTypeDestination != null) {
+                    Definitions.TypeConversionRating rating2 = destinationRuntime.getTypeConversionRating(interTypeDestination, destinationType);
+                    if (rating2 != Definitions.TypeConversionRating.IMPOSSIBLE) {
+                        StreamableType option = new StreamableType();
+                        option.name = interTypeSource.getName();
+                        option.rating = getWorstRating(rating, rating2);
+                        if ((rating == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_TO_GENERIC_TYPE && rating2 == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_FROM_GENERIC_TYPE) ||
+                                (rating == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_FROM_GENERIC_TYPE && rating2 == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_TO_GENERIC_TYPE)) {
+                            option.rating = Definitions.TypeConversionRating.DEPRECATED_CONVERSION;
+                        }
+                        result.add(option);
+                    }
+                }
+            }
+        }
+        Collections.sort(result);
+        return result;
+    }
+
+    /**
+     * @param rating1 First rating
+     * @param rating2 Second rating
+     * @return Maximum (best) rating of the two
+     */
+    public static Definitions.TypeConversionRating getBestRating(Definitions.TypeConversionRating rating1, Definitions.TypeConversionRating rating2) {
+        return Definitions.TypeConversionRating.values()[Math.max(rating1.ordinal(), rating2.ordinal())];
+    }
+
+    /**
+     * @param rating1 First rating
+     * @param rating2 Second rating
+     * @return Minimum (worst) rating of the two
+     */
+    public static Definitions.TypeConversionRating getWorstRating(Definitions.TypeConversionRating rating1, Definitions.TypeConversionRating rating2) {
+        return Definitions.TypeConversionRating.values()[Math.min(rating1.ordinal(), rating2.ordinal())];
+    }
+
 
     /**
      * Helper class/struct for getConnectActionImplementation
@@ -130,6 +363,8 @@ public class SmartConnecting {
     static class TraceElement {
         RemotePort port;
         String portName;
+        RemoteType portDataType;
+        PortCreationList.Entry createEntry;
         RemoteFrameworkElement interface_;
         RemoteFrameworkElement component;
 
@@ -227,6 +462,9 @@ public class SmartConnecting {
         try {
             for (int i = 0; i < nodes1.size(); i++) {
 
+                RemoteRuntime node1Runtime = RemoteRuntime.find(nodes1.get(i));
+                RemoteRuntime node2Runtime = RemoteRuntime.find(nodes2.get(i));
+
                 // Initialize ports
                 TraceElement element1 = new TraceElement(), element2 = new TraceElement();
                 ArrayList<TraceElement> outwardTrace1 = new ArrayList<TraceElement>(), outwardTrace2 = new ArrayList<TraceElement>();
@@ -236,6 +474,7 @@ public class SmartConnecting {
                 // Port 1
                 element1.port = nodes1.get(i);
                 element1.portName = element1.port.getName();
+                element1.portDataType = element1.port.getDataType();
                 if ((!(element1.port.getParent() instanceof RemoteFrameworkElement)) || (!(element1.port.getParent().getParent() instanceof RemoteFrameworkElement))) {
                     throw new Exception("Port must be below two framework elements");
                 }
@@ -243,9 +482,11 @@ public class SmartConnecting {
                 element1.component = (RemoteFrameworkElement)element1.interface_.getParent();
 
                 // Element 2
+                element2.portDataType = element1.portDataType;
                 if (nodes2.get(i) instanceof RemotePort) {
                     element2.port = (RemotePort)nodes2.get(i);
                     element2.portName = element2.port.getName();
+                    element2.portDataType = element2.port.getDataType();
                     if ((!(element2.port.getParent() instanceof RemoteFrameworkElement)) || (!(element2.port.getParent().getParent() instanceof RemoteFrameworkElement))) {
                         throw new Exception("Port must be below two framework elements");
                     }
@@ -327,6 +568,7 @@ public class SmartConnecting {
 
                 for (int j = 0; j < 2; j++) {
                     ArrayList<TraceElement> trace = j == 0 ? outwardTrace1 : outwardTrace2;
+                    RemoteRuntime traceRuntime = j == 0 ? node1Runtime : node2Runtime;
                     for (int k = 0; k < trace.size(); k++) {
                         TraceElement currentElement = trace.get(k);
                         if (currentElement.port != null) {
@@ -346,7 +588,7 @@ public class SmartConnecting {
                                 int maxScore = -1;
                                 for (RemoteFrameworkElement candidate : currentElement.component.getEditableInterfaces()) {
                                     int score = 0;
-                                    boolean rpcType = FinrocTypeInfo.isMethodType(element1.port.getDataType(), true);
+                                    boolean rpcType = (element1.portDataType.getTypeTraits() & DataTypeBase.IS_RPC_TYPE) != 0;
                                     boolean rpcPortInDataInterface = rpcType && (!element1.interface_.getFlag(FrameworkElementFlags.INTERFACE_FOR_RPC_PORTS));
                                     boolean checkForRpcType = rpcType && (!rpcPortInDataInterface);
 
@@ -394,6 +636,7 @@ public class SmartConnecting {
 
                         // Check or create port
                         ModelNode childElement = currentElement.interface_.getChildByName(lastElement.portName);
+                        Definitions.TypeConversionRating conversionRating = Definitions.TypeConversionRating.NO_CONVERSION;
                         if (childElement != null) {
                             // Check port
                             if (!(childElement instanceof RemotePort)) {
@@ -406,14 +649,19 @@ public class SmartConnecting {
                             if (!(port.getFlag(FrameworkElementFlags.EMITS_DATA) && port.getFlag(FrameworkElementFlags.ACCEPTS_DATA)) && k > 0) {
                                 throw new Exception("Relevant interface has port with same name which is no proxy '" + port.getQualifiedLink() + "'");
                             }
-                            if (port.getDataType() != outwardTrace1.get(0).port.getDataType()) {
-                                throw new Exception("Relevant interface has port with same name and wrong data type '" + port.getQualifiedLink() + "'");
+                            if (port.getDataType() != lastElement.portDataType) {
+                                conversionRating = traceRuntime.getTypeConversionRating(outputPorts ? lastElement.portDataType : port.getDataType(), outputPorts ? port.getDataType() : lastElement.portDataType);
+                                if (conversionRating == Definitions.TypeConversionRating.IMPOSSIBLE) {
+                                    throw new Exception("Relevant interface has port with same name and incompatible data types '" + port.getQualifiedLink() + "'");
+                                }
                             }
                             currentElement.port = port;
                             currentElement.portName = port.getName();
+                            currentElement.portDataType = port.getDataType();
                         } else {
                             // Create port (?)
                             currentElement.portName = lastElement.portName;
+                            currentElement.portDataType = lastElement.portDataType;
                             AddPortsToInterfaceAction addPortAction = addPortActions.get(currentElement.component);
                             if (addPortAction == null) {
                                 addPortAction = new AddPortsToInterfaceAction(currentElement.component);
@@ -429,23 +677,32 @@ public class SmartConnecting {
                             boolean found = false;
                             for (PortCreationList.Entry entry : addList) {
                                 if (entry.name.equals(currentElement.portName)) {
-                                    if (entry.type.get() != outwardTrace1.get(0).port.getDataType()) {
-                                        throw new Exception("Existing port '" + currentElement.getPortLink() + "' needs same data type");
-                                    } else {
-                                        found = true;
+                                    RemoteType existingEntryType = traceRuntime.getRemoteType(entry.type.toString());
+                                    if (existingEntryType == null) {
+                                        throw new Exception("Remote type in PortCreationList not found (logic error)");
                                     }
+                                    if (existingEntryType != currentElement.portDataType) {
+                                        conversionRating = traceRuntime.getTypeConversionRating(outputPorts ? lastElement.portDataType : existingEntryType, outputPorts ? existingEntryType : lastElement.portDataType);
+                                        if (conversionRating == Definitions.TypeConversionRating.IMPOSSIBLE) {
+                                            throw new Exception("Relevant interface has port (to be created) with same name and incompatible data types '" + existingEntryType + "'");
+                                        }
+                                        currentElement.portDataType = existingEntryType;
+                                    }
+                                    currentElement.createEntry = entry;
+                                    found = true;
                                     break;
                                 }
                             }
 
                             if (!found) {
-                                addList.add(new PortCreationList.Entry(currentElement.portName, new DataTypeReference(outwardTrace1.get(0).port.getDataType()), outputPorts ? PortCreationList.CREATE_OPTION_OUTPUT : 0));
+                                currentElement.createEntry = new PortCreationList.Entry(currentElement.portName, new DataTypeReference(outwardTrace1.get(0).port.getDataType()), outputPorts ? PortCreationList.CREATE_OPTION_OUTPUT : 0);
+                                addList.add(currentElement.createEntry);
                             }
                         }
 
                         // Create connection?
-                        if (k > 0 && (lastElement.port == null || currentElement.port == null || (!lastElement.port.isConnectedTo(currentElement.port)))) {
-                            ConnectAction connectAction = new ConnectAction(lastElement.getPortLink(), currentElement.getPortLink());
+                        if (k > 0 && (lastElement.port == null || currentElement.port == null || (!RemoteRuntime.arePortsConnected(lastElement.port, currentElement.port)))) {
+                            ConnectAction connectAction = new ConnectAction(lastElement.getPortLink(), currentElement.getPortLink(), lastElement.portDataType.getName(), currentElement.portDataType.getName(), new RemoteConnectOptions(conversionRating), !outputPorts);
                             action.getActions().add(connectAction);
                         }
                     }
@@ -455,13 +712,35 @@ public class SmartConnecting {
                 TraceElement lastElement1 = outwardTrace1.get(outwardTrace1.size() - 1);
                 TraceElement lastElement2 = outwardTrace2.get(outwardTrace2.size() - 1);
                 if (lastElement1.port instanceof RemotePort && lastElement2.port instanceof RemotePort) {
-                    String result = mayConnectDirectly((RemotePort)lastElement1.port, (RemotePort)lastElement2.port, true);
-                    if (result.length() > 0) {
-                        throw new Exception(result);
+                    boolean port1IsSource = inferConnectDirection(lastElement1.port, lastElement2.port) == AbstractPort.ConnectDirection.TO_TARGET;
+                    MayConnectResult result = mayConnectDirectly(port1IsSource ? lastElement1.port : lastElement2.port, port1IsSource ? lastElement2.port : lastElement1.port, false);
+                    if (result.impossibleHint != null && result.impossibleHint.length() > 0) {
+                        throw new Exception(result.impossibleHint);
                     }
-                }
-                if (lastElement1.port == null || lastElement2.port == null || (!lastElement1.port.isConnectedTo(lastElement2.port))) {
-                    ConnectAction connectAction = new ConnectAction(lastElement1.getPortLink(), lastElement2.getPortLink());
+
+                    ConnectAction connectAction = new ConnectAction(lastElement1.getPortLink(), lastElement2.getPortLink(), lastElement1.portDataType.getName(), lastElement2.portDataType.getName(), new RemoteConnectOptions(result.rating), !port1IsSource);
+                    action.getActions().add(connectAction);
+
+                } else if (lastElement1.port == null || lastElement2.port == null || (!RemoteRuntime.arePortsConnected(lastElement1.port, lastElement2.port))) {
+                    Definitions.TypeConversionRating conversionRating = Definitions.TypeConversionRating.NO_CONVERSION;
+                    boolean port1IsSourcePort = port1IsOutput && ((!outwardOnlyConnection) || outwardTrace1.size() > outwardTrace2.size());
+                    RemoteType sourceType = port1IsSourcePort ? lastElement1.portDataType : lastElement2.portDataType;
+                    RemoteType destinationType = port1IsSourcePort ? lastElement2.portDataType : lastElement1.portDataType;
+                    if (node1Runtime == node2Runtime && lastElement1.portDataType != lastElement2.portDataType) {
+                        conversionRating = node1Runtime.getTypeConversionRating(sourceType, destinationType);
+                        if (conversionRating == Definitions.TypeConversionRating.IMPOSSIBLE) {
+                            throw new Exception("Ports have incompatible data types: '" + sourceType.getName() + "' and '" + destinationType.getName() + "'");
+                        }
+                    } else if (node1Runtime != node2Runtime && (!lastElement1.portDataType.getName().equals(lastElement2.portDataType.getName()))) {
+                        conversionRating = port1IsSourcePort ? getInterRuntimeTypeConversionRating(node1Runtime, lastElement1.portDataType, node2Runtime, lastElement2.portDataType) :
+                                           getInterRuntimeTypeConversionRating(node2Runtime, lastElement2.portDataType, node1Runtime, lastElement1.portDataType);
+                        if (conversionRating == Definitions.TypeConversionRating.IMPOSSIBLE) {
+                            throw new Exception("Ports have incompatible data types: '" + sourceType.getName() + "' and '" + destinationType.getName() + "'");
+                        }
+                        // TODO: maybe shared option needs to be set for port to be created in some scenarios
+                    }
+
+                    ConnectAction connectAction = new ConnectAction(lastElement1.getPortLink(), lastElement2.getPortLink(), lastElement1.portDataType.getName(), lastElement2.portDataType.getName(), new RemoteConnectOptions(conversionRating), !port1IsSourcePort);
                     action.getActions().add(connectAction);
                 }
             }
@@ -498,6 +777,23 @@ public class SmartConnecting {
         }
         if (result.isEmpty()) {
             throw caughtException;
+        }
+        return result;
+    }
+
+    /**
+     * @param port Port whose URI path to obtain
+     * @return URI path of port
+     */
+    public static String getUriPath(RemotePort port) {
+        String result = "";
+        ModelNode currentElement = port;
+        while (currentElement != null) {
+            if ((currentElement instanceof RemoteRuntime) || (!(currentElement instanceof RemoteFrameworkElement))) {
+                break;
+            }
+            result = "/" + port.getName().replace("/", "%2F") + result;
+            currentElement = currentElement.getParent();
         }
         return result;
     }

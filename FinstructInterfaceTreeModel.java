@@ -28,6 +28,7 @@ import javax.swing.event.TreeModelListener;
 
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
+import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
 
 /**
@@ -92,10 +93,32 @@ public class FinstructInterfaceTreeModel extends InterfaceTreeModel implements R
      */
     private void processSubtree(ModelNode node) {
         if (node instanceof RemoteFrameworkElement && ((RemoteFrameworkElement)node).isCompositeComponent()) {
-            frameworkElementsToCheckForInterface.add((RemoteFrameworkElement)node);
+            RemoteRuntime r = RemoteRuntime.find((RemoteFrameworkElement)node);
+            if (r != null && r.getSerializationInfo().getRevision() == 0) {
+                frameworkElementsToCheckForInterface.add((RemoteFrameworkElement)node);
+            }
         }
         for (int i = 0; i < node.getChildCount(); i++) {
             processSubtree(node.getChildAt(i));
         }
     }
+
+    /**
+     * Update/resolve URI connector connection partners using current model.
+     * When model changes, this needs to be computed again (suggestion: do before redraw)
+     * May only be called by thread that builds remote model
+     */
+    public void updateUriConnectors() {
+        // TODO: make this more general when required (handle runtimes that are not two levels below root)
+        for (int i = 0; i < getRoot().getChildCount(); i++) {
+            ModelNode transportRoot = getRoot().getChildAt(i);
+            for (int j = 0; j < transportRoot.getChildCount(); j++) {
+                ModelNode node = transportRoot.getChildAt(j);
+                if (node instanceof RemoteRuntime) {
+                    ((RemoteRuntime)node).updateUriConnectors();
+                }
+            }
+        }
+    }
+
 }

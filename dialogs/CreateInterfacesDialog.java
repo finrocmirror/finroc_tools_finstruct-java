@@ -38,13 +38,12 @@ import org.finroc.core.datatype.PortCreationList;
 import org.finroc.core.finstructable.GroupInterface;
 import org.finroc.core.finstructable.GroupInterface.DataClassification;
 import org.finroc.core.finstructable.GroupInterface.PortDirection;
-import org.finroc.core.parameter.StaticParameterBool;
-import org.finroc.core.parameter.StaticParameterEnum;
 import org.finroc.core.parameter.StaticParameterList;
-import org.finroc.core.plugin.RemoteCreateModuleAction;
 import org.finroc.core.port.ThreadLocalCache;
+import org.finroc.core.remote.RemoteCreateAction;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemoteRuntime;
+import org.finroc.core.remote.RemoteStaticParameterList;
 import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.propertyeditor.FinrocComponentFactory;
 import org.finroc.tools.finstruct.propertyeditor.FinrocObjectAccessor;
@@ -58,6 +57,7 @@ import org.finroc.tools.gui.util.propertyeditor.StandardComponentFactory;
 import org.finroc.tools.gui.util.treemodel.InterfaceTreeModel;
 import org.rrlib.logging.Log;
 import org.rrlib.logging.LogLevel;
+import org.rrlib.serialization.Register;
 
 /**
  * @author Max Reichardt
@@ -113,7 +113,7 @@ public class CreateInterfacesDialog extends MDialog {
     private final CreationTasksContainer creation = new CreationTasksContainer();
 
     /** Remote action for creating interfaces */
-    private RemoteCreateModuleAction createInterfaceAction;
+    private RemoteCreateAction createInterfaceAction;
 
     /** Tree model of remote framework elements */
     private InterfaceTreeModel treeModel;
@@ -136,9 +136,11 @@ public class CreateInterfacesDialog extends MDialog {
         }
 
         RemoteRuntime rr = RemoteRuntime.find(element);
-        for (RemoteCreateModuleAction a : rr.getAdminInterface().getRemoteModuleTypes()) {
-            if (a.groupName.equals("core") || a.groupName.equals("finroc_plugins_runtime_construction") && a.name.equals("Interface")) {
-                createInterfaceAction = a;
+        Register<RemoteCreateAction> createActions = rr.getCreateActions();
+        for (int i = 0, n = createActions.size(); i < n; i++) {
+            RemoteCreateAction action = createActions.get(i);
+            if (action.getGroupName().equals("core") || action.getGroupName().equals("finroc_plugins_runtime_construction") && action.getName().equals("Interface")) {
+                createInterfaceAction = action;
                 break;
             }
         }
@@ -308,12 +310,12 @@ public class CreateInterfacesDialog extends MDialog {
                     // Create modules
                     for (CreationTask task : creation.tasks) {
                         if (task.create) {
-                            StaticParameterList spl = new StaticParameterList();
-                            spl.add(new StaticParameterEnum<GroupInterface.DataClassification>("", task.dataClassification));
-                            spl.add(new StaticParameterEnum<GroupInterface.PortDirection>("", task.portDirection));
-                            spl.add(new StaticParameterBool("", task.shared));
-                            spl.add(new StaticParameterBool("", task.globallyUniqueLinks));
-                            String error = rr.getAdminInterface().createModule(createInterfaceAction, task.name, element.getRemoteHandle(), spl);
+                            RemoteStaticParameterList parameters = createInterfaceAction.getParameters().instantiate();
+                            parameters.get(0).setValue(task.dataClassification);
+                            parameters.get(1).setValue(task.portDirection);
+                            parameters.get(2).setValue(task.shared);
+                            parameters.get(3).setValue(task.globallyUniqueLinks);
+                            String error = rr.getAdminInterface().createModule(createInterfaceAction, task.name, element.getRemoteHandle(), parameters);
                             if (error.length() == 0 && task.portCreationList.getSize() > 0) {
                                 setPortListCount++;
                             } else if (error.length() > 0) {
@@ -362,10 +364,10 @@ public class CreateInterfacesDialog extends MDialog {
                                 try {
                                     RemoteRuntime rr = RemoteRuntime.find(element);
                                     int handle = element.getRemoteHandle();
-                                    StaticParameterList elementParamList = (StaticParameterList)rr.getAdminInterface().getAnnotation(handle, StaticParameterList.TYPE);
+                                    RemoteStaticParameterList elementParamList = new RemoteStaticParameterList();
+                                    elementParamList.deserialize(rr.getAdminInterface().getAnnotation(handle, StaticParameterList.TYPE.getName(), rr));
                                     elementParamList.get(0).setValue(task.portCreationList);
-                                    rr.getAdminInterface().setAnnotation(handle, elementParamList);
-
+                                    rr.getAdminInterface().setAnnotation(handle, StaticParameterList.TYPE.getName(), elementParamList);
                                     setPortListCount--;
                                     break;
                                 } catch (Exception e) {

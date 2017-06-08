@@ -68,15 +68,15 @@ import javax.swing.event.ChangeListener;
 
 import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.RuntimeEnvironment;
-import org.finroc.core.finstructable.EditableInterfaces;
 import org.finroc.core.parameter.StaticParameterList;
-import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
-import org.finroc.core.port.net.NetPort;
+import org.finroc.core.remote.RemoteEditableInterfaces;
 import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteConnector;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
+import org.finroc.core.remote.RemoteStaticParameterList;
 import org.finroc.core.util.Files;
 import org.finroc.plugins.data_types.StdStringList;
 import org.finroc.tools.finstruct.Finstruct;
@@ -92,6 +92,7 @@ import org.finroc.tools.gui.util.gui.MToolBar;
 import org.finroc.tools.gui.util.gui.MAction;
 import org.rrlib.logging.Log;
 import org.rrlib.logging.LogLevel;
+import org.rrlib.serialization.BinaryInputStream;
 import org.rrlib.xml.XMLNode;
 
 /**
@@ -352,6 +353,7 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 setFontMetricsToDefault(zoom);
             }
             if (!keepVerticesAndEdges) {
+                getFinstruct().getIoInterface().updateUriConnectors();
                 final ModelNode root = getRootElement();
 
                 int width = getWidth();
@@ -1149,51 +1151,23 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
             final ArrayList<ModelNode> srcPorts = new ArrayList<ModelNode>();
             final HashSet<ModelNode> destPorts = new HashSet<ModelNode>();
-            final ArrayList<AbstractPort> remoteEdgeDestinations = new ArrayList<AbstractPort>();
+            final ArrayList<RemoteConnector> remoteConnectors = new ArrayList<RemoteConnector>();
 
-            // all forward edges
-            if (getSource().getModelElement() != null) {
+            if (getSource().getModelElement() != null && getDestination().getModelElement() != null) {
                 ArrayList<RemotePort> remotePorts = getSource().getModelElement().getPortsBelow(null);
                 for (RemotePort remotePort : remotePorts) {
-                    NetPort np = remotePort.getPort().asNetPort();
-                    if (np != null) {
-                        boolean added = false;
-                        remoteEdgeDestinations.clear();
-                        int reverseIndex = np.getRemoteEdgeDestinations(remoteEdgeDestinations);
-                        for (int i = 0; i < reverseIndex; i++) {
-                            AbstractPort port = remoteEdgeDestinations.get(i);
-                            for (RemotePort remoteDestPort : RemotePort.get(port)) {
-                                if (remoteDestPort.isNodeAncestor(getDestination().getModelElement())) {
-                                    destPorts.add(remoteDestPort);
-                                    if (!added) {
-                                        srcPorts.add(remotePort);
-                                        added = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // reverse network edges
-            if (getDestination().getModelElement() != null) {
-                ArrayList<RemotePort> remotePorts = getDestination().getModelElement().getPortsBelow(null);
-                for (RemotePort remotePort : remotePorts) {
-                    NetPort np = remotePort.getPort().asNetPort();
-                    if (np != null) {
-                        remoteEdgeDestinations.clear();
-                        int reverseIndex = np.getRemoteEdgeDestinations(remoteEdgeDestinations);
-                        for (int i = reverseIndex; i < remoteEdgeDestinations.size(); i++) {
-                            AbstractPort port = remoteEdgeDestinations.get(i);
-                            for (RemotePort remoteSourcePort : RemotePort.get(port)) {
-                                if (remoteSourcePort.isNodeAncestor(getSource().getModelElement())) {
-                                    if (!srcPorts.contains(remoteSourcePort)) {
-                                        srcPorts.add(remoteSourcePort);
-                                    }
-                                    if (!destPorts.contains(remotePort)) {
-                                        destPorts.add(remotePort);
-                                    }
+                    boolean added = false;
+                    remoteConnectors.clear();
+                    RemoteRuntime remoteRuntime = RemoteRuntime.find(remotePort);
+                    remoteRuntime.getConnectors(remoteConnectors, remotePort);
+                    for (RemoteConnector connector : remoteConnectors) {
+                        RemotePort partner = connector.getPartnerPort(remotePort, remoteRuntime);
+                        for (RemotePort remoteDestPort : RemotePort.get(partner.getPort())) {
+                            if (remoteDestPort.isNodeAncestor(getDestination().getModelElement())) {
+                                destPorts.add(remoteDestPort);
+                                if (!added) {
+                                    srcPorts.add(remotePort);
+                                    added = true;
                                 }
                             }
                         }
@@ -1512,7 +1486,11 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
         } else if (ae.getSource() == miEditModule) {
             if (rightClickedOn instanceof RemoteFrameworkElement) {
-                new ParameterEditDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, true, false);
+                try {
+                    new ParameterEditDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, true, false);
+                } catch (Exception e) {
+                    Finstruct.showErrorMessage(e, true);
+                }
                 refreshViewAfter(500);
             }
         } else if (ae.getSource() == miCreateInterfaces) {
@@ -1522,7 +1500,11 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
             }
         } else if (ae.getSource() == miEditInterfaces) {
             if (rightClickedOn instanceof RemoteFrameworkElement) {
-                new ParameterEditDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, true, true);
+                try {
+                    new ParameterEditDialog(getFinstruct()).show((RemoteFrameworkElement)rightClickedOn, true, true);
+                } catch (Exception e) {
+                    Finstruct.showErrorMessage(e, true);
+                }
                 refreshViewAfter(500);
             }
         } else if (ae.getSource() == miHide) {
@@ -1693,9 +1675,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                 if (rr != null && isConnectedToRootNode()) {
                     if (rightClickedOn instanceof RemoteFrameworkElement) {
                         try {
-                            StaticParameterList parameterList = (StaticParameterList)rr.getAdminInterface().getAnnotation(
-                                                                    ((RemoteFrameworkElement)rightClickedOn).getRemoteHandle(), StaticParameterList.TYPE);
-                            miEditModule.setEnabled(parameterList != null);
+                            BinaryInputStream staticParameterListStream = rr.getAdminInterface().getAnnotation(((RemoteFrameworkElement)rightClickedOn).getRemoteHandle(), StaticParameterList.TYPE.getName(), rr);
+                            miEditModule.setEnabled(staticParameterListStream != null);
                         } catch (Exception exception) {}
                     }
 
@@ -1712,11 +1693,11 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                             }
                             if (structureFile.length() == 0) {
                                 try {
-                                    StaticParameterList parameterList = (StaticParameterList)rr.getAdminInterface().getAnnotation(
-                                                                            finstructableGroup.getRemoteHandle(), StaticParameterList.TYPE);
+                                    RemoteStaticParameterList parameterList = new RemoteStaticParameterList();
+                                    parameterList.deserialize(rr.getAdminInterface().getAnnotation(finstructableGroup.getRemoteHandle(), StaticParameterList.TYPE.getName(), rr));
                                     for (int i = 0; i < parameterList.size(); i++) {
                                         if (parameterList.get(i).getName().equalsIgnoreCase("xml file")) {
-                                            structureFile = parameterList.get(i).valPointer().getData().toString();
+                                            structureFile = parameterList.get(i).getValue().getData().toString();
                                             break;
                                         }
                                     }
@@ -1735,9 +1716,8 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
 
                         if (((RemoteFrameworkElement)rightClickedOn).getFlag(FrameworkElementFlags.FINSTRUCTABLE_GROUP)) {
                             try {
-                                EditableInterfaces editableInterfaces = (EditableInterfaces)rr.getAdminInterface().getAnnotation(
-                                        ((RemoteFrameworkElement)rightClickedOn).getRemoteHandle(), EditableInterfaces.TYPE);
-                                miEditInterfaces.setEnabled(editableInterfaces != null);
+                                BinaryInputStream editableInterfacesStream = rr.getAdminInterface().getAnnotation(((RemoteFrameworkElement)rightClickedOn).getRemoteHandle(), RemoteEditableInterfaces.TYPE_NAME, rr);
+                                miEditInterfaces.setEnabled(editableInterfacesStream != null);
                             } catch (Exception exception) {}
                         }
                     }

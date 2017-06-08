@@ -22,7 +22,9 @@
 package org.finroc.tools.finstruct.actions;
 
 import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteConnectOptions;
 import org.finroc.core.remote.RemotePort;
+import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.Finstruct;
 
 
@@ -34,11 +36,16 @@ import org.finroc.tools.finstruct.Finstruct;
 public class DisconnectAction extends ConnectAction {
 
     /**
-     * @param source Fully qualified name of source
-     * @param destination Fully qualified name of destination
+     * @param source Fully qualified name of source port
+     * @param destination Fully qualified name of destination port
+     * @param sourceTypeName Name of source port data type
+     * @param destinationTypeName Name of destination port data type
+     * @param currentConnectOptions Connect Options of current connection (required for undo)
+     * @param reverse Whether destinationLink refers to the actual source port
      */
-    public DisconnectAction(String source, String destination) {
-        super(source, destination);
+    public DisconnectAction(String sourceLink, String destinationLink, String sourceTypeName, String destinationTypeName, RemoteConnectOptions currentConnectOptions, boolean reverse) {
+        super(sourceLink, destinationLink, sourceTypeName, destinationTypeName, new RemoteConnectOptions(), reverse);
+        this.currentConnectOptions = currentConnectOptions;
     }
 
     @Override
@@ -48,15 +55,15 @@ public class DisconnectAction extends ConnectAction {
 
     @Override
     protected String checkSuccessImplementation() {
-        ModelNode sourceNode = Finstruct.getInstance().getIoInterface().getChildByQualifiedName(sourceLink, LINK_SEPARATOR);
+        ModelNode sourceNode = Finstruct.getInstance().getIoInterface().getChildByQualifiedName(super.getSourceLink(), LINK_SEPARATOR);
         if (!(sourceNode instanceof RemotePort)) {
             return "";
         }
-        ModelNode destinationNode = Finstruct.getInstance().getIoInterface().getChildByQualifiedName(destinationLink, LINK_SEPARATOR);
+        ModelNode destinationNode = Finstruct.getInstance().getIoInterface().getChildByQualifiedName(super.getDestinationLink(), LINK_SEPARATOR);
         if (!(destinationNode instanceof RemotePort)) {
             return "";
         }
-        if (!((RemotePort)sourceNode).isConnectedTo((RemotePort)destinationNode)) {
+        if (!RemoteRuntime.arePortsConnected((RemotePort)sourceNode, (RemotePort)destinationNode)) {
             return "";
         }
         return null;
@@ -64,14 +71,15 @@ public class DisconnectAction extends ConnectAction {
 
     @Override
     protected FinstructAction getUndoActionImplementation() {
-        return new ConnectAction(sourceLink, destinationLink);
+        return new ConnectAction(super.getSourceLink(), super.getDestinationLink(), super.getSourceTypeName(), super.getDestinationTypeName(), currentConnectOptions, false);
     }
 
     @Override
     public String getDescriptionForEditMenu() {
-        return "Disonnect " + getReadableLinkForMenu(sourceLink);
+        return "Disconnect " + getReadableLinkForMenu(super.getSourceLink());
     }
 
-    /** Qualified links to source and destination ports to connect */
-    private String sourceLink, destinationLink;
+
+    /** Connect Options of current connection (required for undo) */
+    private RemoteConnectOptions currentConnectOptions;
 }

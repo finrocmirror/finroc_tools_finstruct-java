@@ -25,6 +25,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -47,23 +48,28 @@ import org.finroc.core.admin.AdminClient;
 import org.finroc.core.parameter.ParameterInfo;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
-import org.finroc.core.port.net.NetPort;
-import org.finroc.core.portdatabase.FinrocTypeInfo;
+import org.finroc.core.remote.Definitions;
 import org.finroc.core.remote.HasUid;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.PortWrapper;
+import org.finroc.core.remote.RemoteConnector;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
 import org.finroc.core.remote.RemoteRuntime;
+import org.finroc.core.remote.RemoteUriConnector;
+import org.finroc.tools.finstruct.SmartConnecting.MayConnectResult;
 import org.finroc.tools.finstruct.actions.AddPortsToInterfaceAction;
 import org.finroc.tools.finstruct.actions.CompositeAction;
+import org.finroc.tools.finstruct.actions.ConnectAction;
 import org.finroc.tools.finstruct.actions.FinstructAction;
+import org.finroc.tools.finstruct.dialogs.CreateConnectorOptionsDialog;
 import org.finroc.tools.gui.ConnectionPanel;
 import org.finroc.tools.gui.ConnectorIcon;
 import org.finroc.tools.gui.ConnectorIcon.LineStart;
 import org.finroc.tools.gui.util.gui.MJTree;
 import org.rrlib.logging.Log;
 import org.rrlib.logging.LogLevel;
+import org.rrlib.serialization.rtti.DataTypeBase;
 
 /**
  * @author Max Reichardt
@@ -84,17 +90,39 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     /** menu items */
     private final JMenuItem miOpenInNewWindow;
 
-    /** Temporary storage for edge destinations - used only by AWT Thread for painting connections */
-    private final ArrayList<AbstractPort> tempDestinationList = new ArrayList<AbstractPort>();
-
     /** Temporary storage hypotheticalConnections - used only by AWT Thread */
     private final ArrayList<RemotePort> tempConnectList1 = new ArrayList<RemotePort>();
     private final ArrayList<ModelNode> tempConnectList2 = new ArrayList<ModelNode>();
+    private final ArrayList<RemoteConnector> tempConnectorList = new ArrayList<RemoteConnector>();
 
     /** More colors */
     public static final ConnectorIcon.IconColor lightGrayColor = new ConnectorIcon.IconColor(new Color(211, 211, 211), new Color(233, 233, 233));
     public static final Color rootViewColor = new Color(211, 211, 211);
     public static final Color inactiveTextColor = new Color(160, 160, 160);
+    public static final ConnectorIcon.IconColor errorColor = connectionPartnerMissingColor;
+    public static final ConnectorIcon.IconColor connectorNoConversion = connectedColor;
+    public static final Color connectorImplicitConversion = new Color(80, 200, 30);
+    public static final Color connectorExplicitConversion = new Color(160, 230, 30);
+    public static final Color connectorDeprecatedConversion = new Color(230, 140, 30);
+    public static final Color connectorNetwork = new Color(40, 40, 200);
+
+    public static final ConnectorIcon.IconColor portSelected20 = createConnectionCandidateColor(0.2);
+    public static final ConnectorIcon.IconColor portSelected40 = createConnectionCandidateColor(0.4);
+    public static final ConnectorIcon.IconColor portSelected60 = createConnectionCandidateColor(0.6);
+    public static final ConnectorIcon.IconColor portSelected80 = createConnectionCandidateColor(0.8);
+
+    public static final ConnectorIcon.IconColor[] candidatePortRatingColors = new ConnectorIcon.IconColor[] {
+        defaultColor,
+        portSelected20,
+        portSelected40,
+        portSelected60,
+        portSelected60,
+        portSelected60,
+        portSelected60,
+        portSelected80,
+        portSelected80,
+        selectedColor
+    };
 
     /** Tooltip-related */
     private Popup toolTip;
@@ -131,7 +159,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             return (((o1 instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)o1).getAnnotation(ParameterInfo.TYPE) != null && o2.getClass() == ConfigFileModel.ConfigEntryWrapper.class) ||
                     ((o2 instanceof RemoteFrameworkElement) && ((RemoteFrameworkElement)o2).getAnnotation(ParameterInfo.TYPE) != null && o1.getClass() == ConfigFileModel.ConfigEntryWrapper.class));
         } else if (o1 instanceof RemotePort && o2 instanceof RemotePort) {
-            return canConnectPorts((RemotePort)o1, (RemotePort)o2).length() == 0;
+            return canConnectPorts((RemotePort)o1, (RemotePort)o2).isConnectingPossible();
         }
         return false;
     }
@@ -141,11 +169,11 @@ public class FinstructConnectionPanel extends ConnectionPanel {
      *
      * @param p1 Port 1
      * @param p2 Port 2
-     * @return "" if they can be connected. Otherwise the reason why not.
+     * @return If connecting is possible: SmartConnecting.CAN_CONNECT, CAN_CONNECT_IMPLICIT_CAST, or CAN_CONNECT_EXPLICIT_CAST (all 'possible' strings start with CAN_CONNECT). If connecting is not possible, reason for this.
      */
-    private String canConnectPorts(RemotePort p1, RemotePort p2) {
-        if (p1.isConnectedTo(p2)) {
-            return "Ports are connected already";
+    private SmartConnecting.MayConnectResult canConnectPorts(RemotePort p1, RemotePort p2) {
+        if (RemoteRuntime.arePortsConnected(p1, p2)) {
+            return new SmartConnecting.MayConnectResult("Ports are connected already");
         }
 
         if (finstruct.allowDirectConnectingAcrossGroupBoundaries()) {
@@ -156,6 +184,19 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         tempConnectList1.add(p1);
         tempConnectList2.add(p2);
         return SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries()); // TODO: this can be optimized
+    }
+
+    /**
+     * Create color for candidate ports for connections
+     *
+     * @param redFactor The amount of red in color (0...1)
+     * @return Color
+     */
+    private static ConnectorIcon.IconColor createConnectionCandidateColor(double redFactor) {
+        ConnectorIcon.IconColor base = defaultColor;
+        ConnectorIcon.IconColor red = selectedColor;
+        double baseFactor = 1 - redFactor;
+        return new ConnectorIcon.IconColor((int)(baseFactor * base.getRed() + redFactor * red.getRed()), (int)(baseFactor * base.getGreen() + redFactor * red.getGreen()), (int)(baseFactor * base.getBlue() + redFactor * red.getBlue()));
     }
 
     /**
@@ -202,65 +243,84 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    protected Object hypotheticalConnectionImplementation(Object tn) {
+    protected CheckConnectResult checkConnect(Object other, CheckConnectResult resultBuffer) {
         if (getRightTree() instanceof ConfigFileModel) {
-            return super.hypotheticalConnectionImplementation(tn);
+            return super.checkConnect(other, resultBuffer);
         }
 
-        MJTree<Object> selTree = selectionFromRight ? rightTree : leftTree;
+        // Init objects
+        resultBuffer.partnerNodes.clear();
+        resultBuffer.connectionScores.clear();
+        resultBuffer.minScore = Definitions.TypeConversionRating.IMPOSSIBLE;
+        resultBuffer.impossibleHint = "";
+        if (other == null) {
+            resultBuffer.impossibleHint = "Partner object is null";
+            return resultBuffer;
+        }
+
+        MJTree<Object> selectionTree = selectionFromRight ? rightTree : leftTree;
 
         // scan nodes to connect
-        RemoteFrameworkElement nonPortNode = processSourceNodesToConnect(tempConnectList1, selTree.getSelectedObjects());
+        RemoteFrameworkElement nonPortNode = processSourceNodesToConnect(tempConnectList1, selectionTree.getSelectedObjects());
         if (tempConnectList1.size() == 0) {
-            return nonPortNode != null && nonPortNode.isInterface() ? "Selected interface in other tree is empty" : "Only ports and interfaces can be connected (dragged)";
+
+            resultBuffer.impossibleHint = nonPortNode != null && nonPortNode.isInterface() ? "Selected interface in other tree is empty" : "Only ports and interfaces can be connected (dragged)";
+            return resultBuffer;
         }
 
         if (nonPortNode != null) {
             // only connect to other non-port nodes
-            if (tn instanceof RemotePort) {
-                return "Interfaces cannot be connected to ports (you may try the other way round)";
+            if (other instanceof RemotePort) {
+                resultBuffer.impossibleHint = "Interfaces cannot be connected to ports (you may try the other way round)";
+                return resultBuffer;
             }
 
             tempConnectList2.clear();
             for (int i = 0; i < tempConnectList1.size(); i++) {
-                tempConnectList2.add((ModelNode)tn);
+                tempConnectList2.add((ModelNode)other);
             }
-            String reason = SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries());
-            if (reason.length() > 0) {
-                return reason;
+            MayConnectResult mayConnect = SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries());
+            if (!mayConnect.isConnectingPossible()) {
+                resultBuffer.impossibleHint = mayConnect.impossibleHint;
+                return resultBuffer;
             }
-            ArrayList<Object> result = new ArrayList<Object>();
-            result.add(tn);
-            return result;
+            resultBuffer.partnerNodes.add(other);
+            resultBuffer.connectionScores.add(mayConnect.rating);
+            resultBuffer.minScore = mayConnect.rating;
+            return resultBuffer;
         }
 
-        if (tn instanceof RemotePort) {
+        if (other instanceof RemotePort) {
             if (tempConnectList1.size() == 1) {
                 // Optimized implementation for only one selected port
-                String reason = canConnectPorts(tempConnectList1.get(0), (RemotePort)tn);
-                if (reason.length() > 0) {
-                    return reason;
+                SmartConnecting.MayConnectResult mayConnect = canConnectPorts(tempConnectList1.get(0), (RemotePort)other);
+                if (!mayConnect.isConnectingPossible()) {
+                    resultBuffer.impossibleHint = mayConnect.impossibleHint;
+                    return resultBuffer;
                 }
-                ArrayList<Object> result = new ArrayList<Object>();
-                result.add(tn);
-                return result;
+                resultBuffer.partnerNodes.add(other);
+                resultBuffer.connectionScores.add(mayConnect.rating);
+                resultBuffer.minScore = mayConnect.rating;
+                return resultBuffer;
             }
 
             // Standard hypotheticalConnectionImplementation from base class
-            return super.hypotheticalConnectionImplementation(tn);
+            return super.checkConnect(other, resultBuffer);
         } else {
             // Connect all ports to non-port tree node
             tempConnectList2.clear();
             for (int i = 0; i < tempConnectList1.size(); i++) {
-                tempConnectList2.add((ModelNode)tn);
+                tempConnectList2.add((ModelNode)other);
             }
-            String reason = SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries());
-            if (reason.length() > 0) {
-                return reason;
+            MayConnectResult mayConnect = SmartConnecting.mayConnect(tempConnectList1, tempConnectList2, finstruct.allowDirectConnectingAcrossGroupBoundaries());
+            if (!mayConnect.isConnectingPossible()) {
+                resultBuffer.impossibleHint = mayConnect.impossibleHint;
+                return resultBuffer;
             }
-            ArrayList<Object> result = new ArrayList<Object>();
-            result.addAll(tempConnectList2);
-            return result;
+            resultBuffer.partnerNodes.add(other);
+            resultBuffer.connectionScores.add(mayConnect.rating);
+            resultBuffer.minScore = mayConnect.rating;
+            return resultBuffer;
         }
     }
 
@@ -312,6 +372,21 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 }
             }
 
+            // Query for any type conversions
+            boolean showCreateConnectorDialog = false;
+            for (FinstructAction a : ((CompositeAction)action).getActions()) {
+                if (a instanceof ConnectAction) {
+                    showCreateConnectorDialog |= ((ConnectAction)a).getConnectOptions().requiresOperationSelection() || FinstructAction.findRemoteRuntime(((ConnectAction)a).getSourceLink()) != FinstructAction.findRemoteRuntime(((ConnectAction)a).getDestinationLink());
+                }
+            }
+            if (showCreateConnectorDialog) {
+                CreateConnectorOptionsDialog dialog = new CreateConnectorOptionsDialog(finstruct);
+                dialog.show(((CompositeAction)action).getActions());
+                if (dialog.cancelled()) {
+                    return;
+                }
+            }
+
             action.execute();
             timer.restart();
         } catch (Exception e) {
@@ -353,7 +428,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 RemoteRuntime rr = RemoteRuntime.find((RemotePort)parameter);
                 AdminClient ac = rr.getAdminInterface();
                 pi.setConfigEntry("/" + ((HasUid)configNode).getUid(), true);
-                ac.setAnnotation(((RemotePort)parameter).getRemoteHandle(), pi);
+                ac.setAnnotation(((RemotePort)parameter).getRemoteHandle(), ParameterInfo.TYPE.getName(), pi);
                 return;
             }
         }
@@ -361,12 +436,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    protected List<Object> getConnectionPartners(Object port) {
-        return getConnectionPartners(port, false);
-    }
-
-    /** Implementation of getConnectionPartners */
-    protected List<Object> getConnectionPartners(final Object treeNode, boolean includeSourcePorts) {
+    protected List<Object> getConnectionPartners(Object treeNode) {
         final List<Object> result = new ArrayList<Object>();
         if (!(treeNode instanceof RemotePort)) {
             return result;
@@ -382,10 +452,11 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             }
             return result;
         } else {
-            result.addAll(port.getOutgoingConnections());
-
-            if (includeSourcePorts) { // computationally expensive
-                result.addAll(port.getIncomingConnections());
+            RemoteRuntime runtime = RemoteRuntime.find(port);
+            ArrayList<RemoteConnector> connectors = new ArrayList<>();
+            runtime.getConnectors(connectors, port);
+            for (RemoteConnector connector : connectors) {
+                result.add(connector.getPartnerPort(port, runtime));
             }
             return result;
         }
@@ -412,7 +483,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                             RemoteRuntime rr = RemoteRuntime.find(remotePort);
                             AdminClient ac = rr.getAdminInterface();
                             pi.setConfigEntry("");
-                            ac.setAnnotation(remotePort.getRemoteHandle(), pi);
+                            ac.setAnnotation(remotePort.getRemoteHandle(), ParameterInfo.TYPE.getName(), pi);
                         }
                     }
                 } else if (object instanceof RemotePort) {
@@ -420,43 +491,45 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                     AdminClient ac = rr.getAdminInterface();
                     ParameterInfo pi = (ParameterInfo)((RemotePort)object).getAnnotation(ParameterInfo.TYPE);
                     pi.setConfigEntry("");
-                    ac.setAnnotation(((RemotePort)object).getRemoteHandle(), pi);
+                    ac.setAnnotation(((RemotePort)object).getRemoteHandle(), ParameterInfo.TYPE.getName(), pi);
                 }
                 return;
             } else if (object instanceof RemotePort) {
                 RemotePort port = (RemotePort)object;
-                List<Object> partners = getConnectionPartners(port, true);
-                NetPort np1 = port.getPort().asNetPort();
-                AdminClient ac = RemoteRuntime.find(np1).getAdminInterface();
+                RemoteRuntime runtime = RemoteRuntime.find(port);
+                if (runtime == null || runtime.getAdminInterface() == null) {
+                    return;
+                }
+                ArrayList<RemoteConnector> connectors = new ArrayList<>();
+                runtime.getConnectors(connectors, port);
                 MJTree<Object> otherTree = popupOnRight ? leftTree : rightTree;
 
-                if (ac != null) {
-                    if (visibleConnectionsOnly) {
-                        for (Object partner : partners) {
-                            if (otherTree.isVisible(partner) && (partner instanceof RemotePort)) {
-                                ac.disconnect(np1, ((RemotePort)partner).getPort().asNetPort());
-                            }
+                if (visibleConnectionsOnly) {
+                    for (RemoteConnector connector : connectors) {
+                        RemotePort partnerPort = connector.getPartnerPort(port, runtime);
+                        if (otherTree.isVisible(partnerPort)) {
+                            runtime.getAdminInterface().disconnect(connector);
                         }
-                    } else {
-                        ac.disconnectAll(np1);
                     }
-                    timer.restart();
+                } else {
+                    runtime.getAdminInterface().disconnectAll(port);
                 }
+                timer.restart();
 
 
                 // Remove any network connections in reverse direction
-                for (Object partner : partners) {
-                    ArrayList<AbstractPort> result = new ArrayList<AbstractPort>();
-                    NetPort partnerNetPort = ((RemotePort)partner).getPort().asNetPort();
-                    int reverseIndex = partnerNetPort.getRemoteEdgeDestinations(result);
-                    for (int i = 0; i < reverseIndex; i++) {
-                        AdminClient partnerClient = RemoteRuntime.find(partnerNetPort).getAdminInterface();
-                        if (partnerClient != null && ac != partnerClient && result.get(i) == np1.getPort() && ((!visibleConnectionsOnly) || otherTree.isVisible(partner))) {
-                            partnerClient.networkConnect(partnerNetPort, "", RemoteRuntime.find(np1).uuid, ((RemotePort)port).getRemoteHandle(), ((HasUid)port).getUid(), true);
-                            timer.restart();
-                        }
-                    }
-                }
+//                for (Object partner : partners) {
+//                    ArrayList<AbstractPort> result = new ArrayList<AbstractPort>();
+//                    NetPort partnerNetPort = ((RemotePort)partner).getPort().asNetPort();
+//                    int reverseIndex = partnerNetPort.getRemoteEdgeDestinations(result);
+//                    for (int i = 0; i < reverseIndex; i++) {
+//                        AdminClient partnerClient = RemoteRuntime.find(partnerNetPort).getAdminInterface();
+//                        if (partnerClient != null && ac != partnerClient && result.get(i) == np1.getPort() && ((!visibleConnectionsOnly) || otherTree.isVisible(partner))) {
+//                            partnerClient.networkConnect(partnerNetPort, "", RemoteRuntime.find(np1).uuid, ((RemotePort)port).getRemoteHandle(), ((HasUid)port).getUid(), true);
+//                            timer.restart();
+//                        }
+//                    }
+//                }
                 return;
             }
         }
@@ -474,9 +547,10 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         if (element == null || showRightTree == false || getRightTree() instanceof ConfigFileModel || selTree.getSelectionCount() == 0 || otherTree.getSelectedObjects().contains(element)) {
             tooltip = null;
         } else {
-            Object result = hypotheticalConnectionImplementation(element);
-            if (result != null && result.getClass().equals(String.class)) {
-                tooltip = result.toString();
+            CheckConnectResult result = new CheckConnectResult();
+            checkConnect(element, result);
+            if (result.minScore == Definitions.TypeConversionRating.IMPOSSIBLE) {
+                tooltip = result.impossibleHint;
             }
         }
 
@@ -558,9 +632,63 @@ public class FinstructConnectionPanel extends ConnectionPanel {
 
     @Override
     protected void drawConnections(Graphics g) {
-        drawConnectionsHelper(g, leftTree, rightTree);
-        if (!(getRightTree() instanceof ConfigFileModel)) {
-            drawConnectionsHelper(g, rightTree, leftTree);
+        if (getRightTree() instanceof ConfigFileModel) {
+            drawConnectionsHelper(g, leftTree, rightTree);
+        } else if (showRightTree) {
+
+            Rectangle visible = this.getVisibleRect();
+            List<Object> visibleNodesLeft = leftTree.getVisibleObjects();
+            ArrayList<RemoteConnector> connectorList = new ArrayList<RemoteConnector>();
+            finstruct.getIoInterface().updateUriConnectors();
+
+            for (Object node : visibleNodesLeft) {
+                if (node instanceof RemotePort) {
+                    RemotePort portLeft = (RemotePort)node;
+                    RemoteRuntime runtime = RemoteRuntime.find(portLeft);
+                    runtime.getConnectors(connectorList, portLeft);
+                    for (RemoteConnector connector : connectorList) {
+                        RemotePort portRight = connector.getPartnerPort(portLeft, runtime);
+                        if (portRight != null && rightTree.isVisible(portRight)) {
+                            Point p1 = getLineStartPoint(leftTree, portLeft, getLineStartPosition(connector, portLeft, portRight));
+                            Point p2 = getLineStartPoint(rightTree, portRight, getLineStartPosition(connector, portRight, portLeft));
+                            RemoteRuntime runtimeRight = RemoteRuntime.find(portRight);
+                            Color color = connectedColor;
+                            if (runtime != runtimeRight) {
+                                color = connectorNetwork;
+                            } else {
+                                boolean leftIsSource = connector.getSourceHandle() == portLeft.getRemoteHandle();
+                                Definitions.TypeConversionRating rating = connector.getRemoteConnectOptions().getTypeConversionRating(leftIsSource ? portLeft : portRight, runtime, leftIsSource ? portRight : portLeft);
+                                switch (rating) {
+                                case NO_CONVERSION:
+                                    color = connectorNoConversion;
+                                    break;
+                                case IMPOSSIBLE:
+                                case DEPRECATED_CONVERSION:
+                                    color = connectorDeprecatedConversion;
+                                    break;
+                                case IMPLICIT_CAST:
+                                case TWO_IMPLICIT_CASTS:
+                                    color = connectorImplicitConversion;
+                                    break;
+                                default:
+                                    color = connectorExplicitConversion;
+                                    break;
+                                }
+                            }
+                            if (mouseOver != null) {
+                                if (mouseOver == portLeft || mouseOver == portRight) {
+                                    color = color.brighter();
+                                }
+                            }
+                            if (visible.contains(p1) && visible.contains(p2)) {
+                                drawLine(g, p1, p2, color, true, false);
+                            } else if (g.getClipBounds().intersectsLine(p1.x, p1.y, p2.x, p2.y)) {
+                                drawLine(g, p1, p2, color, false, false);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -658,7 +786,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             } else if (e.getSource() == miShowPartner) {
                 MJTree<Object> otherTree = popupOnRight ? leftTree : rightTree;
                 Object portWrapper = getTreeNodeFromPos(ptree);
-                List<Object> partners = getConnectionPartners(portWrapper, true);
+                List<Object> partners = getConnectionPartners(portWrapper);
 
                 for (Object partner : partners) {
                     if (((ModelNode)partner).isHidden(true)) {
@@ -687,8 +815,6 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         }
     }
 
-
-
     @Override
     protected NodeRenderingStyle getNodeAppearance(Object node, MJTree<Object> tree, boolean selected) {
         NodeRenderingStyle result = tempRenderingStyle;
@@ -706,27 +832,45 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 mouseOverFlag |= pi != null && pi.getConfigEntry() != null && pi.getConfigEntry().length() > 0 && ((ConfigFileModel)getRightTree()).get(pi.getConfigEntry()) == node;
                 result.iconType |= ConnectorIcon.OUTPUT & (mouseOverFlag ? ConnectorIcon.BRIGHTER_COLOR : 0);
             }
-        } else if (node instanceof RemotePort) {
-            RemotePort port = (RemotePort)node;
-            result.textColor = tree.getBackground();
-            boolean rpc = FinrocTypeInfo.isMethodType(port.getDataType(), true);
-            boolean mouseOverFlag = (mouseOver instanceof RemotePort) && ((port.getPort() == ((RemotePort)mouseOver).getPort()) || port.isConnectedTo((RemotePort)mouseOver));
-            result.nodeColor = selected ? selectedColor : defaultColor;
-            if (getRightTree() instanceof ConfigFileModel) {
-                ParameterInfo pi = (ParameterInfo)port.getAnnotation(ParameterInfo.TYPE);
-                if (pi != null) {
-                    mouseOverFlag |= pi != null && pi.getConfigEntry() != null && pi.getConfigEntry().length() > 0 && ((ConfigFileModel)getRightTree()).get(pi.getConfigEntry()) == mouseOver;
-                } else {
-                    result.nodeColor = lightGrayColor;
+        } else if (node instanceof RemoteFrameworkElement) {
+            // erroneous element?
+            RemoteFrameworkElement element = (RemoteFrameworkElement)node;
+            RemoteRuntime runtime = RemoteRuntime.find(element);
+            boolean configFileMode = getRightTree() instanceof ConfigFileModel;
+            if (runtime != null && (!configFileMode)) {
+                for (RemoteFrameworkElement errorElement : runtime.getElementsInErrorState()) {
+                    if (element.isNodeAncestor(errorElement)) {
+                        result.nodeColor = errorColor;
+                        break;
+                    }
                 }
             }
-            result.iconType = (port.getFlag(FrameworkElementFlags.OUTPUT_PORT) ? ConnectorIcon.OUTPUT : 0) |
-                              (port.isProxy() ? ConnectorIcon.PROXY : 0) |
-                              (rpc ? ConnectorIcon.RPC : 0) |
-                              (mouseOverFlag ? ConnectorIcon.BRIGHTER_COLOR : 0);
-        } else {
-            if (node.getClass().equals(RemoteFrameworkElement.class)) {
-                RemoteFrameworkElement element = (RemoteFrameworkElement)node;
+
+            if (node.getClass().equals(RemotePort.class)) {
+                RemotePort port = (RemotePort)element;
+                result.textColor = tree.getBackground();
+                boolean rpc = (port.getDataType().getTypeTraits() & DataTypeBase.IS_RPC_TYPE) != 0;
+                boolean mouseOverFlag = (mouseOver instanceof RemotePort) && ((port.getPort() == ((RemotePort)mouseOver).getPort()) || RemoteRuntime.arePortsConnected(port, (RemotePort)mouseOver));
+                result.nodeColor = selected ? selectedColor : (result.nodeColor != errorColor ? defaultColor : errorColor);
+                if (otherTreeSelection) {
+                    Definitions.TypeConversionRating rating = highlightedElementRatings.get(node);
+                    if (rating != null) {
+                        result.nodeColor = candidatePortRatingColors[rating.ordinal()];
+                    }
+                }
+                if (configFileMode) {
+                    ParameterInfo pi = (ParameterInfo)port.getAnnotation(ParameterInfo.TYPE);
+                    if (pi != null) {
+                        mouseOverFlag |= pi != null && pi.getConfigEntry() != null && pi.getConfigEntry().length() > 0 && ((ConfigFileModel)getRightTree()).get(pi.getConfigEntry()) == mouseOver;
+                    } else {
+                        result.nodeColor = lightGrayColor;
+                    }
+                }
+                result.iconType = (port.getFlag(FrameworkElementFlags.OUTPUT_PORT) ? ConnectorIcon.OUTPUT : 0) |
+                                  (port.isProxy() ? ConnectorIcon.PROXY : 0) |
+                                  (rpc ? ConnectorIcon.RPC : 0) |
+                                  (mouseOverFlag ? ConnectorIcon.BRIGHTER_COLOR : 0);
+            } else {
                 if (element.isInterface()) {
                     result.nodeColor = otherTreeSelection ? selectedColor : (element.isSensorInterface() ? sensorInterfaceColor : (element.isControllerInterface() ? controllerInterfaceColor : interfaceColor));
                     boolean rpc = element.isRpcOnlyInterface();
@@ -738,9 +882,9 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                     result.nodeColor = selectedColor.plainColor;
                 }
             }
-            if ((!otherTreeSelection) && node instanceof ModelNode && finstruct.getCurrentView() != null && !((ModelNode)node).isNodeAncestor(finstruct.getCurrentView().getRootElement()) && node != finstruct.getCurrentView().getRootElement()) {
-                result.textColor = inactiveTextColor;
-            }
+        }
+        if (result.textColor == null && (!otherTreeSelection) && node instanceof ModelNode && finstruct.getCurrentView() != null && !((ModelNode)node).isNodeAncestor(finstruct.getCurrentView().getRootElement()) && node != finstruct.getCurrentView().getRootElement()) {
+            result.textColor = inactiveTextColor;
         }
 
         if ((!otherTreeSelection) && finstruct.getCurrentView() != null && node == finstruct.getCurrentView().getRootElement()) {
@@ -764,24 +908,34 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         if (getRightTree() instanceof ConfigFileModel) {
             return ConnectorIcon.LineStart.Default;
         }
-        NetPort np = port instanceof RemotePort ? ((RemotePort)port).getPort().asNetPort() : null;
-        if (np != null && partner instanceof RemotePort) {
+        if (port instanceof RemotePort && partner instanceof RemotePort) {
+            RemotePort remotePort = (RemotePort)port;
             RemotePort partnerPort = (RemotePort)partner;
-            int firstReverse = np.getRemoteEdgeDestinations(tempDestinationList);
-            int partnerIndex = tempDestinationList.indexOf(partnerPort.getPort());
-            if (partnerIndex >= 0) {
-                return partnerIndex < firstReverse ? ConnectorIcon.LineStart.Outgoing : ConnectorIcon.LineStart.Incoming;
-            } else if (partnerPort.getPort().asNetPort() != null) {
-                NetPort npPartner = partnerPort.getPort().asNetPort();
-                firstReverse = npPartner.getRemoteEdgeDestinations(tempDestinationList);
-                partnerIndex = tempDestinationList.indexOf(np.getPort());
-                if (partnerIndex >= 0) {
-                    return partnerIndex < firstReverse ? ConnectorIcon.LineStart.Incoming : ConnectorIcon.LineStart.Outgoing;
+            RemoteRuntime runtime = RemoteRuntime.find(remotePort);
+            runtime.getConnectors(tempConnectorList, remotePort);
+            for (RemoteConnector connector : tempConnectorList) {
+                if (connector.getPartnerPort(remotePort, runtime) == partner) {
+                    return getLineStartPosition(connector, remotePort, partnerPort);
                 }
-                // Ok, there's no connection yet
             }
         }
         return ConnectorIcon.LineStart.Default;
+    }
+
+    /**
+     * Get line start position for remote connector
+     *
+     * @param connector Remote connector
+     * @param port Port in question
+     * @param partner Partner port
+     * @return Line starting position
+     */
+    protected LineStart getLineStartPosition(RemoteConnector connector, RemotePort port, RemotePort partner) {
+        if (connector instanceof RemoteUriConnector) {
+            return SmartConnecting.inferConnectDirection(port, partner) == AbstractPort.ConnectDirection.TO_TARGET ? ConnectorIcon.LineStart.Outgoing : ConnectorIcon.LineStart.Incoming;
+        } else {
+            return connector.getSourceHandle() == port.getRemoteHandle() ? ConnectorIcon.LineStart.Outgoing : ConnectorIcon.LineStart.Incoming;
+        }
     }
 
     @Override
@@ -793,7 +947,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
         miRemoveAllConnections.setEnabled(miRemoveConnections.isEnabled());
 
         // Check whether port has any visible connections
-        List<Object> partners = getConnectionPartners(treeNode, true);
+        List<Object> partners = getConnectionPartners(treeNode);
         MJTree<Object> otherTree = popupOnRight ? leftTree : rightTree;
         boolean hasVisibleConnections = false;
         for (Object partner : partners) {

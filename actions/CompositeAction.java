@@ -68,6 +68,7 @@ public class CompositeAction extends FinstructAction {
             }
         } catch (Exception e) {
             String result = menuDescription + " failed:\n  " + e.getMessage();
+            //e.printStackTrace();
             if (tryUndoExecutedActionsOnError) {
                 CompositeAction undoStepsAction = (CompositeAction)getUndoActionImplementation();
                 undoStepsAction.menuDescription = "Undoing already performed actions";

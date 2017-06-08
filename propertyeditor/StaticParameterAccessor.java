@@ -28,6 +28,7 @@ import java.util.List;
 import org.finroc.core.datatype.CoreString;
 import org.finroc.core.parameter.StaticParameterBase;
 import org.finroc.core.parameter.StaticParameterList;
+import org.finroc.core.remote.RemoteStaticParameterList;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
 import org.rrlib.serialization.Serialization;
 
@@ -40,11 +41,11 @@ import org.rrlib.serialization.Serialization;
 public class StaticParameterAccessor implements PropertyAccessor {
 
     /** Wrapped parameter */
-    protected final StaticParameterBase wrapped;
+    protected final RemoteStaticParameterList.Parameter wrapped;
 
     protected final String namePrefix;
 
-    public StaticParameterAccessor(StaticParameterBase wrapped, String namePrefix) {
+    public StaticParameterAccessor(RemoteStaticParameterList.Parameter wrapped, String namePrefix) {
         this.wrapped = wrapped;
         this.namePrefix = namePrefix;
     }
@@ -54,22 +55,18 @@ public class StaticParameterAccessor implements PropertyAccessor {
         if (wrapped.getType() == null) {
             return String.class;
         } else {
-            return wrapped.getType().getJavaClass();
+            return wrapped.getType().getDefaultLocalDataType().getJavaClass();
         }
     }
 
     @Override
     public Object get() throws Exception {
-        return Serialization.deepCopy(wrapped.valPointer().getData());
+        return Serialization.deepCopy(wrapped.getValue().getData());
     }
 
     @Override
     public void set(Object newValue) throws Exception {
-        if (newValue instanceof String) {
-            wrapped.setValue(new CoreString(newValue.toString()));
-        } else {
-            wrapped.setValue(newValue);
-        }
+        wrapped.setValue(newValue);
     }
 
     @Override
@@ -87,14 +84,14 @@ public class StaticParameterAccessor implements PropertyAccessor {
      * @param namePrefix Prefix prepended to name of each parameter name
      * @return List of accessors for list
      */
-    public static List < PropertyAccessor<? >> createForList(StaticParameterList spl, String namePrefix) {
+    public static List < PropertyAccessor<? >> createForList(RemoteStaticParameterList spl, String namePrefix) {
         ArrayList < PropertyAccessor<? >> result = new ArrayList < PropertyAccessor<? >> ();
         for (int i = 0; i < spl.size(); i++) {
             result.add(new StaticParameterAccessor(spl.get(i), namePrefix));
         }
         return result;
     }
-    public static List < PropertyAccessor<? >> createForList(StaticParameterList spl) {
+    public static List < PropertyAccessor<? >> createForList(RemoteStaticParameterList spl) {
         return createForList(spl, "");
     }
 

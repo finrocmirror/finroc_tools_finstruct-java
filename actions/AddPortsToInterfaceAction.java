@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.finroc.core.datatype.PortCreationList;
-import org.finroc.core.finstructable.EditableInterfaces;
+import org.finroc.core.remote.RemoteEditableInterfaces;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemoteRuntime;
@@ -73,19 +73,19 @@ public class AddPortsToInterfaceAction extends FinstructAction {
             throw new Exception("Cannot find remote runtime for element '" + link + "'");
         }
         if (undoAction) {
-            runtime.getAdminInterface().setAnnotation(((RemoteFrameworkElement)node).getRemoteHandle(), originalInterface);
+            runtime.getAdminInterface().setAnnotation(((RemoteFrameworkElement)node).getRemoteHandle(), RemoteEditableInterfaces.TYPE_NAME, originalInterface);
             return;
         }
 
         originalInterface = ((RemoteFrameworkElement)node).getEditableInterfacesObject(); // TODO: optimization: could be done asynchronously
-        EditableInterfaces newInterface = Serialization.deepCopy(originalInterface);
+        RemoteEditableInterfaces newInterface = Serialization.deepCopy(originalInterface);
 
         // Add ports to interfaces
         for (Map.Entry<String, ArrayList<PortCreationList.Entry>> entry : portsToAdd.entrySet()) {
             PortCreationList interfaceList = null;
             for (int i = 0; i < newInterface.getStaticParameterList().size(); i++) {
                 if (newInterface.getStaticParameterList().get(i).getName().equals(entry.getKey())) {
-                    interfaceList = (PortCreationList)newInterface.getStaticParameterList().get(i).valPointer().getData();
+                    interfaceList = (PortCreationList)newInterface.getStaticParameterList().get(i).getValue().getData();
                     break;
                 }
             }
@@ -109,7 +109,7 @@ public class AddPortsToInterfaceAction extends FinstructAction {
         }
 
         // Commit to remote runtime
-        runtime.getAdminInterface().setAnnotation(((RemoteFrameworkElement)node).getRemoteHandle(), newInterface);
+        runtime.getAdminInterface().setAnnotation(((RemoteFrameworkElement)node).getRemoteHandle(), RemoteEditableInterfaces.TYPE_NAME, newInterface);
     }
 
     @Override
@@ -224,9 +224,9 @@ public class AddPortsToInterfaceAction extends FinstructAction {
 //  }
 
     // private constructor for undo action
-    private AddPortsToInterfaceAction(String link, EditableInterfaces originalInterface) {
+    private AddPortsToInterfaceAction(String link, RemoteEditableInterfaces originalInterface) {
         this.link = link;
-        this.originalInterface = new EditableInterfaces();
+        this.originalInterface = new RemoteEditableInterfaces();
         this.editableInterfaces = null;
         undoAction = true;
     }
@@ -241,7 +241,7 @@ public class AddPortsToInterfaceAction extends FinstructAction {
     private final Map<String, ArrayList<PortCreationList.Entry>> portsToAdd = new HashMap<String, ArrayList<PortCreationList.Entry>>();
 
     /** Original interface (for undo) */
-    private EditableInterfaces originalInterface;
+    private RemoteEditableInterfaces originalInterface;
 
     /** Undo action for add ports */
     private final boolean undoAction;
