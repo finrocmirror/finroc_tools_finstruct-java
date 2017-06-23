@@ -219,7 +219,7 @@ public class Profiling extends StandardViewGraphViz {
         }
 
         private AbstractPort getConnectedPort() {
-            return partner;
+            return partner.getPort();
         }
     }
 

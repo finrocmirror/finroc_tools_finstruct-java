@@ -33,6 +33,7 @@ import org.finroc.core.datatype.PortCreationList;
 import org.finroc.core.datatype.XML;
 import org.finroc.core.portdatabase.SerializationHelper;
 import org.finroc.core.remote.ModelNode;
+import org.finroc.core.remote.RemoteEnumValue;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.core.remote.RemoteType;
 import org.finroc.tools.gui.util.propertyeditor.BooleanEditor;
@@ -125,7 +126,7 @@ public class FinrocComponentFactory implements ComponentFactory {
                     }
                 }
             }
-            wpec = new DataTypeEditor(types.toArray(new Object[0]), null, panel);
+            wpec = new DataTypeEditor(types.toArray(new Object[0]));
             //acc = new CoreSerializableAdapter((PropertyAccessor<BinarySerializable>)acc, type, DataTypeReference.TYPE);
         } else if (PaintablePortData.class.isAssignableFrom(type)) {
             wpec = new PaintableViewer();
@@ -133,6 +134,8 @@ public class FinrocComponentFactory implements ComponentFactory {
             wpec = new XMLEditor();
         } else if (type.isEnum() || type.equals(EnumValue.class)) {
             wpec = new EnumEditor();
+        } else if (type.equals(RemoteEnumValue.class) && acc instanceof RemotePropertyAccessor) {
+            wpec = new EnumEditor(((RemotePropertyAccessor)acc).getRemoteType());
         } else if (CoreBoolean.class.isAssignableFrom(type)) {
             wpec = new BooleanEditor();
             acc = new CoreBooleanAdapter((PropertyAccessor<CoreBoolean>)acc);

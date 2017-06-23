@@ -25,10 +25,8 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.finroc.core.datatype.CoreString;
-import org.finroc.core.parameter.StaticParameterBase;
-import org.finroc.core.parameter.StaticParameterList;
 import org.finroc.core.remote.RemoteStaticParameterList;
+import org.finroc.core.remote.RemoteType;
 import org.finroc.tools.gui.util.propertyeditor.PropertyAccessor;
 import org.rrlib.serialization.Serialization;
 
@@ -38,7 +36,7 @@ import org.rrlib.serialization.Serialization;
  * Accessor for StaticParameters
  */
 @SuppressWarnings("rawtypes")
-public class StaticParameterAccessor implements PropertyAccessor {
+public class StaticParameterAccessor implements RemotePropertyAccessor {
 
     /** Wrapped parameter */
     protected final RemoteStaticParameterList.Parameter wrapped;
@@ -98,5 +96,10 @@ public class StaticParameterAccessor implements PropertyAccessor {
     @Override
     public boolean isModifiable() {
         return true;
+    }
+
+    @Override
+    public RemoteType getRemoteType() {
+        return wrapped.getType();
     }
 }

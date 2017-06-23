@@ -25,12 +25,11 @@ import org.finroc.core.FrameworkElementFlags;
 import org.finroc.core.datatype.Timestamp;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.PortCreationInfo;
-import org.finroc.core.port.cc.CCPortBase;
 import org.finroc.core.port.std.PortBase;
 import org.finroc.core.port.std.PortDataManager;
 import org.finroc.core.remote.RemotePort;
+import org.finroc.core.remote.RemoteType;
 import org.rrlib.serialization.BinarySerializable;
-import org.rrlib.serialization.Serialization;
 
 /**
  * @author Max Reichardt
@@ -38,15 +37,15 @@ import org.rrlib.serialization.Serialization;
  * Provides PropertyAccessor adapter for ports.
  * It creates an extra port that is connected to port to wrap.
  */
-public class ConnectingPortAccessor<T extends BinarySerializable> extends PortAccessor<T> {
+public class ConnectingPortAccessor<T extends BinarySerializable> extends PortAccessor<T> implements RemotePropertyAccessor<T> {
 
     /** Wrapped partner (network) port */
-    protected final AbstractPort partner;
+    protected final RemotePort partner;
 
     public ConnectingPortAccessor(RemotePort partner, String rootName) {
         //super((partner.getPort() instanceof PortBase) ? new PortBase(createPci(partner.getPort())) : new CCPortBase(createPci(partner.getPort())), "");
         super(new PortBase(createPci(partner.getPort()))); // we only have standard ports in finstruct
-        this.partner = partner.getPort();
+        this.partner = partner;
         name = partner.getQualifiedName('/').substring(rootName.length() + 1);
     }
 
@@ -82,7 +81,7 @@ public class ConnectingPortAccessor<T extends BinarySerializable> extends PortAc
     /** Init port */
     public void init() {
         wrapped.init();
-        wrapped.connectTo(partner, wrapped.isOutputPort() ? AbstractPort.ConnectDirection.TO_TARGET : AbstractPort.ConnectDirection.TO_SOURCE, false);
+        wrapped.connectTo(partner.getPort(), wrapped.isOutputPort() ? AbstractPort.ConnectDirection.TO_TARGET : AbstractPort.ConnectDirection.TO_SOURCE, false);
     }
 
     /**
@@ -100,7 +99,7 @@ public class ConnectingPortAccessor<T extends BinarySerializable> extends PortAc
 
     @Override
     protected AbstractPort portForSetting() {
-        return partner;
+        return partner.getPort();
     }
 
     /**
@@ -129,6 +128,11 @@ public class ConnectingPortAccessor<T extends BinarySerializable> extends PortAc
         PortDataManager portDataManager = ((PortBase)wrapped).getLockedUnsafeRaw();
         timestampBuffer.copyFrom(portDataManager.getTimestamp());
         portDataManager.releaseLock();
+    }
+
+    @Override
+    public RemoteType getRemoteType() {
+        return partner.getDataType();
     }
 
 }
