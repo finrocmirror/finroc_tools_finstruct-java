@@ -317,7 +317,7 @@ public class SmartConnecting {
         for (int i = 0; i < ratings.size(); i++) {
             RemoteType interTypeSource = types.get(i);
             Definitions.TypeConversionRating rating = ratings.getRating(interTypeSource);
-            if (interTypeSource != sourceType && rating != Definitions.TypeConversionRating.IMPOSSIBLE) {
+            if (rating != Definitions.TypeConversionRating.IMPOSSIBLE) {
                 RemoteType interTypeDestination = destinationRuntime.getRemoteType(interTypeSource.getName());
                 if (interTypeDestination != null) {
                     Definitions.TypeConversionRating rating2 = destinationRuntime.getTypeConversionRating(interTypeDestination, destinationType);
@@ -792,7 +792,7 @@ public class SmartConnecting {
             if ((currentElement instanceof RemoteRuntime) || (!(currentElement instanceof RemoteFrameworkElement))) {
                 break;
             }
-            result = "/" + port.getName().replace("/", "%2F") + result;
+            result = "/" + currentElement.getName().replace("/", "%2F") + result;
             currentElement = currentElement.getParent();
         }
         return result;

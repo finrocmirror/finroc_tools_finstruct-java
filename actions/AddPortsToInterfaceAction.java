@@ -31,7 +31,6 @@ import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemoteRuntime;
 import org.finroc.tools.finstruct.Finstruct;
-import org.rrlib.serialization.Serialization;
 
 
 /**
@@ -78,7 +77,8 @@ public class AddPortsToInterfaceAction extends FinstructAction {
         }
 
         originalInterface = ((RemoteFrameworkElement)node).getEditableInterfacesObject(); // TODO: optimization: could be done asynchronously
-        RemoteEditableInterfaces newInterface = Serialization.deepCopy(originalInterface);
+        RemoteEditableInterfaces newInterface = new RemoteEditableInterfaces();
+        newInterface.copyFrom(originalInterface);
 
         // Add ports to interfaces
         for (Map.Entry<String, ArrayList<PortCreationList.Entry>> entry : portsToAdd.entrySet()) {

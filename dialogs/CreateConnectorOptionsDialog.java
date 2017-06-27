@@ -23,6 +23,7 @@ package org.finroc.tools.finstruct.dialogs;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -154,6 +155,7 @@ public class CreateConnectorOptionsDialog extends MDialog {
             minNetworkUpdateInterval = new JTextField();
             minNetworkUpdateInterval.setText("0");
             minUpdate.add(minNetworkUpdateInterval);
+            minNetworkUpdateInterval.setPreferredSize(new Dimension(230, minNetworkUpdateInterval.getPreferredSize().height));
             flagPanel.add(minUpdate);
         }
 
@@ -167,84 +169,90 @@ public class CreateConnectorOptionsDialog extends MDialog {
         String ARROW_LABEL_STRING = "<html><h1>&#10145;</h1></html>";
         for (CreateConnectActionBatch batch : actionBatches) {
 
+            if (batch == noConversionBatch) {
+                batch.conversionOptions = new JComboBox[0];
+                continue;
+            }
+
             JPanel mainPanel = new JPanel();
             mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-            StringBuilder sources = new StringBuilder();
-            StringBuilder destinations = new StringBuilder();
+            StringBuilder sources = new StringBuilder("<html>");
+            StringBuilder destinations = new StringBuilder("<html>");
             for (ConnectAction action : batch.actions) {
                 if (action != batch.actions.get(0)) {
-                    sources.append('\n');
-                    destinations.append('\n');
+                    sources.append("<br>");
+                    destinations.append("<br>");
                 }
-                sources.append(formatPortLink(action.getSourceLink()));
-                destinations.append(formatPortLink(action.getDestinationLink()));
+                sources.append(formatPortLink(action.getSourceLink()).replace("<", "&lt;").replace(">", "&gt;"));
+                destinations.append(formatPortLink(action.getDestinationLink()).replace("<", "&lt;").replace(">", "&gt;"));
             }
+            sources.append("</html>");
+            destinations.append("</html>");
 
             mainPanel.add(new JLabel(sources.toString()));
             mainPanel.add(new JLabel(ARROW_LABEL_STRING));
-            if (batch != noConversionBatch) {
-                int conversions = batch.tcpConnector ? 2 : 1;
-                batch.conversionOptions = new JComboBox[conversions];
-                batch.conversionParameterLabels = new JLabel[conversions][];
-                batch.conversionParameterValues = new JTextField[conversions][];
 
-                List<SmartConnecting.StreamableType> streamableTypes = batch.tcpConnector ? SmartConnecting.getStreamableTypes(batch.sourceRuntime, batch.sourceType, batch.destinationRuntime, batch.destinationType) : null;
-                if (batch.tcpConnector && streamableTypes.size() == 0) {
-                    throw new Exception("No streamable type available");
-                }
+            int conversions = batch.tcpConnector ? 2 : 1;
+            batch.conversionOptions = new JComboBox[conversions];
+            batch.conversionParameterLabels = new JLabel[conversions][];
+            batch.conversionParameterValues = new JTextField[conversions][];
 
-
-                for (int i = 0; i < conversions; i++) {
-                    JPanel conversionPanel = new JPanel();
-                    conversionPanel.setLayout(new BorderLayout());
-                    String conversionTitle = "";
-                    if (!batch.tcpConnector) {
-                        batch.conversionOptions[i] = new JComboBox<RemoteConnectOptions>(batch.sourceRuntime.getConversionOptions(batch.sourceType, batch.destinationType, false).toArray(new RemoteConnectOptions[0]));
-                        conversionTitle = batch.sourceType.getName() + "  \u27a1  " + batch.destinationType.getName();
-                    } else if (i == 0) {
-                        batch.conversionOptions[i] = new JComboBox<RemoteConnectOptions>(batch.sourceRuntime.getConversionOptions(batch.sourceType, batch.sourceRuntime.getRemoteType(streamableTypes.get(0).name), false).toArray(new RemoteConnectOptions[0]));
-                        conversionTitle = batch.sourceType.getName() + "  \u27a1";
-                    } else {
-                        batch.conversionOptions[i] = new JComboBox<RemoteConnectOptions>(batch.destinationRuntime.getConversionOptions(batch.destinationRuntime.getRemoteType(streamableTypes.get(0).name), batch.destinationType, false).toArray(new RemoteConnectOptions[0]));
-                        conversionTitle = "\u27a1  " + batch.destinationType.getName();
-                    }
-                    if (batch.conversionOptions[i].getModel().getSize() == 0) {
-                        throw new Exception("No conversion options available");
-                    }
-                    conversionPanel.setBorder(BorderFactory.createTitledBorder(conversionTitle));
-                    batch.conversionOptions[i].setSelectedIndex(0);
-                    batch.conversionOptions[i].addActionListener(this);
-                    conversionPanel.add(batch.conversionOptions[i], BorderLayout.NORTH);
-                    JPanel parameterPanel = new JPanel();
-                    conversionPanel.add(parameterPanel, BorderLayout.CENTER);
-                    parameterPanel.setLayout(new GridLayout(2, 2));
-                    batch.conversionParameterLabels[i] = new JLabel[2];
-                    batch.conversionParameterValues[i] = new JTextField[2];
-                    for (int j = 0; j < 2; j++) {
-                        batch.conversionParameterLabels[i][j] = new JLabel();
-                        parameterPanel.add(batch.conversionParameterLabels[i][j]);
-                        batch.conversionParameterValues[i][j] = new JTextField();
-                        parameterPanel.add(batch.conversionParameterValues[i][j]);
-                    }
-                    mainPanel.add(conversionPanel);
-
-                    if (i == 0 && conversions == 2) {
-                        mainPanel.add(new JLabel(ARROW_LABEL_STRING));
-                        JPanel streamType = new JPanel();
-                        streamType.setBorder(BorderFactory.createTitledBorder("Serialized Type"));
-                        batch.streamedType = new JComboBox<>(streamableTypes.toArray(new SmartConnecting.StreamableType[0]));
-                        batch.streamedType.setSelectedIndex(0);
-                        batch.streamedType.addActionListener(this);
-                        streamType.add(batch.streamedType);
-                        mainPanel.add(streamType);
-                        mainPanel.add(new JLabel(ARROW_LABEL_STRING));
-                    }
-
-                    batch.updateParameters(i);
-                }
-
-                mainPanel.add(new JLabel(ARROW_LABEL_STRING));
+            List<SmartConnecting.StreamableType> streamableTypes = batch.tcpConnector ? SmartConnecting.getStreamableTypes(batch.sourceRuntime, batch.sourceType, batch.destinationRuntime, batch.destinationType) : null;
+            if (batch.tcpConnector && streamableTypes.size() == 0) {
+                throw new Exception("No streamable type available");
             }
+
+            for (int i = 0; i < conversions; i++) {
+                JPanel conversionPanel = new JPanel();
+                conversionPanel.setLayout(new BorderLayout());
+                String conversionTitle = "";
+                if (!batch.tcpConnector) {
+                    batch.conversionOptions[i] = new JComboBox<RemoteConnectOptions>(batch.sourceRuntime.getConversionOptions(batch.sourceType, batch.destinationType, false).toArray(new RemoteConnectOptions[0]));
+                    conversionTitle = batch.sourceType.getName() + "  \u27a1  " + batch.destinationType.getName();
+                } else if (i == 0) {
+                    batch.conversionOptions[i] = new JComboBox<RemoteConnectOptions>(batch.sourceRuntime.getConversionOptions(batch.sourceType, batch.sourceRuntime.getRemoteType(streamableTypes.get(0).name), false).toArray(new RemoteConnectOptions[0]));
+                    conversionTitle = batch.sourceType.getName() + "  \u27a1";
+                } else {
+                    batch.conversionOptions[i] = new JComboBox<RemoteConnectOptions>(batch.destinationRuntime.getConversionOptions(batch.destinationRuntime.getRemoteType(streamableTypes.get(0).name), batch.destinationType, false).toArray(new RemoteConnectOptions[0]));
+                    conversionTitle = "\u27a1  " + batch.destinationType.getName();
+                }
+                if (batch.conversionOptions[i].getModel().getSize() == 0) {
+                    throw new Exception("No conversion options available");
+                }
+                conversionPanel.setBorder(BorderFactory.createTitledBorder(conversionTitle));
+                batch.conversionOptions[i].setSelectedIndex(0);
+                batch.conversionOptions[i].addActionListener(this);
+                conversionPanel.add(batch.conversionOptions[i], BorderLayout.NORTH);
+                JPanel parameterPanel = new JPanel();
+                conversionPanel.add(parameterPanel, BorderLayout.CENTER);
+                parameterPanel.setLayout(new GridLayout(2, 2));
+                batch.conversionParameterLabels[i] = new JLabel[2];
+                batch.conversionParameterValues[i] = new JTextField[2];
+                for (int j = 0; j < 2; j++) {
+                    batch.conversionParameterLabels[i][j] = new JLabel();
+                    parameterPanel.add(batch.conversionParameterLabels[i][j]);
+                    batch.conversionParameterValues[i][j] = new JTextField();
+                    parameterPanel.add(batch.conversionParameterValues[i][j]);
+                }
+                mainPanel.add(conversionPanel);
+
+                if (i == 0 && conversions == 2) {
+                    mainPanel.add(new JLabel(ARROW_LABEL_STRING));
+                    JPanel streamType = new JPanel();
+                    streamType.setBorder(BorderFactory.createTitledBorder("Serialized Type"));
+                    batch.streamedType = new JComboBox<>(streamableTypes.toArray(new SmartConnecting.StreamableType[0]));
+                    batch.streamedType.setSelectedIndex(0);
+                    batch.streamedType.addActionListener(this);
+                    streamType.add(batch.streamedType);
+                    mainPanel.add(streamType);
+                    mainPanel.add(new JLabel(ARROW_LABEL_STRING));
+                }
+
+                batch.updateParameters(i);
+            }
+
+            mainPanel.add(new JLabel(ARROW_LABEL_STRING));
+
             mainPanel.add(new JLabel(destinations.toString()));
             conversionsPanel.add(mainPanel);
         }
@@ -322,6 +330,7 @@ public class CreateConnectorOptionsDialog extends MDialog {
                                 duration.set(Integer.parseInt(minNetworkUpdateInterval.getText()));
                                 options[i].setNamedParameter(org.finroc.core.net.generic_protocol.Definitions.URI_CONNECTOR_MINIMAL_UPDATE_INTERVAL, duration.toString());
                             } catch (Exception exception) {
+                                exception.printStackTrace();
                                 // Do not set parameter
                             }
                         }
@@ -340,7 +349,7 @@ public class CreateConnectorOptionsDialog extends MDialog {
                 cancelled = false;
                 close();
             } catch (Exception exception) {
-                Finstruct.showErrorMessage("Cannot create connector " + ((actionBatches.size() > 1 || actionBatches.get(0).actions.size() > 1) ? "s" : "") + " like this: " + exception.getMessage(), true, false);
+                Finstruct.showErrorMessage("Cannot create connector" + ((actionBatches.size() > 1 || actionBatches.get(0).actions.size() > 1) ? "s" : "") + " like this: " + exception.getMessage(), true, false);
             }
         } else if (e.getSource() == cancel) {
             cancelled = true;
