@@ -595,10 +595,11 @@ public class SmartConnecting {
                                     boolean directionOk = (outputPorts && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_OUTPUTS)) || ((!outputPorts) && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_INPUTS)) || rpcType;
                                     if (!rpcType) {
                                         score += (outputPorts && candidate.isOutputOnlyInterface()) || ((!outputPorts) && candidate.isInputOnlyInterface()) ? 1 : 0;
+                                        score += (candidate.isParameterInterface() == lastElement.interface_.isParameterInterface()) ? 2 : 0;
                                     } else if (rpcPortInDataInterface) {
                                         score += lastElement.interface_.getName().contains("Output") && candidate.getName().contains("Output") || lastElement.interface_.getName().contains("Input") && candidate.getName().contains("Input") ? 1 : 0;
                                     }
-                                    boolean typeCheck1 = (sensorData == controllerData) || candidate.getFlag(FrameworkElementFlags.SENSOR_DATA) == candidate.getFlag(FrameworkElementFlags.CONTROLLER_DATA) || candidate.isControllerInterface() && controllerData || candidate.isSensorInterface() && sensorData;
+                                    boolean typeCheck1 = (sensorData == controllerData) || candidate.getFlag(FrameworkElementFlags.SENSOR_DATA) == candidate.getFlag(FrameworkElementFlags.CONTROLLER_DATA) || (candidate.isControllerInterface() && controllerData) || (candidate.isSensorInterface() && sensorData);
                                     score += (sensorData != controllerData) && ((sensorData && candidate.isSensorInterface()) || (controllerData && candidate.isControllerInterface())) ? 2 : 0;
                                     boolean typeCheck2 = (checkForRpcType && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_RPC_PORTS)) || ((!checkForRpcType) && candidate.getFlag(FrameworkElementFlags.INTERFACE_FOR_DATA_PORTS));
                                     score += (checkForRpcType && candidate.isRpcOnlyInterface()) || ((!checkForRpcType) && (candidate.getFlags() & (FrameworkElementFlags.INTERFACE_FOR_DATA_PORTS | FrameworkElementFlags.INTERFACE_FOR_RPC_PORTS)) == FrameworkElementFlags.INTERFACE_FOR_DATA_PORTS) ? 1 : 0;
