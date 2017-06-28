@@ -1162,6 +1162,9 @@ public class StandardViewGraphViz extends AbstractGraphView<StandardViewGraphViz
                     remoteRuntime.getConnectors(remoteConnectors, remotePort);
                     for (RemoteConnector connector : remoteConnectors) {
                         RemotePort partner = connector.getPartnerPort(remotePort, remoteRuntime);
+                        if (partner == null) {
+                            continue;
+                        }
                         for (RemotePort remoteDestPort : RemotePort.get(partner.getPort())) {
                             if (remoteDestPort.isNodeAncestor(getDestination().getModelElement())) {
                                 destPorts.add(remoteDestPort);

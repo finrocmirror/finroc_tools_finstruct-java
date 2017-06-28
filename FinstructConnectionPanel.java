@@ -456,7 +456,10 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             ArrayList<RemoteConnector> connectors = new ArrayList<>();
             runtime.getConnectors(connectors, port);
             for (RemoteConnector connector : connectors) {
-                result.add(connector.getPartnerPort(port, runtime));
+                RemotePort partnerPort = connector.getPartnerPort(port, runtime);
+                if (partnerPort != null) {
+                    result.add(partnerPort);
+                }
             }
             return result;
         }
@@ -507,7 +510,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                 if (visibleConnectionsOnly) {
                     for (RemoteConnector connector : connectors) {
                         RemotePort partnerPort = connector.getPartnerPort(port, runtime);
-                        if (otherTree.isVisible(partnerPort)) {
+                        if (partnerPort != null && otherTree.isVisible(partnerPort)) {
                             runtime.getAdminInterface().disconnect(connector);
                         }
                     }

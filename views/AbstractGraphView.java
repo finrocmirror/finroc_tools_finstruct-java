@@ -419,6 +419,9 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
                     boolean reverseEdge = (connector instanceof RemoteUriConnector) && ((RemoteUriConnector)connector).getCurrentPartner() == port;
                     GetParentResult src = getParentInGraph(lookup, port);
                     RemotePort destinationPort = connector.getPartnerPort(port, remoteRuntime);
+                    if (destinationPort == null) {
+                        continue;
+                    }
                     for (RemotePort destTemp : RemotePort.get(destinationPort.getPort())) {
                         GetParentResult dest = getParentInGraph(lookup, destTemp);
                         if (src.parent != null && dest.parent != null && src.parent != dest.parent) {
