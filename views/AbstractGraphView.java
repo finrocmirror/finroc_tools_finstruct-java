@@ -416,7 +416,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             for (int i = 0; i < remoteConnectors.size(); i++) {
                 RemoteConnector connector = remoteConnectors.get(i);
                 if (port.getRemoteHandle() == connector.getOwnerPortHandle() && remoteRuntime == connector.getOwnerRuntime()) { // avoid processing connectors twice: as both ports of relevant edges are below graph, only process when 'port' is owner port
-                    boolean reverseEdge = (connector instanceof RemoteUriConnector) && ((RemoteUriConnector)connector).getCurrentPartner() == port;
+                    boolean reverseEdge = (connector instanceof RemoteUriConnector) && (port.getFlags() & FrameworkElementFlags.IS_OUTPUT_PORT) == 0;
                     GetParentResult src = getParentInGraph(lookup, port);
                     RemotePort destinationPort = connector.getPartnerPort(port, remoteRuntime);
                     if (destinationPort == null) {
