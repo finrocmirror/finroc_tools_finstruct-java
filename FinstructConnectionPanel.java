@@ -99,7 +99,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     public static final ConnectorIcon.IconColor lightGrayColor = new ConnectorIcon.IconColor(new Color(211, 211, 211), new Color(233, 233, 233));
     public static final Color rootViewColor = new Color(211, 211, 211);
     public static final Color inactiveTextColor = new Color(160, 160, 160);
-    public static final ConnectorIcon.IconColor errorColor = connectionPartnerMissingColor;
+    public static final ConnectorIcon.IconColor errorColor = new ConnectorIcon.IconColor(new Color(255, 100, 0), new Color(255, 140, 0));
     public static final ConnectorIcon.IconColor connectorNoConversion = connectedColor;
     public static final Color connectorImplicitConversion = new Color(80, 200, 30);
     public static final Color connectorExplicitConversion = new Color(160, 230, 30);
@@ -826,6 +826,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             return result;
         }
         boolean otherTreeSelection = (selectionFromRight != (tree == rightTree)) && selected;
+        boolean erroneousElement = false;
         if (node instanceof ConfigFileModel.ConfigEntryWrapper) {
             result.textColor = tree.getBackground();
             result.nodeColor = selected ? selectedColor : defaultColor;
@@ -840,14 +841,6 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             RemoteFrameworkElement element = (RemoteFrameworkElement)node;
             RemoteRuntime runtime = RemoteRuntime.find(element);
             boolean configFileMode = getRightTree() instanceof ConfigFileModel;
-            if (runtime != null && (!configFileMode)) {
-                for (RemoteFrameworkElement errorElement : runtime.getElementsInErrorState()) {
-                    if (element.isNodeAncestor(errorElement)) {
-                        result.nodeColor = errorColor;
-                        break;
-                    }
-                }
-            }
 
             if (node.getClass().equals(RemotePort.class)) {
                 RemotePort port = (RemotePort)element;
@@ -885,12 +878,22 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                     result.nodeColor = selectedColor.plainColor;
                 }
             }
+
+            if (runtime != null && (!configFileMode)) {
+                for (RemoteFrameworkElement errorElement : runtime.getElementsInErrorState()) {
+                    if (errorElement == element || errorElement.isNodeAncestor(element)) {
+                        result.nodeColor = (result.nodeColor instanceof ConnectorIcon.IconColor) ? errorColor : errorColor.plainColor;
+                        erroneousElement = true;
+                        break;
+                    }
+                }
+            }
         }
         if (result.textColor == null && (!otherTreeSelection) && node instanceof ModelNode && finstruct.getCurrentView() != null && !((ModelNode)node).isNodeAncestor(finstruct.getCurrentView().getRootElement()) && node != finstruct.getCurrentView().getRootElement()) {
             result.textColor = inactiveTextColor;
         }
 
-        if ((!otherTreeSelection) && finstruct.getCurrentView() != null && node == finstruct.getCurrentView().getRootElement()) {
+        if ((!otherTreeSelection) && finstruct.getCurrentView() != null && node == finstruct.getCurrentView().getRootElement() && (!erroneousElement)) {
             result.nodeColor = result.nodeColor instanceof ConnectorIcon.IconColor ? lightGrayColor : lightGrayColor.plainColor;
         }
         result.iconType |= (tree == rightTree) ? ConnectorIcon.RIGHT_TREE : 0;
