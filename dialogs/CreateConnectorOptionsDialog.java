@@ -50,6 +50,7 @@ import org.finroc.tools.finstruct.Finstruct;
 import org.finroc.tools.finstruct.SmartConnecting;
 import org.finroc.tools.finstruct.actions.ConnectAction;
 import org.finroc.tools.finstruct.actions.FinstructAction;
+import org.finroc.tools.gui.commons.Util;
 import org.finroc.tools.gui.util.gui.MDialog;
 import org.rrlib.serialization.Serialization;
 import org.rrlib.serialization.StringInputStream;
@@ -183,8 +184,8 @@ public class CreateConnectorOptionsDialog extends MDialog {
                     sources.append("<br>");
                     destinations.append("<br>");
                 }
-                sources.append(formatPortLink(action.getSourceLink()).replace("<", "&lt;").replace(">", "&gt;"));
-                destinations.append(formatPortLink(action.getDestinationLink()).replace("<", "&lt;").replace(">", "&gt;"));
+                sources.append(Util.escapeForHtml(formatPortLink(action.getSourceLink())));
+                destinations.append(Util.escapeForHtml(formatPortLink(action.getDestinationLink())));
             }
             sources.append("</html>");
             destinations.append("</html>");

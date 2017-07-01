@@ -66,6 +66,7 @@ import org.finroc.tools.finstruct.dialogs.CreateConnectorOptionsDialog;
 import org.finroc.tools.gui.ConnectionPanel;
 import org.finroc.tools.gui.ConnectorIcon;
 import org.finroc.tools.gui.ConnectorIcon.LineStart;
+import org.finroc.tools.gui.commons.Util;
 import org.finroc.tools.gui.util.gui.MJTree;
 import org.rrlib.logging.Log;
 import org.rrlib.logging.LogLevel;
@@ -630,7 +631,44 @@ public class FinstructConnectionPanel extends ConnectionPanel {
     }
 
     @Override
-    protected void setToolTipText(MJTree<Object> tree, Object element) {
+    protected void setToolTipText(MJTree<Object> tree, Object object) {
+        String toolTip = null;
+        if (object != null) {
+            if (object instanceof RemoteFrameworkElement) {
+                ArrayList<RemoteConnector> connectors = new ArrayList<>();
+                RemoteFrameworkElement element = (RemoteFrameworkElement)object;
+                RemoteRuntime runtime = RemoteRuntime.find(element);
+                if (runtime != null) {
+                    for (RemoteFrameworkElement errorElement : runtime.getElementsInErrorState()) {
+                        if ((errorElement instanceof RemotePort) && errorElement == element || errorElement.isNodeAncestor(element)) {
+                            runtime.getConnectors(connectors, (RemotePort)errorElement);
+                            for (RemoteConnector connector : connectors) {
+                                if (connector instanceof RemoteUriConnector) {
+                                    RemoteUriConnector uriConnector = (RemoteUriConnector)connector;
+                                    if (uriConnector.getOwnerRuntime() == runtime && uriConnector.getOwnerPortHandle() == errorElement.getRemoteHandle() && uriConnector.getStatus() != RemoteUriConnector.Status.CONNECTED) {
+                                        toolTip = toolTip == null ? "<html>" : (toolTip + "<br>");
+                                        String errorString = "";
+                                        if (errorElement != element) {
+                                            errorString = "in '" + Util.escapeForHtml(errorElement.getQualifiedName('/').substring(element.getQualifiedName('/').length() + 1)) + "': ";
+                                        }
+                                        if (uriConnector.getStatus() == RemoteUriConnector.Status.ERROR) {
+                                            errorString += "Error connecting to URI '" + uriConnector.getUri() + "'";
+                                        } else if (uriConnector.getStatus() == RemoteUriConnector.Status.DISCONNECTED) {
+                                            errorString += "Partner with URI unavailable '" + uriConnector.getUri() + "'";
+                                        }
+                                        toolTip += errorString;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (toolTip != null) {
+                    toolTip += "</html>";
+                }
+            }
+        }
+        tree.setToolTipText(toolTip);
     }
 
     @Override
