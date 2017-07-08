@@ -21,13 +21,16 @@
 //----------------------------------------------------------------------
 package org.finroc.tools.finstruct;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 
 import org.finroc.core.FinrocAnnotation;
 import org.finroc.core.FrameworkElement;
 import org.finroc.core.parameter.ConfigFile;
-import org.finroc.core.remote.HasUid;
+import org.finroc.core.remote.HasURI;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemoteRuntime;
@@ -142,15 +145,15 @@ public class ConfigFileModel extends DefaultTreeModel {
      * Recursive helper function for above
      *
      * @param node Current node to check
-     * @param uid Uid of entry we're looking for
+     * @param path Path of entry we're looking for
      * @return Entry, if it exists below node
      */
-    private ConfigEntryWrapper getHelper(DefaultMutableTreeNode node, String uid) {
-        if (node instanceof ConfigEntryWrapper && (((ConfigEntryWrapper)node).getUid().equals(uid) || ("/" + ((ConfigEntryWrapper)node).getUid()).equals(uid))) {
+    private ConfigEntryWrapper getHelper(DefaultMutableTreeNode node, String path) {
+        if (node instanceof ConfigEntryWrapper && (((ConfigEntryWrapper)node).getPathString().equals(path) || ("/" + ((ConfigEntryWrapper)node).getPathString()).equals(path))) {
             return (ConfigEntryWrapper)node;
         }
         for (int i = 0; i < node.getChildCount(); i++) {
-            ConfigEntryWrapper c = getHelper((DefaultMutableTreeNode)node.getChildAt(i), uid);
+            ConfigEntryWrapper c = getHelper((DefaultMutableTreeNode)node.getChildAt(i), path);
             if (c != null) {
                 return c;
             }
@@ -176,21 +179,30 @@ public class ConfigFileModel extends DefaultTreeModel {
         return null;
     }
 
-    class ConfigEntryWrapper extends DefaultMutableTreeNode implements HasUid {
+    class ConfigEntryWrapper extends DefaultMutableTreeNode implements HasURI {
 
         /** UID */
         private static final long serialVersionUID = 4774894712960992454L;
 
-        private String uid;
+        private String path;
 
-        private ConfigEntryWrapper(String uid, String name) {
+        private ConfigEntryWrapper(String path, String name) {
             super(name);
-            this.uid = uid;
+            this.path = path;
+        }
+
+        private String getPathString() {
+            return path;
         }
 
         @Override
-        public String getUid() {
-            return uid;
+        public URI getURI() {
+            try {
+                return new URI(null, null, path, null);
+            } catch (URISyntaxException e) {
+                e.printStackTrace();
+                return null;
+            }
         }
     }
 }

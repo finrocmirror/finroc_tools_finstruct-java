@@ -146,7 +146,7 @@ public class ConnectAction extends FinstructAction {
 
             if (sourceRuntime.getAdminInterface() != null && destinationPort.getFlag(FrameworkElementFlags.SHARED)) {
                 if (legacySourceRuntime && legacyDestinationRuntime) {
-                    result = sourceRuntime.getAdminInterface().networkConnect(sourcePort, "", RemoteRuntime.find(destinationPort).uuid, destinationPort.getRemoteHandle(), destinationPort.getUid(), disconnect);
+                    result = sourceRuntime.getAdminInterface().networkConnect(sourcePort, "", RemoteRuntime.find(destinationPort).uuid, destinationPort.getRemoteHandle(), destinationPort.getURI().getPath(), disconnect);
                 } else if ((!disconnect) && (!legacySourceRuntime)) {
                     URI uri = new URI("tcp", null, SmartConnecting.getUriPath(destinationPort), null);
                     System.out.println();
@@ -156,7 +156,7 @@ public class ConnectAction extends FinstructAction {
             }
             if (result != null && destinationRuntime.getAdminInterface() != null && sourcePort.getFlag(FrameworkElementFlags.SHARED)) {
                 if (legacySourceRuntime && legacyDestinationRuntime) {
-                    result = destinationRuntime.getAdminInterface().networkConnect(destinationPort, "", RemoteRuntime.find(sourcePort).uuid, sourcePort.getRemoteHandle(), sourcePort.getUid(), disconnect);
+                    result = destinationRuntime.getAdminInterface().networkConnect(destinationPort, "", RemoteRuntime.find(sourcePort).uuid, sourcePort.getRemoteHandle(), sourcePort.getURI().getPath(), disconnect);
                 } else if ((!disconnect) && (!legacyDestinationRuntime)) {
                     URI uri = new URI("tcp", null, SmartConnecting.getUriPath(sourcePort), null);
                     org.finroc.core.net.generic_protocol.Definitions.setServerSideConversionOptions(destinationConnectOptions, connectOptions, serializedType);

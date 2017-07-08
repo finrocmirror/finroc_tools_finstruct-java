@@ -49,7 +49,7 @@ import org.finroc.core.parameter.ParameterInfo;
 import org.finroc.core.port.AbstractPort;
 import org.finroc.core.port.ThreadLocalCache;
 import org.finroc.core.remote.Definitions;
-import org.finroc.core.remote.HasUid;
+import org.finroc.core.remote.HasURI;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.PortWrapper;
 import org.finroc.core.remote.RemoteConnector;
@@ -428,7 +428,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             if (pi != null) {
                 RemoteRuntime rr = RemoteRuntime.find((RemotePort)parameter);
                 AdminClient ac = rr.getAdminInterface();
-                pi.setConfigEntry("/" + ((HasUid)configNode).getUid(), true);
+                pi.setConfigEntry("/" + ((HasURI)configNode).getURI().getPath(), true);
                 ac.setAnnotation(((RemotePort)parameter).getRemoteHandle(), ParameterInfo.TYPE.getName(), pi);
                 return;
             }
@@ -478,11 +478,11 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             if (getRightTree() instanceof ConfigFileModel) {
                 if (object instanceof ConfigFileModel.ConfigEntryWrapper) {
                     final ModelNode currentRoot = finstruct.getCurrentView().getRootElement();
-                    final String uid = ((ConfigFileModel.ConfigEntryWrapper)object).getUid();
+                    final String path = ((ConfigFileModel.ConfigEntryWrapper)object).getURI().getPath();
                     for (RemotePort remotePort : currentRoot.getPortsBelow(null)) {
                         // remove connections
                         ParameterInfo pi = (ParameterInfo)remotePort.getAnnotation(ParameterInfo.TYPE);
-                        if (pi != null && pi.getConfigEntry().equals(uid) && ConfigFileModel.findConfigFile(remotePort) == ConfigFileModel.findConfigFile(currentRoot)) {
+                        if (pi != null && pi.getConfigEntry().equals(path) && ConfigFileModel.findConfigFile(remotePort) == ConfigFileModel.findConfigFile(currentRoot)) {
                             pi.setConfigEntry("");
                             RemoteRuntime rr = RemoteRuntime.find(remotePort);
                             AdminClient ac = rr.getAdminInterface();
