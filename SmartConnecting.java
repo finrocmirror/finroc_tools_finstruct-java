@@ -247,10 +247,10 @@ public class SmartConnecting {
         ModelNode commonParent = SmartConnecting.findCommonParent(port1, port2);
 
         // Inner-group connection to group's interface port
-        if (port1.getParent() != null && port1.getParent().isInterface() && port1.getParent().getParent() == commonParent) {
+        if (port1.getParent() != null && port1.getParent().isInterface() && port1.getParent().getParent() == commonParent && (port1.getFlags() & FrameworkElementFlags.PROXY) == FrameworkElementFlags.PROXY) {
             return port1.getFlag(FrameworkElementFlags.IS_OUTPUT_PORT) ? AbstractPort.ConnectDirection.TO_SOURCE : AbstractPort.ConnectDirection.TO_TARGET;
         }
-        if (port2.getParent() != null && port2.getParent().isInterface() && port2.getParent().getParent() == commonParent) {
+        if (port2.getParent() != null && port2.getParent().isInterface() && port2.getParent().getParent() == commonParent && (port2.getFlags() & FrameworkElementFlags.PROXY) == FrameworkElementFlags.PROXY) {
             return port2.getFlag(FrameworkElementFlags.IS_OUTPUT_PORT) ? AbstractPort.ConnectDirection.TO_TARGET : AbstractPort.ConnectDirection.TO_SOURCE;
         }
 
@@ -511,6 +511,10 @@ public class SmartConnecting {
                 boolean outwardOnlyConnection = element1.component != element2.component && (element1.component == commonParent || element2.component == commonParent);
                 boolean port1IsOutput = element1.port.getFlag(FrameworkElementFlags.IS_OUTPUT_PORT);
                 boolean port2IsOutputDesired = outwardOnlyConnection ? port1IsOutput : (!port1IsOutput);
+                if (outwardOnlyConnection && ((element1.component == commonParent && (element1.port.getFlags() & FrameworkElementFlags.PROXY) != FrameworkElementFlags.PROXY) || (element2.port != null && element2.component == commonParent && (element2.port.getFlags() & FrameworkElementFlags.PROXY) != FrameworkElementFlags.PROXY))) {
+                    // Non-proxy port in outer interface -> has same data flow direction to outer and inner elements
+                    port2IsOutputDesired = !port2IsOutputDesired;
+                }
                 if (element2.port != null || (element2.interface_ != null && (element2.interface_.isInputOnlyInterface() || element2.interface_.isOutputOnlyInterface()))) {
                     boolean port2IsOutput = (element2.port != null && element2.port.getFlag(FrameworkElementFlags.IS_OUTPUT_PORT)) || (element2.port == null && element2.interface_.isOutputOnlyInterface());
                     if (port2IsOutput != port2IsOutputDesired) {
