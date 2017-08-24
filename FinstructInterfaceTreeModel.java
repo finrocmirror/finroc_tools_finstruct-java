@@ -92,7 +92,7 @@ public class FinstructInterfaceTreeModel extends InterfaceTreeModel implements R
      * @param node Inserted node
      */
     private void processSubtree(ModelNode node) {
-        if (node instanceof RemoteFrameworkElement && ((RemoteFrameworkElement)node).isCompositeComponent()) {
+        if (node instanceof RemoteFrameworkElement && ((RemoteFrameworkElement)node).isComponent()) {
             RemoteRuntime r = RemoteRuntime.find((RemoteFrameworkElement)node);
             if (r != null && r.getSerializationInfo().getRevision() == 0) {
                 frameworkElementsToCheckForInterface.add((RemoteFrameworkElement)node);
