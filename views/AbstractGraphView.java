@@ -216,7 +216,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             for (int i = 0; i < fe.getChildCount(); i++) {
                 if (fe.getChildAt(i) instanceof RemotePort) {
                     RemotePort remotePort = (RemotePort)fe.getChildAt(i);
-                    if ((remotePort.getDataType().getTypeTraits() & DataTypeBase.IS_RPC_TYPE) == 0) {
+                    if (remotePort.getDataType().getTypeClassification() != DataTypeBase.CLASSIFICATION_RPC_TYPE) {
                         boolean output = (remotePort.getFlags() & FrameworkElementFlags.IS_OUTPUT_PORT) != 0;
                         one |= output;
                         all &= output;
@@ -238,7 +238,7 @@ public abstract class AbstractGraphView<V extends AbstractGraphView.Vertex, E ex
             for (int i = 0; i < fe.getChildCount(); i++) {
                 if (fe.getChildAt(i) instanceof RemotePort) {
                     RemotePort remotePort = (RemotePort)fe.getChildAt(i);
-                    if ((remotePort.getDataType().getTypeTraits() & DataTypeBase.IS_RPC_TYPE) == 0) {
+                    if (remotePort.getDataType().getTypeClassification() != DataTypeBase.CLASSIFICATION_RPC_TYPE) {
                         boolean input = (remotePort.getFlags() & FrameworkElementFlags.IS_OUTPUT_PORT) == 0;
                         one |= input;
                         all &= input;

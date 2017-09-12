@@ -883,7 +883,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             if (node.getClass().equals(RemotePort.class)) {
                 RemotePort port = (RemotePort)element;
                 result.textColor = tree.getBackground();
-                boolean rpc = (port.getDataType().getTypeTraits() & DataTypeBase.IS_RPC_TYPE) != 0;
+                boolean rpc = port.getDataType().getTypeClassification() == DataTypeBase.CLASSIFICATION_RPC_TYPE;
                 boolean mouseOverFlag = (mouseOver instanceof RemotePort) && ((port.getPort() == ((RemotePort)mouseOver).getPort()) || RemoteRuntime.arePortsConnected(port, (RemotePort)mouseOver));
                 result.nodeColor = selected ? selectedColor : (result.nodeColor != errorColor ? defaultColor : errorColor);
                 if (otherTreeSelection) {

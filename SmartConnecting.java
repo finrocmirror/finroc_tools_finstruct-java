@@ -592,7 +592,7 @@ public class SmartConnecting {
                                 int maxScore = -1;
                                 for (RemoteFrameworkElement candidate : currentElement.component.getEditableInterfaces()) {
                                     int score = 0;
-                                    boolean rpcType = (element1.portDataType.getTypeTraits() & DataTypeBase.IS_RPC_TYPE) != 0;
+                                    boolean rpcType = element1.portDataType.getTypeClassification() == DataTypeBase.CLASSIFICATION_RPC_TYPE;
                                     boolean rpcPortInDataInterface = rpcType && (!element1.interface_.getFlag(FrameworkElementFlags.INTERFACE_FOR_RPC_PORTS));
                                     boolean checkForRpcType = rpcType && (!rpcPortInDataInterface);
 

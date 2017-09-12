@@ -92,7 +92,7 @@ public class PortAccessor<T> implements PropertyAccessor<T>, PortListener {
     @SuppressWarnings("unchecked")
     @Override
     public Class<T> getType() {
-        return (wrapped.getDataType().getJavaClass() == null && (wrapped.getDataType().getTypeTraits() == DataTypeBase.IS_LIST_TYPE)) ? (Class<T>)PortDataListImpl.class : (Class<T>)wrapped.getDataType().getJavaClass();
+        return (wrapped.getDataType().getJavaClass() == null && (wrapped.getDataType().getTypeClassification() == DataTypeBase.CLASSIFICATION_LIST) ? (Class<T>)PortDataListImpl.class : (Class<T>)wrapped.getDataType().getJavaClass());
     }
 
     @SuppressWarnings("unchecked")

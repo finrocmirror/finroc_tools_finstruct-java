@@ -81,7 +81,7 @@ public class FinrocComponentFactory implements ComponentFactory {
      * (e.g. a component for displaying and possibly editing is available)
      */
     public static boolean isTypeSupported(DataTypeBase dt) {
-        if ((dt.getTypeTraits() & DataTypeBase.IS_DATA_TYPE) != 0) {
+        if (dt.getTypeClassification() != DataTypeBase.CLASSIFICATION_RPC_TYPE) {
             Class<?> type = dt.getJavaClass();
             if (type != null) {
                 return (type.equals(PortCreationList.class) || DataTypeReference.class.equals(type)
