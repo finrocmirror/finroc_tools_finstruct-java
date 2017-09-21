@@ -285,7 +285,7 @@ public class SmartConnecting {
                     Definitions.TypeConversionRating rating2 = destinationRuntime.getTypeConversionRating(interTypeDestination, destinationType);
                     if ((rating == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_TO_GENERIC_TYPE && rating2 == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_FROM_GENERIC_TYPE) ||
                             (rating == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_FROM_GENERIC_TYPE && rating2 == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_TO_GENERIC_TYPE)) {
-                        rating2 = Definitions.TypeConversionRating.DEPRECATED_CONVERSION;
+                        rating2 = Definitions.TypeConversionRating.UNUSUAL_CONVERSION;
                     }
                     if (rating2.ordinal() > result.ordinal()) {
                         result = getWorstRating(rating, rating2);
@@ -327,7 +327,7 @@ public class SmartConnecting {
                         option.rating = getWorstRating(rating, rating2);
                         if ((rating == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_TO_GENERIC_TYPE && rating2 == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_FROM_GENERIC_TYPE) ||
                                 (rating == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_FROM_GENERIC_TYPE && rating2 == Definitions.TypeConversionRating.EXPLICIT_CONVERSION_TO_GENERIC_TYPE)) {
-                            option.rating = Definitions.TypeConversionRating.DEPRECATED_CONVERSION;
+                            option.rating = Definitions.TypeConversionRating.UNUSUAL_CONVERSION;
                         }
                         result.add(option);
                     }

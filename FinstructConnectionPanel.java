@@ -52,6 +52,7 @@ import org.finroc.core.remote.Definitions;
 import org.finroc.core.remote.HasURI;
 import org.finroc.core.remote.ModelNode;
 import org.finroc.core.remote.PortWrapper;
+import org.finroc.core.remote.RemoteConnectOptions;
 import org.finroc.core.remote.RemoteConnector;
 import org.finroc.core.remote.RemoteFrameworkElement;
 import org.finroc.core.remote.RemotePort;
@@ -378,6 +379,7 @@ public class FinstructConnectionPanel extends ConnectionPanel {
             for (FinstructAction a : ((CompositeAction)action).getActions()) {
                 if (a instanceof ConnectAction) {
                     showCreateConnectorDialog |= ((ConnectAction)a).getConnectOptions().requiresOperationSelection() || FinstructAction.findRemoteRuntime(((ConnectAction)a).getSourceLink()) != FinstructAction.findRemoteRuntime(((ConnectAction)a).getDestinationLink());
+                    ((ConnectAction)a).getConnectOptions().flags |= RemoteConnectOptions.FINSTRUCTED;
                 }
             }
             if (showCreateConnectorDialog) {
@@ -698,22 +700,26 @@ public class FinstructConnectionPanel extends ConnectionPanel {
                                 color = connectorNetwork;
                             } else {
                                 boolean leftIsSource = connector.getSourceHandle() == portLeft.getRemoteHandle();
-                                Definitions.TypeConversionRating rating = connector.getRemoteConnectOptions().getTypeConversionRating(leftIsSource ? portLeft : portRight, runtime, leftIsSource ? portRight : portLeft);
-                                switch (rating) {
-                                case NO_CONVERSION:
-                                    color = connectorNoConversion;
-                                    break;
-                                case IMPOSSIBLE:
-                                case DEPRECATED_CONVERSION:
-                                    color = connectorDeprecatedConversion;
-                                    break;
-                                case IMPLICIT_CAST:
-                                case TWO_IMPLICIT_CASTS:
-                                    color = connectorImplicitConversion;
-                                    break;
-                                default:
-                                    color = connectorExplicitConversion;
-                                    break;
+                                try {
+                                    Definitions.TypeConversionRating rating = connector.getRemoteConnectOptions().getTypeConversionRating(leftIsSource ? portLeft : portRight, runtime, leftIsSource ? portRight : portLeft);
+                                    switch (rating) {
+                                    case NO_CONVERSION:
+                                        color = connectorNoConversion;
+                                        break;
+                                    case IMPOSSIBLE:
+                                    case UNUSUAL_CONVERSION:
+                                        color = connectorDeprecatedConversion;
+                                        break;
+                                    case IMPLICIT_CAST:
+                                    case TWO_IMPLICIT_CASTS:
+                                        color = connectorImplicitConversion;
+                                        break;
+                                    default:
+                                        color = connectorExplicitConversion;
+                                        break;
+                                    }
+                                } catch (Exception e) {
+                                    e.printStackTrace();
                                 }
                             }
                             if (mouseOver != null) {

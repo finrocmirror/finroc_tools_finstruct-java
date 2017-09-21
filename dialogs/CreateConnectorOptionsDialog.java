@@ -312,7 +312,9 @@ public class CreateConnectorOptionsDialog extends MDialog {
                         for (int j = 0; j < conversions; j++) {
                             RemoteTypeConversion operation = j == 0 ? options[i].operation1 : options[i].operation2;
                             GenericObject parameterValue = null;
-                            if (operation.getParameter() != null) {
+                            if (operation.getSupportedSourceTypes() == RemoteTypeConversion.SupportedTypeFilter.GET_TUPLE_ELEMENT) {
+                                continue;
+                            } else if (operation.getParameter() != null) {
                                 parameterValue = operation.getParameter().getType().getDefaultLocalDataType().createInstanceGeneric(null);
                                 StringInputStream stream = new StringInputStream(batch.conversionParameterValues[i][j].getText());
                                 parameterValue.deserialize(stream);
@@ -395,7 +397,7 @@ public class CreateConnectorOptionsDialog extends MDialog {
             for (int i = 0; i < 2; i++) {
                 RemoteTypeConversion conversion = (i == 0 ? options.operation1 : options.operation2);
                 ParameterDefinition parameterDefinition = conversion != null ? conversion.getParameter() : null;
-                if (parameterDefinition == null) {
+                if (parameterDefinition == null || conversion.getSupportedSourceTypes() == RemoteTypeConversion.SupportedTypeFilter.GET_TUPLE_ELEMENT) {
                     conversionParameterLabels[index][i].setText("No parameter");
                     conversionParameterValues[index][i].setText("");
                     conversionParameterValues[index][i].setEnabled(false);
