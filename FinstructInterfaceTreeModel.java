@@ -53,7 +53,10 @@ public class FinstructInterfaceTreeModel extends InterfaceTreeModel implements R
             RemoteFrameworkElement element = frameworkElementsToCheckForInterface.poll();
             if (element != null) {
                 try {
-                    element.getEditableInterfaces();
+                    RemoteRuntime runtime = RemoteRuntime.find(element);
+                    if (runtime.getParent() != null) {
+                        element.getEditableInterfaces();
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
